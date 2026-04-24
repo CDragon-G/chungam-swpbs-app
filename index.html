@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>충암중 SWPBS 일일 자기점검</title>
+<!-- =====================================================
+     충암중학교 SWPBS 일일 행동 자기점검 앱
+     담당: 인성생활부 신창용 교사
+     수정: VSCode에서 CONFIG 섹션만 건드리세요
+     배포: git push → Netlify 자동 배포
+     ===================================================== -->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#F0F4F8}
+body{font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;font-size:15px;color:#1E293B;display:flex;justify-content:center;min-height:100vh}
+.app{width:100%;max-width:430px;min-height:100vh;background:#fff;box-shadow:0 4px 40px rgba(0,0,0,.1);display:flex;flex-direction:column}
+.step{display:none;flex-direction:column;flex:1;animation:fadeUp .22s ease}
+.step.active{display:flex}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hdr{padding:22px 20px 16px;border-bottom:1px solid #F1F5F9}
+.hdr-badge{font-size:11px;font-weight:600;color:#64748B;letter-spacing:.6px;margin-bottom:5px}
+.hdr-title{font-size:21px;font-weight:700;color:#1E293B;line-height:1.2}
+.hdr-sub{font-size:12px;color:#94A3B8;margin-top:4px}
+.progress-dots{display:flex;gap:6px;padding:16px 20px 0}
+.pdot{height:4px;flex:1;border-radius:2px;background:#E2E8F0;transition:background .3s}
+.pdot.done{background:#10B981}
+.pdot.cur{background:#7C3AED}
+.content{flex:1;padding:20px;overflow-y:auto}
+.info-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:16px 18px;margin-bottom:16px}
+.field-label{font-size:12px;color:#64748B;font-weight:600;margin-bottom:6px;display:block}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+select,input[type="text"]{width:100%;padding:10px 13px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:14px;color:#1E293B;background:#fff;outline:none;-webkit-appearance:none;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit}
+.btn-primary{background:#7C3AED;color:#fff}
+.btn-primary:hover{background:#6D28D9;transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
+.btn-success{background:#10B981;color:#fff}
+.btn-success:hover{background:#059669}
+.btn:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none}
+.date-badge{display:inline-flex;align-items:center;gap:5px;background:#EEF2FF;color:#4338CA;font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;margin-bottom:16px}
+.cat-scroll{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:0 20px;margin-bottom:12px}
+.cat-scroll::-webkit-scrollbar{display:none}
+.cat-row{display:flex;gap:6px;width:max-content}
+.cat-tab{flex-shrink:0;padding:7px 14px;border:1.5px solid #E2E8F0;border-radius:22px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748B;white-space:nowrap;transition:all .15s}
+.cat-tab.active{color:#fff;border-color:transparent}
+.prog-bar{height:3px;background:#F1F5F9;margin:0 20px 14px;border-radius:2px}
+.prog-fill{height:100%;background:#7C3AED;border-radius:2px;transition:width .3s}
+.check-list{padding:0 20px}
+.check-card{background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;padding:13px 14px;margin-bottom:8px;transition:all .15s}
+.check-card.y{border-color:#10B981;background:#F0FDF4}
+.check-card.n{border-color:#F87171;background:#FFF5F5}
+.check-row{display:flex;align-items:flex-start;gap:10px}
+.check-icon{width:26px;height:26px;border-radius:50%;border:1.5px solid #CBD5E1;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;transition:all .15s}
+.check-card.y .check-icon{background:#10B981;border-color:#10B981;color:#fff}
+.check-card.n .check-icon{background:#F87171;border-color:#F87171;color:#fff}
+.check-body{flex:1}
+.mrs-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;margin-bottom:4px;letter-spacing:.3px}
+.check-text{font-size:14px;line-height:1.5;color:#374151}
+.check-card.y .check-text{color:#065F46}
+.check-card.n .check-text{color:#991B1B}
+.yn-row{display:flex;gap:6px;margin-top:10px}
+.yn-btn{flex:1;padding:7px 4px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#F8FAFC;color:#94A3B8;transition:all .15s;font-family:inherit}
+.yn-btn.yes.sel{background:#ECFDF5;border-color:#10B981;color:#059669}
+.yn-btn.no.sel{background:#FEF2F2;border-color:#F87171;color:#DC2626}
+.nav-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px 20px}
+.nav-btn{padding:8px 16px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#374151;font-family:inherit;transition:all .15s}
+.nav-btn:hover{background:#F8FAFC}
+.nav-count{font-size:12px;color:#94A3B8;font-weight:500}
+.result-top{padding:20px 20px 10px;text-align:center}
+.result-pct{font-size:56px;font-weight:700;color:#10B981;line-height:1}
+.result-lbl{font-size:13px;color:#94A3B8;margin-top:5px}
+.grade-tag{display:inline-block;padding:5px 18px;border-radius:20px;font-size:13px;font-weight:700;margin:10px auto 0}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 20px;margin:12px 0}
+.result-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 10px;text-align:center}
+.rc-name{font-size:11px;color:#94A3B8;margin-bottom:5px}
+.rc-pct{font-size:22px;font-weight:700}
+.cmt-area{padding:0 20px;margin-bottom:12px}
+.cmt-label{font-size:12px;color:#64748B;font-weight:600;margin-bottom:7px;display:block}
+.cmt-area textarea{width:100%;padding:12px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;resize:none;height:70px;color:#1E293B;font-family:inherit;outline:none;transition:border-color .15s}
+.cmt-area textarea:focus{border-color:#7C3AED}
+.submit-wrap{padding:0 20px}
+.submit-info{font-size:11px;color:#CBD5E1;text-align:center;margin-top:10px;line-height:1.7}
+.done-box{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:12px;padding:14px 16px;margin:12px 20px;font-size:13px;color:#065F46;line-height:1.8}
+.done-key{font-size:11px;background:#D1FAE5;padding:2px 8px;border-radius:5px;font-family:monospace;word-break:break-all}
+.spacer{height:28px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- STEP 0: 기본 정보 -->
+<div class="step active" id="s0">
+  <div class="hdr">
+    <div class="hdr-badge">충암중학교 · SWPBS</div>
+    <div class="hdr-title">일일 행동 자기점검</div>
+    <div class="hdr-sub">매일 종례 후 5분</div>
+  </div>
+  <div class="progress-dots">
+    <div class="pdot cur"></div>
+    <div class="pdot"></div>
+    <div class="pdot"></div>
+  </div>
+  <div class="content">
+    <div class="date-badge" id="dateBadge">📅 날짜 로딩 중...</div>
+    <div class="info-card">
+      <span class="field-label">학년 / 반</span>
+      <div class="grid-2">
+        <select id="grade">
+          <option value="">학년 선택</option>
+          <option value="1학년">1학년</option>
+          <option value="2학년">2학년</option>
+          <option value="3학년">3학년</option>
+        </select>
+        <select id="room">
+          <option value="">반 선택</option>
+          <option>1반</option><option>2반</option><option>3반</option>
+          <option>4반</option><option>5반</option><option>6반</option>
+          <option>7반</option><option>8반</option><option>9반</option><option>10반</option>
+        </select>
+      </div>
+      <span class="field-label">출석 번호</span>
+      <input type="text" id="num" placeholder="번호 입력" inputmode="numeric" maxlength="3">
+    </div>
+    <button class="btn btn-primary" onclick="startApp()">시작하기 →</button>
+  </div>
+</div>
+
+<!-- STEP 1: 자기점검 -->
+<div class="step" id="s1">
+  <div class="hdr">
+    <div class="hdr-badge">1단계</div>
+    <div class="hdr-title">오늘 행동 점검</div>
+    <div class="hdr-sub">오늘 하루를 돌아보며 O / X 로 체크해주세요</div>
+  </div>
+  <div class="progress-dots">
+    <div class="pdot done"></div>
+    <div class="pdot cur"></div>
+    <div class="pdot"></div>
+  </div>
+  <div class="prog-bar" style="margin-top:14px"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+  <div class="cat-scroll"><div class="cat-row" id="catRow"></div></div>
+  <div class="check-list" id="checkList"></div>
+  <div class="nav-bar">
+    <button class="nav-btn" id="prevBtn" onclick="prevCat()" style="visibility:hidden">← 이전</button>
+    <span class="nav-count" id="navCount"></span>
+    <button class="nav-btn" id="nextBtn" onclick="nextCat()">다음 →</button>
+  </div>
+</div>
+
+<!-- STEP 2: 결과 -->
+<div class="step" id="s2">
+  <div class="hdr">
+    <div class="hdr-badge">2단계</div>
+    <div class="hdr-title">오늘 결과</div>
+  </div>
+  <div class="progress-dots">
+    <div class="pdot done"></div>
+    <div class="pdot done"></div>
+    <div class="pdot cur"></div>
+  </div>
+  <div style="overflow-y:auto;flex:1">
+    <div class="result-top">
+      <div class="result-pct" id="totalPct">-</div>
+      <div class="result-lbl">오늘 전체 실천율</div>
+      <div id="gradeBadge"></div>
+    </div>
+    <div class="result-grid" id="resultGrid"></div>
+    <div class="cmt-area">
+      <span class="cmt-label">오늘 가장 잘 지킨 규칙 하나 (선택)</span>
+      <textarea id="comment" placeholder="예: 오늘 복도에서 오른쪽으로 걸었어요"></textarea>
+    </div>
+    <div class="submit-wrap">
+      <button class="btn btn-success" id="submitBtn" onclick="submitResult()">제출하기</button>
+      <div class="submit-info">담임 선생님과 인성생활부에 자동 전달됩니다.<br>개인정보는 학교 내에서만 사용됩니다.</div>
+    </div>
+    <div id="doneArea"></div>
+    <div class="spacer"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   ▼▼▼  수정은 여기만! CONFIG 섹션  ▼▼▼
+   규칙 수정 → git push → Netlify 자동 배포
+   ═══════════════════════════════════════════════════ */
+
+// Apps Script 배포 URL (한 번만 설정)
+const SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+// 규칙 데이터 (15개: 수업 3끝 + 공간별 MRS 4×3)
+const CATS = [
+
+  /* 수업 3끝 */
+  { key:'수업 3끝', ico:'📖', color:'#5B21B6', items:[
+    { label:'입실끝', text:'8:25까지 교실에 들어왔어요' },
+    { label:'준비끝', text:'타종 후 교과서를 펼치고 자리에 앉았어요' },
+    { label:'수행끝', text:'과제 시간 동안 다른 친구에게 말 걸지 않았어요' },
+  ]},
+
+  /* 교실 MRS */
+  { key:'교실', ico:'🏫', color:'#0F766E', items:[
+    { label:'M 예의', text:'친구를 이름으로 불렀어요' },
+    { label:'R 책임', text:'간식은 쉬는 시간에만 먹었어요' },
+    { label:'S 안전', text:'창문 밖으로 손·발·물건을 내밀지 않았어요' },
+  ]},
+
+  /* 복도·계단 MRS */
+  { key:'복도·계단', ico:'🚶', color:'#1D4ED8', items:[
+    { label:'M 예의', text:'복도에서 어른을 만나면 인사했어요' },
+    { label:'R 책임', text:'복도 오른쪽으로 걸었어요' },
+    { label:'S 안전', text:'복도와 계단에서 걸어 다녔어요' },
+  ]},
+
+  /* 급식실 MRS */
+  { key:'급식실', ico:'🍽️', color:'#B45309', items:[
+    { label:'M 예의', text:'음식을 다 삼킨 후에 말했어요' },
+    { label:'R 책임', text:'배식 줄 맨 뒤에서 기다렸어요' },
+    { label:'S 안전', text:'식판은 두 손으로 잡고 이동했어요' },
+  ]},
+
+  /* 화장실 MRS */
+  { key:'화장실', ico:'🚿', color:'#0369A1', items:[
+    { label:'M 예의', text:'칸에 들어가기 전에 노크했어요' },
+    { label:'R 책임', text:'사용한 휴지를 휴지통에 버렸어요' },
+    { label:'S 안전', text:'변기 물을 끝까지 내렸어요' },
+  ]},
+
+];
+/* ▲▲▲  CONFIG 끝  ▲▲▲
+   ═══════════════════════════════════════════════════ */
+
+
+const MRS_COLORS = {
+  '입실끝':{ bg:'#EDE9FE', tc:'#5B21B6' },
+  '준비끝':{ bg:'#EDE9FE', tc:'#5B21B6' },
+  '수행끝':{ bg:'#EDE9FE', tc:'#5B21B6' },
+  'M 예의':{ bg:'#DCFCE7', tc:'#15803D' },
+  'R 책임':{ bg:'#DBEAFE', tc:'#1E40AF' },
+  'S 안전':{ bg:'#FEE2E2', tc:'#B91C1C' },
+};
+
+let answers={}, curCat=0;
+
+/* 날짜 키: 중복 방지용 (예: 2026-04-25) */
+function getDateKey(){
+  const d=new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+
+/* 요일 한글 */
+function getDayKo(){
+  return ['일','월','화','수','목','금','토'][new Date().getDay()];
+}
+
+/* 날짜 배지 초기화 */
+(function(){
+  const now=new Date();
+  const m=now.getMonth()+1;
+  const d=now.getDate();
+  const dayKo=getDayKo();
+  document.getElementById('weekBadge').textContent='📅 '+m+'월 '+d+'일('+dayKo+') 점검';
+})();
+
+function showStep(n){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s'+n).classList.add('active');
+  window.scrollTo({top:0});
+}
+
+function startApp(){
+  const g=document.getElementById('grade').value;
+  const r=document.getElementById('room').value;
+  const n=document.getElementById('num').value.trim();
+  if(!g||!r){alert('학년과 반을 선택해주세요.');return;}
+  if(!n){alert('출석 번호를 입력해주세요.');return;}
+  answers={}; curCat=0;
+  renderTabs(); renderItems();
+  showStep(1);
+}
+
+function renderTabs(){
+  document.getElementById('catRow').innerHTML=CATS.map((c,i)=>{
+    const a=i===curCat;
+    const st=a?'background:'+c.color+';border-color:'+c.color+';color:#fff'
+               :'border-color:'+c.color+'55;color:'+c.color;
+    return '<div class="cat-tab '+(a?'active':'')+'" style="'+st+'" onclick="jumpCat('+i+')">'+c.ico+' '+c.key+'</div>';
+  }).join('');
+}
+
+function renderItems(){
+  const cat=CATS[curCat];
+  const total=CATS.reduce((s,c)=>s+c.items.length,0);
+  const done=Object.keys(answers).length;
+  document.getElementById('progFill').style.width=(done/total*100)+'%';
+
+  document.getElementById('checkList').innerHTML=cat.items.map((item,i)=>{
+    const key=curCat+'_'+i, val=answers[key];
+    const mc=MRS_COLORS[item.label]||{bg:'#F1F5F9',tc:'#475569'};
+    const cls=val===true?'y':val===false?'n':'';
+    const ico=val===true?'✓':val===false?'✗':'';
+    const icSt=val===true?'background:'+cat.color+';border-color:'+cat.color
+               :val===false?'background:#F87171;border-color:#F87171':'';
+    return '<div class="check-card '+cls+'">'+
+      '<div class="check-row">'+
+        '<div class="check-icon" style="'+icSt+'">'+ico+'</div>'+
+        '<div class="check-body">'+
+          '<div class="mrs-badge" style="background:'+mc.bg+';color:'+mc.tc+'">'+item.label+'</div>'+
+          '<div class="check-text">'+item.text+'</div>'+
+          '<div class="yn-row">'+
+            '<button class="yn-btn yes '+(val===true?'sel':'')+'" onclick="setAns('+curCat+','+i+',true)">✓ 잘 지켰어요</button>'+
+            '<button class="yn-btn no '+(val===false?'sel':'')+'" onclick="setAns('+curCat+','+i+',false)">✗ 미흡했어요</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  document.getElementById('prevBtn').style.visibility=curCat===0?'hidden':'visible';
+  document.getElementById('nextBtn').textContent=curCat===CATS.length-1?'결과 보기 →':'다음 →';
+  document.getElementById('navCount').textContent=(curCat+1)+' / '+CATS.length;
+}
+
+function setAns(ci,ii,val){answers[ci+'_'+ii]=val;renderItems();}
+function jumpCat(i){curCat=i;renderTabs();renderItems();}
+function prevCat(){if(curCat>0){curCat--;renderTabs();renderItems();}}
+function nextCat(){
+  if(curCat<CATS.length-1){curCat++;renderTabs();renderItems();}
+  else showResult();
+}
+
+function showResult(){
+  let total=0,yes=0;
+  const sc=CATS.map((c,ci)=>{
+    let cy=0;
+    c.items.forEach((_,ii)=>{total++;if(answers[ci+'_'+ii]===true){yes++;cy++;}});
+    return{name:c.key,ico:c.ico,pct:Math.round(cy/c.items.length*100),color:c.color};
+  });
+  const pct=Math.round(yes/total*100);
+  document.getElementById('totalPct').textContent=pct+'%';
+  const g=pct>=90?{t:'매우 잘함 🌟',bg:'#ECFDF5',c:'#065F46'}
+         :pct>=75?{t:'잘함 👍',bg:'#EFF6FF',c:'#1E40AF'}
+         :pct>=60?{t:'보통 😊',bg:'#F5F3FF',c:'#4C1D95'}
+                 :{t:'노력 필요 💪',bg:'#FFF7ED',c:'#9A3412'};
+  document.getElementById('gradeBadge').innerHTML=
+    '<div class="grade-tag" style="background:'+g.bg+';color:'+g.c+'">'+g.t+'</div>';
+  document.getElementById('resultGrid').innerHTML=sc.map(s=>
+    '<div class="result-card" style="border-color:'+s.color+'33">'+
+      '<div class="rc-name">'+s.ico+' '+s.name+'</div>'+
+      '<div class="rc-pct" style="color:'+s.color+'">'+s.pct+'%</div>'+
+    '</div>'
+  ).join('');
+  showStep(2);
+}
+
+function submitResult(){
+  const grade=document.getElementById('grade').value;
+  const room=document.getElementById('room').value;
+  const num=document.getElementById('num').value.trim();
+  const comment=document.getElementById('comment').value;
+  const dateKey=getDateKey();
+  const key=grade+'_'+room+'_'+num+'_'+dateKey;
+  const payload={grade,room,num,answers,comment,dateKey};
+
+  if(!SCRIPT_URL||SCRIPT_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
+    document.getElementById('doneArea').innerHTML=
+      '<div class="done-box"><strong>⚠️ 테스트 모드</strong><br>SCRIPT_URL 설정 후 실제 제출됩니다.<br>제출 키: <span class="done-key">'+key+'</span></div>';
+    return;
+  }
+
+  const btn=document.getElementById('submitBtn');
+  btn.textContent='제출 중...'; btn.disabled=true;
+
+  fetch(SCRIPT_URL+'?'+new URLSearchParams({data:JSON.stringify(payload)}),{mode:'no-cors'})
+    .then(()=>{
+      btn.textContent='✓ 제출 완료'; btn.style.background='#059669';
+      document.getElementById('doneArea').innerHTML=
+        '<div class="done-box"><strong>제출 완료!</strong><br>'+dateKey+' 데이터가 저장됐습니다.<br>제출 키: <span class="done-key">'+key+'</span><br><span style="font-size:11px;color:#6EE7B7">오늘 재제출 시 자동으로 덮어씁니다.</span></div>';
+    })
+    .catch(()=>{btn.textContent='제출하기';btn.disabled=false;alert('오류가 발생했습니다. 다시 시도해주세요.');});
+}
+</script>
+</body>
+</html>
