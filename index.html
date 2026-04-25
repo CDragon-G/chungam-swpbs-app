@@ -84,6 +84,43 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
 .done-box{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:12px;padding:14px 16px;margin:12px 20px;font-size:13px;color:#065F46;line-height:1.8}
 .done-key{font-size:11px;background:#D1FAE5;padding:2px 8px;border-radius:5px;font-family:monospace;word-break:break-all}
 .spacer{height:28px}
+/* 랭킹 */
+.tab-group{display:flex;gap:6px;background:#F8FAFC;padding:8px;border-radius:10px}
+.tab-btn{flex:1;padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748B;transition:all .15s;font-family:inherit}
+.tab-btn.active{background:#7C3AED;color:#fff;border-color:#7C3AED}
+.rank-item{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.rank-badge{min-width:40px;height:40px;border-radius:50%;background:#7C3AED;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.rank-badge.gold{background:#F59E0B}
+.rank-badge.silver{background:#6B7280}
+.rank-badge.bronze{background:#D97706}
+.rank-info{flex:1}
+.rank-name{font-size:13px;font-weight:600;color:#1E293B}
+.rank-score{font-size:13px;color:#7C3AED;font-weight:700}
+/* 통계 */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 20px;margin-top:14px}
+.stat-card{background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:12px 8px;text-align:center}
+.stat-label{font-size:10px;color:#94A3B8;font-weight:600;margin-bottom:5px}
+.stat-big{font-size:22px;font-weight:700;line-height:1}
+/* 상위 % 뱃지 */
+.pct-row{display:flex;gap:8px;justify-content:center;padding:0 20px;margin:12px 0;flex-wrap:wrap}
+.pct-card{flex:1;min-width:90px;border:1.5px solid #E2E8F0;border-radius:12px;padding:10px 8px;text-align:center}
+.pct-label{font-size:10px;color:#64748B;font-weight:600;margin-bottom:4px}
+.pct-big{font-size:24px;font-weight:700;line-height:1}
+.pct-sub{font-size:10px;color:#94A3B8;margin-top:3px}
+/* 카테고리 비교 */
+.section-title{font-size:12px;font-weight:700;color:#64748B;padding:14px 20px 8px;letter-spacing:.4px}
+.cat-bar-wrap{padding:0 20px}
+.cat-bar-row{margin-bottom:12px}
+.cat-bar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.cat-bar-name{font-size:12px;font-weight:600;color:#374151}
+.cat-bar-vals{font-size:11px;color:#64748B}
+.bar-track{height:8px;background:#F1F5F9;border-radius:4px;margin-bottom:3px;overflow:hidden}
+.bar-fill-mine{height:100%;border-radius:4px;transition:width .6s ease}
+.bar-fill-class{height:4px;border-radius:2px;background:#CBD5E1;transition:width .6s ease}
+/* 비교 분석 */
+.analysis-box{padding:0 20px;margin-top:14px}
+.analysis-item{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.analysis-label{font-size:12px;color:#15803D;font-weight:600;display:block;margin-bottom:5px}
 </style>
 </head>
 <body>
@@ -98,6 +135,7 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
   </div>
   <div class="progress-dots">
     <div class="pdot cur"></div>
+    <div class="pdot"></div>
     <div class="pdot"></div>
     <div class="pdot"></div>
   </div>
@@ -137,6 +175,7 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
     <div class="pdot done"></div>
     <div class="pdot cur"></div>
     <div class="pdot"></div>
+    <div class="pdot"></div>
   </div>
   <div class="prog-bar" style="margin-top:14px"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
   <div class="cat-scroll"><div class="cat-row" id="catRow"></div></div>
@@ -158,6 +197,7 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
     <div class="pdot done"></div>
     <div class="pdot done"></div>
     <div class="pdot cur"></div>
+    <div class="pdot"></div>
   </div>
   <div style="overflow-y:auto;flex:1">
     <div class="result-top">
@@ -179,59 +219,149 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
   </div>
 </div>
 
+<!-- STEP 3: 랭킹 -->
+<div class="step" id="s3">
+  <div class="hdr">
+    <div class="hdr-badge">3단계</div>
+    <div class="hdr-title">오늘 랭킹</div>
+    <div class="hdr-sub">우리 반 · 학년 · 전교 순위</div>
+  </div>
+  <div class="progress-dots">
+    <div class="pdot done"></div>
+    <div class="pdot done"></div>
+    <div class="pdot done"></div>
+    <div class="pdot cur"></div>
+  </div>
+  <div style="overflow-y:auto;flex:1;padding:20px">
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="switchRankTab('class')">우리 반</button>
+      <button class="tab-btn" onclick="switchRankTab('grade')">학년 전체</button>
+      <button class="tab-btn" onclick="switchRankTab('school')">전교</button>
+    </div>
+    <div id="rankingList" style="margin-top:16px"></div>
+    <button class="btn btn-primary" onclick="showStep(4)" style="margin-top:16px">내 위치 분석 →</button>
+    <div class="spacer"></div>
+  </div>
+</div>
+
+<!-- STEP 4: 통계 / 내 위치 -->
+<div class="step" id="s4">
+  <div class="hdr">
+    <div class="hdr-badge">4단계</div>
+    <div class="hdr-title">내 위치 분석</div>
+    <div class="hdr-sub">반 · 학년 · 전교 평균과 비교</div>
+  </div>
+  <div class="progress-dots">
+    <div class="pdot done"></div>
+    <div class="pdot done"></div>
+    <div class="pdot done"></div>
+    <div class="pdot cur"></div>
+  </div>
+  <div style="overflow-y:auto;flex:1">
+
+    <!-- 내 점수 크게 -->
+    <div style="text-align:center;padding:20px 20px 6px">
+      <div id="myScoreBig" style="font-size:54px;font-weight:700;color:#7C3AED;line-height:1">-</div>
+      <div style="font-size:13px;color:#94A3B8;margin-top:5px">오늘 내 실천율</div>
+    </div>
+
+    <!-- 상위 % 뱃지 3개 -->
+    <div class="pct-row" id="percentileRow">
+      <div class="pct-card" id="pctClass">
+        <div class="pct-label">우리 반 상위</div>
+        <div class="pct-big" style="color:#3B82F6">-</div>
+        <div class="pct-sub" id="pctClassSub">-</div>
+      </div>
+      <div class="pct-card" id="pctGrade">
+        <div class="pct-label">학년 상위</div>
+        <div class="pct-big" style="color:#8B5CF6">-</div>
+        <div class="pct-sub" id="pctGradeSub">-</div>
+      </div>
+      <div class="pct-card" id="pctSchool">
+        <div class="pct-label">전교 상위</div>
+        <div class="pct-big" style="color:#10B981">-</div>
+        <div class="pct-sub" id="pctSchoolSub">-</div>
+      </div>
+    </div>
+
+    <!-- 평균 비교 3칸 -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">우리 반 평균</div>
+        <div class="stat-big" id="classAvg" style="color:#3B82F6">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">학년 평균</div>
+        <div class="stat-big" id="gradeAvg" style="color:#8B5CF6">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">전교 평균</div>
+        <div class="stat-big" id="schoolAvg" style="color:#10B981">-</div>
+      </div>
+    </div>
+
+    <!-- 카테고리별 비교 -->
+    <div class="section-title">카테고리별 비교 (내 점수 vs 우리 반 평균)</div>
+    <div class="cat-bar-wrap" id="catComparison"></div>
+
+    <!-- 평균 차이 분석 -->
+    <div class="analysis-box">
+      <div class="analysis-item">
+        <span class="analysis-label">우리 반 평균 대비</span>
+        <div id="classAnalysis" style="font-size:13px;color:#374151">-</div>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-label">학년 평균 대비</span>
+        <div id="gradeAnalysis" style="font-size:13px;color:#374151">-</div>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-label">전교 평균 대비</span>
+        <div id="schoolAnalysis" style="font-size:13px;color:#374151">-</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="backToHome()" style="margin:20px;width:calc(100% - 40px)">처음으로</button>
+    <div class="spacer"></div>
+  </div>
 </div>
 
 <script>
 /* ═══════════════════════════════════════════════════
    ▼▼▼  수정은 여기만! CONFIG 섹션  ▼▼▼
-   규칙 수정 → git push → Netlify 자동 배포
    ═══════════════════════════════════════════════════ */
 
-// Apps Script 배포 URL (한 번만 설정)
+// Apps Script 배포 URL (gas/Code.gs 배포 후 입력)
 const SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
 
-// 규칙 데이터 (15개: 수업 3끝 + 공간별 MRS 4×3)
+// 규칙 데이터 — gas/Code.gs의 CATS_CONFIG와 순서·개수 동일하게 유지
 const CATS = [
-
-  /* 수업 3끝 */
-  { key:'수업 3끝', ico:'📖', color:'#5B21B6', items:[
-    { label:'입실끝', text:'8:25까지 교실에 들어왔어요' },
-    { label:'준비끝', text:'타종 후 교과서를 펼치고 자리에 앉았어요' },
-    { label:'수행끝', text:'과제 시간 동안 다른 친구에게 말 걸지 않았어요' },
+  { key:'수업 3끝',  ico:'📖', color:'#5B21B6', items:[
+    { label:'입실끝',  text:'8:25까지 교실에 들어왔어요' },
+    { label:'준비끝',  text:'타종 후 교과서를 펼치고 자리에 앉았어요' },
+    { label:'수행끝',  text:'과제 시간 동안 다른 친구에게 말 걸지 않았어요' },
   ]},
-
-  /* 교실 MRS */
-  { key:'교실', ico:'🏫', color:'#0F766E', items:[
+  { key:'교실',     ico:'🏫', color:'#0F766E', items:[
     { label:'M 예의', text:'친구를 이름으로 불렀어요' },
     { label:'R 책임', text:'간식은 쉬는 시간에만 먹었어요' },
     { label:'S 안전', text:'창문 밖으로 손·발·물건을 내밀지 않았어요' },
   ]},
-
-  /* 복도·계단 MRS */
   { key:'복도·계단', ico:'🚶', color:'#1D4ED8', items:[
     { label:'M 예의', text:'복도에서 어른을 만나면 인사했어요' },
     { label:'R 책임', text:'복도 오른쪽으로 걸었어요' },
     { label:'S 안전', text:'복도와 계단에서 걸어 다녔어요' },
   ]},
-
-  /* 급식실 MRS */
-  { key:'급식실', ico:'🍽️', color:'#B45309', items:[
+  { key:'급식실',   ico:'🍽️', color:'#B45309', items:[
     { label:'M 예의', text:'음식을 다 삼킨 후에 말했어요' },
     { label:'R 책임', text:'배식 줄 맨 뒤에서 기다렸어요' },
     { label:'S 안전', text:'식판은 두 손으로 잡고 이동했어요' },
   ]},
-
-  /* 화장실 MRS */
-  { key:'화장실', ico:'🚿', color:'#0369A1', items:[
+  { key:'화장실',   ico:'🚿', color:'#0369A1', items:[
     { label:'M 예의', text:'칸에 들어가기 전에 노크했어요' },
     { label:'R 책임', text:'사용한 휴지를 휴지통에 버렸어요' },
     { label:'S 안전', text:'변기 물을 끝까지 내렸어요' },
   ]},
-
 ];
-/* ▲▲▲  CONFIG 끝  ▲▲▲
-   ═══════════════════════════════════════════════════ */
-
+/* ▲▲▲  CONFIG 끝  ▲▲▲ */
 
 const MRS_COLORS = {
   '입실끝':{ bg:'#EDE9FE', tc:'#5B21B6' },
@@ -242,147 +372,317 @@ const MRS_COLORS = {
   'S 안전':{ bg:'#FEE2E2', tc:'#B91C1C' },
 };
 
-let answers={}, curCat=0;
+let answers = {}, curCat = 0;
+let studentInfo = { grade:'', room:'', num:'', score:0 };
+let rankingTab  = 'class';
+let allRanking  = { class:[], grade:[], school:[] };
 
-/* 날짜 키: 중복 방지용 (예: 2026-04-25) */
-function getDateKey(){
-  const d=new Date();
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,'0');
-  const day=String(d.getDate()).padStart(2,'0');
-  return y+'-'+m+'-'+day;
+/* 날짜 키 */
+function getDateKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-/* 요일 한글 */
-function getDayKo(){
-  return ['일','월','화','수','목','금','토'][new Date().getDay()];
-}
-
-/* 날짜 배지 초기화 */
-(function(){
-  const now=new Date();
-  const m=now.getMonth()+1;
-  const d=now.getDate();
-  const dayKo=getDayKo();
-  document.getElementById('weekBadge').textContent='📅 '+m+'월 '+d+'일('+dayKo+') 점검';
+/* 날짜 배지 */
+(function() {
+  const now = new Date();
+  const dayKo = ['일','월','화','수','목','금','토'][now.getDay()];
+  document.getElementById('dateBadge').textContent =
+    `📅 ${now.getMonth()+1}월 ${now.getDate()}일(${dayKo}) 점검`;
 })();
 
-function showStep(n){
-  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
   document.getElementById('s'+n).classList.add('active');
   window.scrollTo({top:0});
 }
 
-function startApp(){
-  const g=document.getElementById('grade').value;
-  const r=document.getElementById('room').value;
-  const n=document.getElementById('num').value.trim();
-  if(!g||!r){alert('학년과 반을 선택해주세요.');return;}
-  if(!n){alert('출석 번호를 입력해주세요.');return;}
-  answers={}; curCat=0;
+function startApp() {
+  const g = document.getElementById('grade').value;
+  const r = document.getElementById('room').value;
+  const n = document.getElementById('num').value.trim();
+  if (!g || !r) { alert('학년과 반을 선택해주세요.'); return; }
+  if (!n)       { alert('출석 번호를 입력해주세요.');  return; }
+  studentInfo = { grade:g, room:r, num:n, score:0 };
+  answers = {}; curCat = 0;
   renderTabs(); renderItems();
   showStep(1);
 }
 
-function renderTabs(){
-  document.getElementById('catRow').innerHTML=CATS.map((c,i)=>{
-    const a=i===curCat;
-    const st=a?'background:'+c.color+';border-color:'+c.color+';color:#fff'
-               :'border-color:'+c.color+'55;color:'+c.color;
-    return '<div class="cat-tab '+(a?'active':'')+'" style="'+st+'" onclick="jumpCat('+i+')">'+c.ico+' '+c.key+'</div>';
+/* ── 체크 화면 ── */
+function renderTabs() {
+  document.getElementById('catRow').innerHTML = CATS.map((c,i) => {
+    const a = i === curCat;
+    const st = a ? `background:${c.color};border-color:${c.color};color:#fff`
+                 : `border-color:${c.color}55;color:${c.color}`;
+    return `<div class="cat-tab ${a?'active':''}" style="${st}" onclick="jumpCat(${i})">${c.ico} ${c.key}</div>`;
   }).join('');
 }
 
-function renderItems(){
-  const cat=CATS[curCat];
-  const total=CATS.reduce((s,c)=>s+c.items.length,0);
-  const done=Object.keys(answers).length;
-  document.getElementById('progFill').style.width=(done/total*100)+'%';
+function renderItems() {
+  const cat = CATS[curCat];
+  const total = CATS.reduce((s,c) => s+c.items.length, 0);
+  document.getElementById('progFill').style.width = (Object.keys(answers).length/total*100)+'%';
 
-  document.getElementById('checkList').innerHTML=cat.items.map((item,i)=>{
-    const key=curCat+'_'+i, val=answers[key];
-    const mc=MRS_COLORS[item.label]||{bg:'#F1F5F9',tc:'#475569'};
-    const cls=val===true?'y':val===false?'n':'';
-    const ico=val===true?'✓':val===false?'✗':'';
-    const icSt=val===true?'background:'+cat.color+';border-color:'+cat.color
-               :val===false?'background:#F87171;border-color:#F87171':'';
-    return '<div class="check-card '+cls+'">'+
-      '<div class="check-row">'+
-        '<div class="check-icon" style="'+icSt+'">'+ico+'</div>'+
-        '<div class="check-body">'+
-          '<div class="mrs-badge" style="background:'+mc.bg+';color:'+mc.tc+'">'+item.label+'</div>'+
-          '<div class="check-text">'+item.text+'</div>'+
-          '<div class="yn-row">'+
-            '<button class="yn-btn yes '+(val===true?'sel':'')+'" onclick="setAns('+curCat+','+i+',true)">✓ 잘 지켰어요</button>'+
-            '<button class="yn-btn no '+(val===false?'sel':'')+'" onclick="setAns('+curCat+','+i+',false)">✗ 미흡했어요</button>'+
-          '</div>'+
-        '</div>'+
-      '</div>'+
-    '</div>';
+  document.getElementById('checkList').innerHTML = cat.items.map((item,i) => {
+    const key = `${curCat}_${i}`, val = answers[key];
+    const mc  = MRS_COLORS[item.label] || {bg:'#F1F5F9', tc:'#475569'};
+    const cls = val===true?'y':val===false?'n':'';
+    const ico = val===true?'✓':val===false?'✗':'';
+    const icSt = val===true  ? `background:${cat.color};border-color:${cat.color}`
+               : val===false ? 'background:#F87171;border-color:#F87171' : '';
+    return `<div class="check-card ${cls}">
+      <div class="check-row">
+        <div class="check-icon" style="${icSt}">${ico}</div>
+        <div class="check-body">
+          <div class="mrs-badge" style="background:${mc.bg};color:${mc.tc}">${item.label}</div>
+          <div class="check-text">${item.text}</div>
+          <div class="yn-row">
+            <button class="yn-btn yes ${val===true?'sel':''}" onclick="setAns(${curCat},${i},true)">✓ 잘 지켰어요</button>
+            <button class="yn-btn no ${val===false?'sel':''}" onclick="setAns(${curCat},${i},false)">✗ 미흡했어요</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
   }).join('');
 
-  document.getElementById('prevBtn').style.visibility=curCat===0?'hidden':'visible';
-  document.getElementById('nextBtn').textContent=curCat===CATS.length-1?'결과 보기 →':'다음 →';
-  document.getElementById('navCount').textContent=(curCat+1)+' / '+CATS.length;
+  document.getElementById('prevBtn').style.visibility = curCat===0 ? 'hidden' : 'visible';
+  document.getElementById('nextBtn').textContent      = curCat===CATS.length-1 ? '결과 보기 →' : '다음 →';
+  document.getElementById('navCount').textContent     = `${curCat+1} / ${CATS.length}`;
 }
 
-function setAns(ci,ii,val){answers[ci+'_'+ii]=val;renderItems();}
-function jumpCat(i){curCat=i;renderTabs();renderItems();}
-function prevCat(){if(curCat>0){curCat--;renderTabs();renderItems();}}
-function nextCat(){
-  if(curCat<CATS.length-1){curCat++;renderTabs();renderItems();}
-  else showResult();
-}
+function setAns(ci, ii, val) { answers[`${ci}_${ii}`] = val; renderItems(); }
+function jumpCat(i)  { curCat = i; renderTabs(); renderItems(); }
+function prevCat()   { if (curCat > 0) { curCat--; renderTabs(); renderItems(); } }
+function nextCat()   { curCat < CATS.length-1 ? (curCat++, renderTabs(), renderItems()) : showResult(); }
 
-function showResult(){
-  let total=0,yes=0;
-  const sc=CATS.map((c,ci)=>{
-    let cy=0;
-    c.items.forEach((_,ii)=>{total++;if(answers[ci+'_'+ii]===true){yes++;cy++;}});
-    return{name:c.key,ico:c.ico,pct:Math.round(cy/c.items.length*100),color:c.color};
+/* ── 결과 화면 ── */
+function showResult() {
+  let total = 0, yes = 0;
+  const sc = CATS.map((c,ci) => {
+    let cy = 0;
+    c.items.forEach((_,ii) => { total++; if (answers[`${ci}_${ii}`]===true) { yes++; cy++; } });
+    return { name:c.key, ico:c.ico, pct:Math.round(cy/c.items.length*100), color:c.color };
   });
-  const pct=Math.round(yes/total*100);
-  document.getElementById('totalPct').textContent=pct+'%';
-  const g=pct>=90?{t:'매우 잘함 🌟',bg:'#ECFDF5',c:'#065F46'}
-         :pct>=75?{t:'잘함 👍',bg:'#EFF6FF',c:'#1E40AF'}
-         :pct>=60?{t:'보통 😊',bg:'#F5F3FF',c:'#4C1D95'}
-                 :{t:'노력 필요 💪',bg:'#FFF7ED',c:'#9A3412'};
-  document.getElementById('gradeBadge').innerHTML=
-    '<div class="grade-tag" style="background:'+g.bg+';color:'+g.c+'">'+g.t+'</div>';
-  document.getElementById('resultGrid').innerHTML=sc.map(s=>
-    '<div class="result-card" style="border-color:'+s.color+'33">'+
-      '<div class="rc-name">'+s.ico+' '+s.name+'</div>'+
-      '<div class="rc-pct" style="color:'+s.color+'">'+s.pct+'%</div>'+
-    '</div>'
+  const pct = Math.round(yes/total*100);
+  studentInfo.score = pct;
+
+  document.getElementById('totalPct').textContent = pct+'%';
+  const g = pct>=90 ? {t:'매우 잘함 🌟',bg:'#ECFDF5',c:'#065F46'}
+           :pct>=75 ? {t:'잘함 👍',bg:'#EFF6FF',c:'#1E40AF'}
+           :pct>=60 ? {t:'보통 😊',bg:'#F5F3FF',c:'#4C1D95'}
+                    : {t:'노력 필요 💪',bg:'#FFF7ED',c:'#9A3412'};
+  document.getElementById('gradeBadge').innerHTML =
+    `<div class="grade-tag" style="background:${g.bg};color:${g.c}">${g.t}</div>`;
+  document.getElementById('resultGrid').innerHTML = sc.map(s =>
+    `<div class="result-card" style="border-color:${s.color}33">
+       <div class="rc-name">${s.ico} ${s.name}</div>
+       <div class="rc-pct" style="color:${s.color}">${s.pct}%</div>
+     </div>`
   ).join('');
   showStep(2);
 }
 
-function submitResult(){
-  const grade=document.getElementById('grade').value;
-  const room=document.getElementById('room').value;
-  const num=document.getElementById('num').value.trim();
-  const comment=document.getElementById('comment').value;
-  const dateKey=getDateKey();
-  const key=grade+'_'+room+'_'+num+'_'+dateKey;
-  const payload={grade,room,num,answers,comment,dateKey};
+/* ── 제출 ── */
+function submitResult() {
+  const grade   = document.getElementById('grade').value;
+  const room    = document.getElementById('room').value;
+  const num     = document.getElementById('num').value.trim();
+  const comment = document.getElementById('comment').value;
+  const dateKey = getDateKey();
+  const key     = `${grade}_${room}_${num}_${dateKey}`;
+  const payload = { grade, room, num, answers, comment, dateKey };
 
-  if(!SCRIPT_URL||SCRIPT_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
-    document.getElementById('doneArea').innerHTML=
-      '<div class="done-box"><strong>⚠️ 테스트 모드</strong><br>SCRIPT_URL 설정 후 실제 제출됩니다.<br>제출 키: <span class="done-key">'+key+'</span></div>';
+  if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    document.getElementById('doneArea').innerHTML =
+      `<div class="done-box"><strong>⚠️ 테스트 모드</strong><br>SCRIPT_URL 설정 후 실제 제출됩니다.<br>
+       제출 키: <span class="done-key">${key}</span><br>
+       <span style="color:#94A3B8;font-size:11px">임시:
+         <button onclick="demoRanking()" style="background:#7C3AED;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">랭킹·통계 미리보기</button>
+       </span></div>`;
     return;
   }
 
-  const btn=document.getElementById('submitBtn');
-  btn.textContent='제출 중...'; btn.disabled=true;
+  const btn = document.getElementById('submitBtn');
+  btn.textContent = '제출 중...'; btn.disabled = true;
 
-  fetch(SCRIPT_URL+'?'+new URLSearchParams({data:JSON.stringify(payload)}),{mode:'no-cors'})
-    .then(()=>{
-      btn.textContent='✓ 제출 완료'; btn.style.background='#059669';
-      document.getElementById('doneArea').innerHTML=
-        '<div class="done-box"><strong>제출 완료!</strong><br>'+dateKey+' 데이터가 저장됐습니다.<br>제출 키: <span class="done-key">'+key+'</span><br><span style="font-size:11px;color:#6EE7B7">오늘 재제출 시 자동으로 덮어씁니다.</span></div>';
+  fetch(SCRIPT_URL + '?action=submit&' + new URLSearchParams({data: JSON.stringify(payload)}), {mode:'no-cors'})
+    .then(() => {
+      btn.textContent = '✓ 제출 완료'; btn.style.background = '#059669';
+      document.getElementById('doneArea').innerHTML =
+        `<div class="done-box"><strong>제출 완료!</strong><br>${dateKey} 데이터가 저장됐습니다.<br>
+         제출 키: <span class="done-key">${key}</span><br>
+         <span style="font-size:11px;color:#6EE7B7">오늘 재제출 시 자동으로 덮어씁니다.</span></div>`;
+      setTimeout(() => loadRanking(), 1000);
     })
-    .catch(()=>{btn.textContent='제출하기';btn.disabled=false;alert('오류가 발생했습니다. 다시 시도해주세요.');});
+    .catch(() => { btn.textContent = '제출하기'; btn.disabled = false; alert('오류가 발생했습니다. 다시 시도해주세요.'); });
+}
+
+/* ═══════════════════════════════════════════════════
+   랭킹
+   ═══════════════════════════════════════════════════ */
+
+function loadRanking() {
+  if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') { demoRanking(); return; }
+  const base = SCRIPT_URL + '?';
+  Promise.all([
+    fetch(base + new URLSearchParams({action:'getRanking', grade:studentInfo.grade, room:studentInfo.room})).then(r=>r.json()),
+    fetch(base + new URLSearchParams({action:'getRanking', grade:studentInfo.grade})).then(r=>r.json()),
+    fetch(base + new URLSearchParams({action:'getRanking', grade:''})).then(r=>r.json()),
+  ]).then(([cr, gr, sr]) => {
+    allRanking = { class:cr.ranking||[], grade:gr.ranking||[], school:sr.ranking||[] };
+    renderRanking();
+    loadStats();
+    showStep(3);
+  }).catch(() => alert('랭킹 조회 실패'));
+}
+
+function switchRankTab(tab) {
+  rankingTab = tab;
+  const keys = ['class','grade','school'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', keys[i]===tab));
+  renderRanking();
+}
+
+function renderRanking() {
+  const ranking = allRanking[rankingTab] || [];
+  const myKey   = `${studentInfo.grade} ${studentInfo.room} ${studentInfo.num}번`;
+  document.getElementById('rankingList').innerHTML = ranking.map((item,i) => {
+    const isMine = item.name === myKey;
+    const medal  = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    return `<div class="rank-item" style="border:${isMine?'2px solid #7C3AED':'1px solid #E2E8F0'};background:${isMine?'#F3E8FF':'#F8FAFC'}">
+      <div class="rank-badge ${medal}">${i+1}</div>
+      <div class="rank-info">
+        <div class="rank-name">${isMine?'👉 ':''}${item.name}</div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:2px">${item.comment.substring(0,20)}</div>
+      </div>
+      <div class="rank-score">${item.score}%</div>
+    </div>`;
+  }).join('') || '<div style="text-align:center;color:#94A3B8;padding:20px">데이터가 없습니다</div>';
+}
+
+/* ═══════════════════════════════════════════════════
+   통계 / 내 위치
+   ═══════════════════════════════════════════════════ */
+
+function loadStats() {
+  if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') { demoStats(); return; }
+  fetch(SCRIPT_URL + '?' + new URLSearchParams({
+    action:  'getStats',
+    grade:   studentInfo.grade,
+    room:    studentInfo.room,
+    num:     studentInfo.num,
+    myScore: studentInfo.score,
+  }))
+    .then(r => r.json())
+    .then(data => renderStats(data))
+    .catch(() => demoStats());
+}
+
+function renderStats(data) {
+  document.getElementById('myScoreBig').textContent = studentInfo.score + '%';
+  setPctCard('pctClass',  data.classPercentile,  data.classCount  + '명 중');
+  setPctCard('pctGrade',  data.gradePercentile,  data.gradeCount  + '명 중');
+  setPctCard('pctSchool', data.schoolPercentile, data.schoolCount + '명 중');
+  document.getElementById('classAvg').textContent  = data.classAvg  + '%';
+  document.getElementById('gradeAvg').textContent  = data.gradeAvg  + '%';
+  document.getElementById('schoolAvg').textContent = data.schoolAvg + '%';
+  renderCatBars(data.catClassAvgs || {});
+  renderAnalysis(studentInfo.score, data.classAvg, data.gradeAvg, data.schoolAvg);
+}
+
+function setPctCard(id, pct, sub) {
+  const card  = document.getElementById(id);
+  const bigEl = card.querySelector('.pct-big');
+  bigEl.textContent = pct + '%';
+  const isGood = pct <= 50;
+  card.style.background  = isGood ? '#F0FDF4' : '#FFF5F5';
+  card.style.borderColor = isGood ? '#A7F3D0' : '#FECACA';
+  bigEl.style.color      = isGood ? '#059669' : '#DC2626';
+  document.getElementById(id + 'Sub').textContent = sub;
+}
+
+function renderCatBars(catClassAvgs) {
+  const myCatScores = {};
+  CATS.forEach((cat,ci) => {
+    let yes = 0;
+    cat.items.forEach((_,ii) => { if (answers[`${ci}_${ii}`]===true) yes++; });
+    myCatScores[cat.key] = Math.round(yes / cat.items.length * 100);
+  });
+
+  document.getElementById('catComparison').innerHTML = CATS.map(cat => {
+    const mine   = myCatScores[cat.key] ?? 0;
+    const classA = catClassAvgs[cat.key] ?? 0;
+    const diff   = mine - classA;
+    const good   = diff >= 0;
+    return `<div class="cat-bar-row">
+      <div class="cat-bar-head">
+        <span class="cat-bar-name">${cat.ico} ${cat.key}</span>
+        <span class="cat-bar-vals" style="color:${good?'#059669':'#DC2626'}">
+          나 ${mine}% / 반 ${classA}%&nbsp;<strong>(${good?'+':''}${diff}%)</strong>
+        </span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill-mine" style="width:${mine}%;background:${cat.color}"></div>
+      </div>
+      <div class="bar-track" style="height:4px">
+        <div class="bar-fill-class" style="width:${classA}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAnalysis(my, ca, ga, sa) {
+  const fmt = (diff) =>
+    `<strong style="color:${diff>=0?'#10B981':'#F87171'}">${diff>=0?'+':''}${diff}%</strong> ${diff>=0?'👍':'👇'}`;
+  document.getElementById('classAnalysis').innerHTML  = `반 평균 ${ca}% 대비 ${fmt(my-ca)}`;
+  document.getElementById('gradeAnalysis').innerHTML  = `학년 평균 ${ga}% 대비 ${fmt(my-ga)}`;
+  document.getElementById('schoolAnalysis').innerHTML = `전교 평균 ${sa}% 대비 ${fmt(my-sa)}`;
+}
+
+function demoRanking() {
+  allRanking = {
+    class: [
+      {name:`${studentInfo.grade} ${studentInfo.room} 1번`,  score:95, comment:'교실에서 좋은 태도'},
+      {name:`${studentInfo.grade} ${studentInfo.room} 2번`,  score:90, comment:'복도에서 바른 행동'},
+      {name:`${studentInfo.grade} ${studentInfo.room} ${studentInfo.num||3}번`, score:studentInfo.score||87, comment:document.getElementById('comment').value||''},
+      {name:`${studentInfo.grade} ${studentInfo.room} 5번`,  score:75, comment:'노력 중'},
+    ],
+    grade: [
+      {name:'1학년 2반 3번', score:98, comment:'학년 1위'},
+      {name:'1학년 1반 1번', score:96, comment:''},
+      {name:`${studentInfo.grade} ${studentInfo.room} ${studentInfo.num||3}번`, score:studentInfo.score||87, comment:''},
+      {name:'1학년 4반 7번', score:80, comment:''},
+    ],
+    school: [
+      {name:'3학년 1반 1번', score:99, comment:'전교 1위'},
+      {name:'2학년 4반 2번', score:98, comment:''},
+      {name:`${studentInfo.grade} ${studentInfo.room} ${studentInfo.num||3}번`, score:studentInfo.score||87, comment:''},
+      {name:'1학년 7반 5번', score:75, comment:''},
+    ],
+  };
+  renderRanking();
+  demoStats();
+  showStep(3);
+}
+
+function demoStats() {
+  renderStats({
+    classAvg:85, gradeAvg:82, schoolAvg:80,
+    classPercentile:32, gradePercentile:35, schoolPercentile:30,
+    classCount:28, gradeCount:180, schoolCount:540,
+    catClassAvgs:{'수업 3끝':89,'교실':78,'복도·계단':85,'급식실':80,'화장실':88},
+  });
+}
+
+function backToHome() {
+  answers = {}; curCat = 0;
+  studentInfo = { grade:'', room:'', num:'', score:0 };
+  ['grade','room','num','comment'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('doneArea').innerHTML = '';
+  const btn = document.getElementById('submitBtn');
+  btn.textContent = '제출하기'; btn.disabled = false; btn.style.background = '';
+  showStep(0);
 }
 </script>
 </body>
