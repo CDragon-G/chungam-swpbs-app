@@ -136,6 +136,21 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
 .analysis-item{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:12px 14px;margin-bottom:8px}
 .analysis-label{font-size:12px;color:#15803D;font-weight:600;display:block;margin-bottom:5px}
 .btn-wrap{padding:0 20px}
+/* 개인 기록 변화 */
+.history-row{display:flex;gap:8px;padding:0 20px;margin-bottom:4px}
+.hist-card{flex:1;border:1.5px solid #E2E8F0;border-radius:12px;padding:11px 8px;text-align:center;background:#fff}
+.hist-label{font-size:10px;color:#64748B;font-weight:600;margin-bottom:4px}
+.hist-ref{font-size:18px;font-weight:700;line-height:1}
+.hist-diff{font-size:11px;margin-top:4px;font-weight:700}
+/* 미니 막대 차트 */
+.mini-chart{display:flex;align-items:flex-end;gap:4px;height:60px;padding:0 20px;margin-bottom:4px}
+.mini-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.mini-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end}
+.mini-bar{width:100%;border-radius:3px 3px 0 0;min-height:3px}
+.mini-date{font-size:8px;color:#CBD5E1;white-space:nowrap;overflow:hidden;max-width:100%;text-align:center}
+.mini-score-lbl{font-size:8px;color:#7C3AED;font-weight:700;min-height:10px}
+/* 참여자 부족 안내 */
+.low-count-box{margin:0 20px 10px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px 14px;font-size:12px;color:#1E40AF;line-height:1.7;text-align:center}
 </style>
 </head>
 <body>
@@ -318,6 +333,11 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
         <div class="stat-big" id="schoolAvg" style="color:#10B981">-</div>
       </div>
     </div>
+    <!-- 개인 기록 비교 -->
+    <div id="lowCountBox"></div>
+    <div class="section-title">📈 내 기록 변화</div>
+    <div class="history-row" id="historyRow"></div>
+    <div id="miniChartWrap"></div>
     <div class="section-title">카테고리별 비교 (내 점수 vs 우리 반 평균)</div>
     <div class="cat-bar-wrap" id="catComparison"></div>
     <div class="analysis-box">
@@ -560,14 +580,16 @@ function submitResult() {
   if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
     /* 테스트 모드 */
     localStorage.setItem(getSubmitKey(grade, room, num), '1');
+    saveToHistory(grade, room, num, studentInfo.score, buildCatScores(), dateKey);
     setTimeout(() => demoRanking(), 1200);
     return;
   }
 
   fetch(SCRIPT_URL + '?action=submit&' + new URLSearchParams({data: JSON.stringify(payload)}), {mode:'no-cors'})
     .then(() => {
-      /* 제출 완료 → localStorage 저장 → 오버레이 메시지 전환 */
+      /* 제출 완료 → localStorage 저장 → 개인 기록 저장 → 오버레이 메시지 전환 */
       localStorage.setItem(getSubmitKey(grade, room, num), '1');
+      saveToHistory(grade, room, num, studentInfo.score, buildCatScores(), dateKey);
       btn.textContent = '✓ 제출 완료'; btn.style.background = '#059669';
       document.getElementById('doneArea').innerHTML =
         `<div class="done-box"><strong>✓ 제출 완료!</strong><br>제출 키: <span class="done-key">${key}</span></div>`;
@@ -667,14 +689,48 @@ function loadStats() {
 
 function renderStats(data) {
   document.getElementById('myScoreBig').textContent = studentInfo.score + '%';
-  setPctCard('pctClass',  data.classPercentile,  data.classCount  + '명 중');
-  setPctCard('pctGrade',  data.gradePercentile,  data.gradeCount  + '명 중');
-  setPctCard('pctSchool', data.schoolPercentile, data.schoolCount + '명 중');
-  document.getElementById('classAvg').textContent  = data.classAvg  + '%';
-  document.getElementById('gradeAvg').textContent  = data.gradeAvg  + '%';
-  document.getElementById('schoolAvg').textContent = data.schoolAvg + '%';
+
+  /* ── 참여자 수 기반 비교 가능 여부 판단 ── */
+  const cc = data.classCount  || 0;
+  const gc = data.gradeCount  || 0;
+  const sc = data.schoolCount || 0;
+
+  /* 참여자 부족 안내 */
+  const lowEl = document.getElementById('lowCountBox');
+  if (cc <= 1) {
+    lowEl.innerHTML = `<div class="low-count-box">🌟 오늘 우리 반 <strong>첫 번째 참여자</strong>예요!<br>친구들이 참여할수록 반·학년·전교 비교가 채워져요.</div>`;
+  } else {
+    lowEl.innerHTML = '';
+  }
+
+  /* 퍼센타일 카드 — 비교군 없으면 "-" */
+  function setPctOrDash(id, pct, count, subLabel) {
+    if (count > 1) {
+      setPctCard(id, pct, count + '명 중');
+    } else {
+      const card = document.getElementById(id);
+      card.querySelector('.pct-big').textContent = '-';
+      card.querySelector('.pct-big').style.color = '#CBD5E1';
+      document.getElementById(id + 'Sub').textContent = subLabel;
+      card.style.background   = '#F8FAFC';
+      card.style.borderColor  = '#E2E8F0';
+    }
+  }
+  setPctOrDash('pctClass',  data.classPercentile,  cc, cc <= 1 ? '아직 1명' : '-');
+  setPctOrDash('pctGrade',  data.gradePercentile,  gc, gc <= 1 ? '참여자 없음' : '-');
+  setPctOrDash('pctSchool', data.schoolPercentile, sc, sc <= 1 ? '참여자 없음' : '-');
+
+  /* 평균값 — 비교군 없으면 "-" */
+  document.getElementById('classAvg').textContent  = cc > 1 ? data.classAvg  + '%' : '-';
+  document.getElementById('gradeAvg').textContent  = gc > 1 ? data.gradeAvg  + '%' : '-';
+  document.getElementById('schoolAvg').textContent = sc > 1 ? data.schoolAvg + '%' : '-';
+
+  /* 카테고리 바 + 분석 */
   renderCatBars(data.catClassAvgs || {});
-  renderAnalysis(studentInfo.score, data.classAvg, data.gradeAvg, data.schoolAvg);
+  renderAnalysis(studentInfo.score, cc > 1 ? data.classAvg : null, gc > 1 ? data.gradeAvg : null, sc > 1 ? data.schoolAvg : null);
+
+  /* 개인 기록 변화 */
+  renderHistory();
 }
 
 function setPctCard(id, pct, sub) {
@@ -719,10 +775,11 @@ function renderCatBars(catClassAvgs) {
 
 function renderAnalysis(my, ca, ga, sa) {
   const fmt = (diff) =>
-    `<strong style="color:${diff>=0?'#10B981':'#F87171'}">${diff>=0?'+':''}${diff}%</strong> ${diff>=0?'👍':'👇'}`;
-  document.getElementById('classAnalysis').innerHTML  = `반 평균 ${ca}% 대비 ${fmt(my-ca)}`;
-  document.getElementById('gradeAnalysis').innerHTML  = `학년 평균 ${ga}% 대비 ${fmt(my-ga)}`;
-  document.getElementById('schoolAnalysis').innerHTML = `전교 평균 ${sa}% 대비 ${fmt(my-sa)}`;
+    `<strong style="color:${diff>=0?'#10B981':'#F87171'}">${diff>=0?'+':''}${diff}%p</strong> ${diff>=0?'👍':'👇'}`;
+  const none = `<span style="color:#CBD5E1">아직 비교할 데이터가 없어요</span>`;
+  document.getElementById('classAnalysis').innerHTML  = ca != null ? `반 평균 ${ca}% 대비 ${fmt(my-ca)}`    : none;
+  document.getElementById('gradeAnalysis').innerHTML  = ga != null ? `학년 평균 ${ga}% 대비 ${fmt(my-ga)}`  : none;
+  document.getElementById('schoolAnalysis').innerHTML = sa != null ? `전교 평균 ${sa}% 대비 ${fmt(my-sa)}`  : none;
 }
 
 /* 데모 */
@@ -759,6 +816,121 @@ function demoStats() {
     classCount:28, gradeCount:180, schoolCount:540,
     catClassAvgs:{'수업 3끝':89,'교실':78,'복도·계단':85,'급식실':80,'화장실':88},
   });
+}
+
+/* ═══════════════════════════════════════════════════
+   개인 기록 (localStorage 기반)
+   ═══════════════════════════════════════════════════ */
+
+/* 카테고리별 점수 계산 */
+function buildCatScores() {
+  const s = {};
+  CATS.forEach((cat, ci) => {
+    let yes = 0;
+    cat.items.forEach((_, ii) => { if (answers[`${ci}_${ii}`] === true) yes++; });
+    s[cat.key] = Math.round(yes / cat.items.length * 100);
+  });
+  return s;
+}
+
+/* 이력 저장 (최대 30일) */
+function saveToHistory(grade, room, num, score, catScores, dateKey) {
+  const k = `swpbs_hist_${grade}_${room}_${num}`;
+  let h = JSON.parse(localStorage.getItem(k) || '[]');
+  h = h.filter(x => x.date !== dateKey);
+  h.push({ date: dateKey, score, catScores });
+  h.sort((a, b) => b.date.localeCompare(a.date));
+  localStorage.setItem(k, JSON.stringify(h.slice(0, 30)));
+}
+
+/* 이력 통계 계산 */
+function getHistoryStats() {
+  const { grade, room, num } = studentInfo;
+  const k = `swpbs_hist_${grade}_${room}_${num}`;
+  const h = JSON.parse(localStorage.getItem(k) || '[]');
+  h.sort((a, b) => b.date.localeCompare(a.date));
+
+  const today = getDateKey();
+  const past  = h.filter(x => x.date < today);
+
+  /* 어제 */
+  const yesterday = past[0] || null;
+
+  /* 지난 7일 평균 */
+  const d7 = new Date();
+  d7.setDate(d7.getDate() - 7);
+  const cutoff = `${d7.getFullYear()}-${String(d7.getMonth()+1).padStart(2,'0')}-${String(d7.getDate()).padStart(2,'0')}`;
+  const weekEntries = past.filter(x => x.date >= cutoff);
+  const weekAvg = weekEntries.length
+    ? Math.round(weekEntries.reduce((s, x) => s + x.score, 0) / weekEntries.length)
+    : null;
+
+  /* 최근 7개 항목 (차트용, 오래된 것부터) */
+  const recent = h.slice(0, 7).reverse();
+
+  return { yesterday, weekAvg, weekCount: weekEntries.length, recent, totalDays: h.length };
+}
+
+/* 개인 기록 렌더링 */
+function renderHistory() {
+  const hs  = getHistoryStats();
+  const my  = studentInfo.score;
+
+  /* ── 비교 카드 2개 ── */
+  function histCard(label, ref, refDate) {
+    if (ref === null) {
+      return `<div class="hist-card">
+        <div class="hist-label">${label}</div>
+        <div class="hist-ref" style="color:#CBD5E1">-</div>
+        <div class="hist-diff" style="color:#CBD5E1;font-weight:400">기록 없음</div>
+      </div>`;
+    }
+    const diff = my - ref;
+    const good = diff >= 0;
+    const col  = good ? '#059669' : '#DC2626';
+    const bg   = good ? '#F0FDF4' : '#FFF5F5';
+    const bd   = good ? '#A7F3D0' : '#FECACA';
+    const sub  = refDate ? `(${refDate})` : `(${hs.weekCount}일 평균)`;
+    return `<div class="hist-card" style="border-color:${bd};background:${bg}">
+      <div class="hist-label">${label}</div>
+      <div class="hist-ref" style="color:${col}">${ref}%</div>
+      <div class="hist-diff" style="color:${col}">${good ? '▲' : '▼'} ${Math.abs(diff)}%p ${good ? '향상' : '하락'}</div>
+      <div style="font-size:9px;color:#94A3B8;margin-top:2px">${sub}</div>
+    </div>`;
+  }
+
+  const yDate = hs.yesterday
+    ? (() => { const [,m,d] = hs.yesterday.date.split('-'); return `${+m}/${+d}`; })()
+    : null;
+
+  document.getElementById('historyRow').innerHTML =
+    histCard('어제 대비', hs.yesterday ? hs.yesterday.score : null, yDate) +
+    histCard('저번주 평균 대비', hs.weekAvg, null);
+
+  /* ── 미니 막대 차트 ── */
+  renderMiniChart(hs.recent);
+}
+
+function renderMiniChart(entries) {
+  const wrap = document.getElementById('miniChartWrap');
+  if (!entries || entries.length === 0) { wrap.innerHTML = ''; return; }
+
+  const today = getDateKey();
+  const cols  = entries.map(e => {
+    const barH  = Math.max(3, Math.round(e.score / 100 * 44));
+    const isTd  = e.date === today;
+    const color = isTd ? '#7C3AED' : '#C4B5FD';
+    const [, m, d] = e.date.split('-');
+    return `<div class="mini-col">
+      <div class="mini-score-lbl">${isTd ? e.score : ''}</div>
+      <div class="mini-bar-wrap">
+        <div class="mini-bar" style="height:${barH}px;background:${color}"></div>
+      </div>
+      <div class="mini-date">${+m}/${+d}</div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="mini-chart">${cols}</div>`;
 }
 
 /* ── 전체화면 오버레이 제어 ── */
