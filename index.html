@@ -37,6 +37,8 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
 .btn-primary:hover{background:#6D28D9;transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
 .btn-success{background:#10B981;color:#fff}
 .btn-success:hover{background:#059669}
+.btn-ghost{background:#F8FAFC;color:#374151;border:1.5px solid #E2E8F0}
+.btn-ghost:hover{background:#F1F5F9}
 .btn:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none}
 .date-badge{display:inline-flex;align-items:center;gap:5px;background:#EEF2FF;color:#4338CA;font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;margin-bottom:16px}
 .cat-scroll{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:0 20px;margin-bottom:12px}
@@ -83,6 +85,16 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
 .submit-info{font-size:11px;color:#CBD5E1;text-align:center;margin-top:10px;line-height:1.7}
 .done-box{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:12px;padding:14px 16px;margin:12px 20px;font-size:13px;color:#065F46;line-height:1.8}
 .done-key{font-size:11px;background:#D1FAE5;padding:2px 8px;border-radius:5px;font-family:monospace;word-break:break-all}
+/* 로딩 스피너 */
+.loading-box{text-align:center;padding:28px 20px;color:#64748B;font-size:13px;line-height:2.2}
+.spinner{width:38px;height:38px;border:3px solid #EDE9FE;border-top-color:#7C3AED;border-radius:50%;animation:spin .85s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-size:15px;font-weight:700;color:#7C3AED;margin-bottom:4px}
+/* 이미 참여 박스 */
+.already-box{background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:20px;text-align:center;margin-top:8px}
+.already-icon{font-size:36px;margin-bottom:10px}
+.already-title{font-size:16px;font-weight:700;color:#9A3412;margin-bottom:6px}
+.already-sub{font-size:13px;color:#C2410C;line-height:1.7}
 .spacer{height:28px}
 /* 랭킹 */
 .tab-group{display:flex;gap:6px;background:#F8FAFC;padding:8px;border-radius:10px}
@@ -101,13 +113,11 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
 .stat-card{background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:12px 8px;text-align:center}
 .stat-label{font-size:10px;color:#94A3B8;font-weight:600;margin-bottom:5px}
 .stat-big{font-size:22px;font-weight:700;line-height:1}
-/* 상위 % 뱃지 */
 .pct-row{display:flex;gap:8px;justify-content:center;padding:0 20px;margin:12px 0;flex-wrap:wrap}
 .pct-card{flex:1;min-width:90px;border:1.5px solid #E2E8F0;border-radius:12px;padding:10px 8px;text-align:center}
 .pct-label{font-size:10px;color:#64748B;font-weight:600;margin-bottom:4px}
 .pct-big{font-size:24px;font-weight:700;line-height:1}
 .pct-sub{font-size:10px;color:#94A3B8;margin-top:3px}
-/* 카테고리 비교 */
 .section-title{font-size:12px;font-weight:700;color:#64748B;padding:14px 20px 8px;letter-spacing:.4px}
 .cat-bar-wrap{padding:0 20px}
 .cat-bar-row{margin-bottom:12px}
@@ -117,10 +127,10 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
 .bar-track{height:8px;background:#F1F5F9;border-radius:4px;margin-bottom:3px;overflow:hidden}
 .bar-fill-mine{height:100%;border-radius:4px;transition:width .6s ease}
 .bar-fill-class{height:4px;border-radius:2px;background:#CBD5E1;transition:width .6s ease}
-/* 비교 분석 */
 .analysis-box{padding:0 20px;margin-top:14px}
 .analysis-item{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;padding:12px 14px;margin-bottom:8px}
 .analysis-label{font-size:12px;color:#15803D;font-weight:600;display:block;margin-bottom:5px}
+.btn-wrap{padding:0 20px}
 </style>
 </head>
 <body>
@@ -160,7 +170,8 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
       <span class="field-label">출석 번호</span>
       <input type="text" id="num" placeholder="번호 입력" inputmode="numeric" maxlength="3">
     </div>
-    <button class="btn btn-primary" onclick="startApp()">시작하기 →</button>
+    <div id="alreadyArea"></div>
+    <button class="btn btn-primary" id="startBtn" onclick="startApp()">시작하기 →</button>
   </div>
 </div>
 
@@ -239,7 +250,7 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
       <button class="tab-btn" onclick="switchRankTab('school')">전교</button>
     </div>
     <div id="rankingList" style="margin-top:16px"></div>
-    <button class="btn btn-primary" onclick="showStep(4)" style="margin-top:16px">내 위치 분석 →</button>
+    <button class="btn btn-primary" onclick="goToStats()" style="margin-top:16px">내 위치 분석 →</button>
     <div class="spacer"></div>
   </div>
 </div>
@@ -249,7 +260,7 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
   <div class="hdr">
     <div class="hdr-badge">4단계</div>
     <div class="hdr-title">내 위치 분석</div>
-    <div class="hdr-sub">반 · 학년 · 전교 평균과 비교</div>
+    <div class="hdr-sub" id="statsSubTitle">반 · 학년 · 전교 평균과 비교</div>
   </div>
   <div class="progress-dots">
     <div class="pdot done"></div>
@@ -258,14 +269,10 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
     <div class="pdot cur"></div>
   </div>
   <div style="overflow-y:auto;flex:1">
-
-    <!-- 내 점수 크게 -->
     <div style="text-align:center;padding:20px 20px 6px">
       <div id="myScoreBig" style="font-size:54px;font-weight:700;color:#7C3AED;line-height:1">-</div>
       <div style="font-size:13px;color:#94A3B8;margin-top:5px">오늘 내 실천율</div>
     </div>
-
-    <!-- 상위 % 뱃지 3개 -->
     <div class="pct-row" id="percentileRow">
       <div class="pct-card" id="pctClass">
         <div class="pct-label">우리 반 상위</div>
@@ -283,8 +290,6 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
         <div class="pct-sub" id="pctSchoolSub">-</div>
       </div>
     </div>
-
-    <!-- 평균 비교 3칸 -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">우리 반 평균</div>
@@ -299,12 +304,8 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
         <div class="stat-big" id="schoolAvg" style="color:#10B981">-</div>
       </div>
     </div>
-
-    <!-- 카테고리별 비교 -->
     <div class="section-title">카테고리별 비교 (내 점수 vs 우리 반 평균)</div>
     <div class="cat-bar-wrap" id="catComparison"></div>
-
-    <!-- 평균 차이 분석 -->
     <div class="analysis-box">
       <div class="analysis-item">
         <span class="analysis-label">우리 반 평균 대비</span>
@@ -319,8 +320,11 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
         <div id="schoolAnalysis" style="font-size:13px;color:#374151">-</div>
       </div>
     </div>
-
-    <button class="btn btn-primary" onclick="backToHome()" style="margin:20px;width:calc(100% - 40px)">처음으로</button>
+    <!-- 랭킹으로 돌아가기 + 처음으로 -->
+    <div class="btn-wrap" style="margin-top:16px">
+      <button class="btn btn-ghost" onclick="showStep(3)" style="margin-bottom:10px">← 랭킹으로 돌아가기</button>
+      <button class="btn btn-primary" onclick="backToHome()">처음으로</button>
+    </div>
     <div class="spacer"></div>
   </div>
 </div>
@@ -330,10 +334,8 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
    ▼▼▼  수정은 여기만! CONFIG 섹션  ▼▼▼
    ═══════════════════════════════════════════════════ */
 
-// Apps Script 배포 URL (gas/Code.gs 배포 후 입력)
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnqKHpGvZauL_M3LZga2HJtn_31tzakD373NnkL5HGAOC4okdKUocn6SN_fwwOAuWT/exec';
 
-// 규칙 데이터 — gas/Code.gs의 CATS_CONFIG와 순서·개수 동일하게 유지
 const CATS = [
   { key:'수업 3끝',  ico:'📖', color:'#5B21B6', items:[
     { label:'입실끝',  text:'8:25까지 교실에 들어왔어요' },
@@ -383,6 +385,11 @@ function getDateKey() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+/* localStorage 중복 제출 키 */
+function getSubmitKey(grade, room, num) {
+  return `swpbs_done_${grade}_${room}_${num}_${getDateKey()}`;
+}
+
 /* 날짜 배지 */
 (function() {
   const now = new Date();
@@ -397,12 +404,49 @@ function showStep(n) {
   window.scrollTo({top:0});
 }
 
+/* ── 중복 참여 확인 ── */
+function checkAlready() {
+  const g = document.getElementById('grade').value;
+  const r = document.getElementById('room').value;
+  const n = document.getElementById('num').value.trim();
+  const area = document.getElementById('alreadyArea');
+  const btn  = document.getElementById('startBtn');
+
+  if (g && r && n && localStorage.getItem(getSubmitKey(g, r, n))) {
+    area.innerHTML = `
+      <div class="already-box">
+        <div class="already-icon">✅</div>
+        <div class="already-title">오늘 이미 참여했어요!</div>
+        <div class="already-sub">하루 1번만 참여할 수 있습니다.<br>내일 다시 만나요 😊</div>
+      </div>`;
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+  } else {
+    area.innerHTML = '';
+    btn.disabled = false;
+    btn.style.opacity = '';
+  }
+}
+
+/* 학년·반·번호 변경 시 중복 확인 */
+['grade','room','num'].forEach(id =>
+  document.getElementById(id).addEventListener('change', checkAlready)
+);
+document.getElementById('num').addEventListener('input', checkAlready);
+
 function startApp() {
   const g = document.getElementById('grade').value;
   const r = document.getElementById('room').value;
   const n = document.getElementById('num').value.trim();
   if (!g || !r) { alert('학년과 반을 선택해주세요.'); return; }
   if (!n)       { alert('출석 번호를 입력해주세요.');  return; }
+
+  /* 이중 안전장치 */
+  if (localStorage.getItem(getSubmitKey(g, r, n))) {
+    alert('오늘 이미 일일 규칙 점검에 참여했습니다.\n내일 다시 참여해 주세요! 😊');
+    return;
+  }
+
   studentInfo = { grade:g, room:r, num:n, score:0 };
   answers = {}; curCat = 0;
   renderTabs(); renderItems();
@@ -493,29 +537,43 @@ function submitResult() {
   const key     = `${grade}_${room}_${num}_${dateKey}`;
   const payload = { grade, room, num, answers, comment, dateKey };
 
-  if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
-    document.getElementById('doneArea').innerHTML =
-      `<div class="done-box"><strong>⚠️ 테스트 모드</strong><br>SCRIPT_URL 설정 후 실제 제출됩니다.<br>
-       제출 키: <span class="done-key">${key}</span><br>
-       <span style="color:#94A3B8;font-size:11px">임시:
-         <button onclick="demoRanking()" style="background:#7C3AED;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">랭킹·통계 미리보기</button>
-       </span></div>`;
-    return;
-  }
-
   const btn = document.getElementById('submitBtn');
   btn.textContent = '제출 중...'; btn.disabled = true;
 
+  /* 즉시 로딩 스피너 표시 */
+  document.getElementById('doneArea').innerHTML = `
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <div class="loading-title">결과를 저장하고 있어요</div>
+      <div style="color:#94A3B8;font-size:12px">잠시 후 오늘 랭킹을 확인할 수 있어요 🏆<br>화면을 닫지 말고 기다려 주세요!</div>
+    </div>`;
+
+  if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    /* 테스트 모드 */
+    localStorage.setItem(getSubmitKey(grade, room, num), '1');
+    setTimeout(() => demoRanking(), 1200);
+    return;
+  }
+
   fetch(SCRIPT_URL + '?action=submit&' + new URLSearchParams({data: JSON.stringify(payload)}), {mode:'no-cors'})
     .then(() => {
+      /* 제출 완료 → localStorage 저장 → 랭킹 로딩 메시지로 전환 */
+      localStorage.setItem(getSubmitKey(grade, room, num), '1');
       btn.textContent = '✓ 제출 완료'; btn.style.background = '#059669';
-      document.getElementById('doneArea').innerHTML =
-        `<div class="done-box"><strong>제출 완료!</strong><br>${dateKey} 데이터가 저장됐습니다.<br>
-         제출 키: <span class="done-key">${key}</span><br>
-         <span style="font-size:11px;color:#6EE7B7">오늘 재제출 시 자동으로 덮어씁니다.</span></div>`;
-      setTimeout(() => loadRanking(), 1000);
+      document.getElementById('doneArea').innerHTML = `
+        <div class="loading-box">
+          <div class="spinner"></div>
+          <div class="loading-title">✓ 저장 완료! 랭킹 집계 중...</div>
+          <div style="color:#94A3B8;font-size:12px">🏆 곧 오늘의 랭킹을 보여드릴게요!<br>제출 키: <span style="font-family:monospace;font-size:11px">${key}</span></div>
+        </div>`;
+      /* 서버 쓰기 완료 대기 후 랭킹 조회 */
+      setTimeout(() => loadRanking(), 1500);
     })
-    .catch(() => { btn.textContent = '제출하기'; btn.disabled = false; alert('오류가 발생했습니다. 다시 시도해주세요.'); });
+    .catch(() => {
+      btn.textContent = '제출하기'; btn.disabled = false;
+      document.getElementById('doneArea').innerHTML = '';
+      alert('오류가 발생했습니다. 다시 시도해주세요.');
+    });
 }
 
 /* ═══════════════════════════════════════════════════
@@ -523,7 +581,17 @@ function submitResult() {
    ═══════════════════════════════════════════════════ */
 
 function loadRanking() {
+  /* 랭킹 화면 미리 전환 후 스피너 표시 */
+  showStep(3);
+  document.getElementById('rankingList').innerHTML = `
+    <div class="loading-box" style="padding:30px 0">
+      <div class="spinner"></div>
+      <div class="loading-title">랭킹 불러오는 중...</div>
+      <div style="color:#94A3B8;font-size:12px">친구들의 점수를 집계하고 있어요 📊</div>
+    </div>`;
+
   if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') { demoRanking(); return; }
+
   const base = SCRIPT_URL + '?';
   Promise.all([
     fetch(base + new URLSearchParams({action:'getRanking', grade:studentInfo.grade, room:studentInfo.room})).then(r=>r.json()),
@@ -533,8 +601,10 @@ function loadRanking() {
     allRanking = { class:cr.ranking||[], grade:gr.ranking||[], school:sr.ranking||[] };
     renderRanking();
     loadStats();
-    showStep(3);
-  }).catch(() => alert('랭킹 조회 실패'));
+  }).catch(() => {
+    document.getElementById('rankingList').innerHTML =
+      '<div style="text-align:center;color:#F87171;padding:20px">랭킹 조회에 실패했습니다.<br>잠시 후 다시 시도해주세요.</div>';
+  });
 }
 
 function switchRankTab(tab) {
@@ -559,6 +629,14 @@ function renderRanking() {
       <div class="rank-score">${item.score}%</div>
     </div>`;
   }).join('') || '<div style="text-align:center;color:#94A3B8;padding:20px">데이터가 없습니다</div>';
+}
+
+/* ── 통계 탭 이동 (현재 선택된 랭킹 탭 기반) ── */
+function goToStats() {
+  /* 현재 rankingTab 기준으로 분석 제목 설정 */
+  const titleMap = { class:'우리 반 기준 분석', grade:'학년 기준 분석', school:'전교 기준 분석' };
+  document.getElementById('statsSubTitle').textContent = titleMap[rankingTab] || '반 · 학년 · 전교 평균과 비교';
+  showStep(4);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -609,7 +687,6 @@ function renderCatBars(catClassAvgs) {
     cat.items.forEach((_,ii) => { if (answers[`${ci}_${ii}`]===true) yes++; });
     myCatScores[cat.key] = Math.round(yes / cat.items.length * 100);
   });
-
   document.getElementById('catComparison').innerHTML = CATS.map(cat => {
     const mine   = myCatScores[cat.key] ?? 0;
     const classA = catClassAvgs[cat.key] ?? 0;
@@ -640,6 +717,7 @@ function renderAnalysis(my, ca, ga, sa) {
   document.getElementById('schoolAnalysis').innerHTML = `전교 평균 ${sa}% 대비 ${fmt(my-sa)}`;
 }
 
+/* 데모 */
 function demoRanking() {
   allRanking = {
     class: [
@@ -661,9 +739,9 @@ function demoRanking() {
       {name:'1학년 7반 5번', score:75, comment:''},
     ],
   };
+  showStep(3);
   renderRanking();
   demoStats();
-  showStep(3);
 }
 
 function demoStats() {
@@ -679,9 +757,12 @@ function backToHome() {
   answers = {}; curCat = 0;
   studentInfo = { grade:'', room:'', num:'', score:0 };
   ['grade','room','num','comment'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('doneArea').innerHTML = '';
+  document.getElementById('doneArea').innerHTML   = '';
+  document.getElementById('alreadyArea').innerHTML = '';
   const btn = document.getElementById('submitBtn');
   btn.textContent = '제출하기'; btn.disabled = false; btn.style.background = '';
+  const startBtn = document.getElementById('startBtn');
+  startBtn.disabled = false; startBtn.style.opacity = '';
   showStep(0);
 }
 </script>
