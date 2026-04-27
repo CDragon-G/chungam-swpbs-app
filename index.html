@@ -85,11 +85,16 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
 .submit-info{font-size:11px;color:#CBD5E1;text-align:center;margin-top:10px;line-height:1.7}
 .done-box{background:#F0FDF4;border:1px solid #A7F3D0;border-radius:12px;padding:14px 16px;margin:12px 20px;font-size:13px;color:#065F46;line-height:1.8}
 .done-key{font-size:11px;background:#D1FAE5;padding:2px 8px;border-radius:5px;font-family:monospace;word-break:break-all}
-/* 로딩 스피너 */
-.loading-box{text-align:center;padding:28px 20px;color:#64748B;font-size:13px;line-height:2.2}
-.spinner{width:38px;height:38px;border:3px solid #EDE9FE;border-top-color:#7C3AED;border-radius:50%;animation:spin .85s linear infinite;margin:0 auto 14px}
+/* 전체화면 로딩 오버레이 */
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:0}
+.overlay.show{display:flex}
+.overlay-card{background:#fff;border-radius:20px;padding:36px 32px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);max-width:300px;width:85%}
+.spinner{width:48px;height:48px;border:4px solid #EDE9FE;border-top-color:#7C3AED;border-radius:50%;animation:spin .85s linear infinite;margin:0 auto 18px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-title{font-size:15px;font-weight:700;color:#7C3AED;margin-bottom:4px}
+.loading-title{font-size:16px;font-weight:700;color:#7C3AED;margin-bottom:8px}
+.loading-sub{font-size:13px;color:#94A3B8;line-height:1.8}
+/* 인라인 로딩박스 (랭킹 목록 내부용) */
+.loading-box{text-align:center;padding:28px 20px;color:#64748B;font-size:13px;line-height:2.2}
 /* 이미 참여 박스 */
 .already-box{background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:20px;text-align:center;margin-top:8px}
 .already-icon{font-size:36px;margin-bottom:10px}
@@ -134,6 +139,15 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
 </style>
 </head>
 <body>
+<!-- 전체화면 로딩 오버레이 -->
+<div class="overlay" id="loadingOverlay">
+  <div class="overlay-card">
+    <div class="spinner"></div>
+    <div class="loading-title" id="overlayTitle">결과를 저장하고 있어요</div>
+    <div class="loading-sub" id="overlaySub">잠시 후 오늘 랭킹을<br>확인할 수 있어요 🏆<br><span style="font-size:11px;color:#CBD5E1">화면을 닫지 말아주세요</span></div>
+  </div>
+</div>
+
 <div class="app">
 
 <!-- STEP 0: 기본 정보 -->
@@ -540,13 +554,8 @@ function submitResult() {
   const btn = document.getElementById('submitBtn');
   btn.textContent = '제출 중...'; btn.disabled = true;
 
-  /* 즉시 로딩 스피너 표시 */
-  document.getElementById('doneArea').innerHTML = `
-    <div class="loading-box">
-      <div class="spinner"></div>
-      <div class="loading-title">결과를 저장하고 있어요</div>
-      <div style="color:#94A3B8;font-size:12px">잠시 후 오늘 랭킹을 확인할 수 있어요 🏆<br>화면을 닫지 말고 기다려 주세요!</div>
-    </div>`;
+  /* 전체화면 오버레이 표시 */
+  showOverlay('결과를 저장하고 있어요', '잠시 후 오늘 랭킹을<br>확인할 수 있어요 🏆<br><span style="font-size:11px;color:#CBD5E1">화면을 닫지 말아주세요</span>');
 
   if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
     /* 테스트 모드 */
@@ -557,21 +566,18 @@ function submitResult() {
 
   fetch(SCRIPT_URL + '?action=submit&' + new URLSearchParams({data: JSON.stringify(payload)}), {mode:'no-cors'})
     .then(() => {
-      /* 제출 완료 → localStorage 저장 → 랭킹 로딩 메시지로 전환 */
+      /* 제출 완료 → localStorage 저장 → 오버레이 메시지 전환 */
       localStorage.setItem(getSubmitKey(grade, room, num), '1');
       btn.textContent = '✓ 제출 완료'; btn.style.background = '#059669';
-      document.getElementById('doneArea').innerHTML = `
-        <div class="loading-box">
-          <div class="spinner"></div>
-          <div class="loading-title">✓ 저장 완료! 랭킹 집계 중...</div>
-          <div style="color:#94A3B8;font-size:12px">🏆 곧 오늘의 랭킹을 보여드릴게요!<br>제출 키: <span style="font-family:monospace;font-size:11px">${key}</span></div>
-        </div>`;
+      document.getElementById('doneArea').innerHTML =
+        `<div class="done-box"><strong>✓ 제출 완료!</strong><br>제출 키: <span class="done-key">${key}</span></div>`;
+      showOverlay('✓ 저장 완료! 랭킹 집계 중...', '🏆 곧 오늘의 랭킹을 보여드릴게요!<br><span style="font-size:11px;color:#CBD5E1">잠시만 기다려 주세요</span>');
       /* 서버 쓰기 완료 대기 후 랭킹 조회 */
       setTimeout(() => loadRanking(), 1500);
     })
     .catch(() => {
+      hideOverlay();
       btn.textContent = '제출하기'; btn.disabled = false;
-      document.getElementById('doneArea').innerHTML = '';
       alert('오류가 발생했습니다. 다시 시도해주세요.');
     });
 }
@@ -590,7 +596,7 @@ function loadRanking() {
       <div style="color:#94A3B8;font-size:12px">친구들의 점수를 집계하고 있어요 📊</div>
     </div>`;
 
-  if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') { demoRanking(); return; }
+  if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') { hideOverlay(); demoRanking(); return; }
 
   const base = SCRIPT_URL + '?';
   Promise.all([
@@ -599,9 +605,11 @@ function loadRanking() {
     fetch(base + new URLSearchParams({action:'getRanking', grade:''})).then(r=>r.json()),
   ]).then(([cr, gr, sr]) => {
     allRanking = { class:cr.ranking||[], grade:gr.ranking||[], school:sr.ranking||[] };
+    hideOverlay();
     renderRanking();
     loadStats();
   }).catch(() => {
+    hideOverlay();
     document.getElementById('rankingList').innerHTML =
       '<div style="text-align:center;color:#F87171;padding:20px">랭킹 조회에 실패했습니다.<br>잠시 후 다시 시도해주세요.</div>';
   });
@@ -751,6 +759,16 @@ function demoStats() {
     classCount:28, gradeCount:180, schoolCount:540,
     catClassAvgs:{'수업 3끝':89,'교실':78,'복도·계단':85,'급식실':80,'화장실':88},
   });
+}
+
+/* ── 전체화면 오버레이 제어 ── */
+function showOverlay(title, sub) {
+  document.getElementById('overlayTitle').textContent = title;
+  document.getElementById('overlaySub').innerHTML = sub;
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideOverlay() {
+  document.getElementById('loadingOverlay').classList.remove('show');
 }
 
 function backToHome() {
