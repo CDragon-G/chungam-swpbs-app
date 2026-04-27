@@ -621,10 +621,11 @@ function loadRanking() {
   if (!SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') { hideOverlay(); demoRanking(); return; }
 
   const base = SCRIPT_URL + '?';
+  const dk   = getDateKey();
   Promise.all([
-    fetch(base + new URLSearchParams({action:'getRanking', grade:studentInfo.grade, room:studentInfo.room})).then(r=>r.json()),
-    fetch(base + new URLSearchParams({action:'getRanking', grade:studentInfo.grade})).then(r=>r.json()),
-    fetch(base + new URLSearchParams({action:'getRanking', grade:''})).then(r=>r.json()),
+    fetch(base + new URLSearchParams({action:'getRanking', grade:studentInfo.grade, room:studentInfo.room, dateKey:dk})).then(r=>r.json()),
+    fetch(base + new URLSearchParams({action:'getRanking', grade:studentInfo.grade, dateKey:dk})).then(r=>r.json()),
+    fetch(base + new URLSearchParams({action:'getRanking', grade:'', dateKey:dk})).then(r=>r.json()),
   ]).then(([cr, gr, sr]) => {
     allRanking = { class:cr.ranking||[], grade:gr.ranking||[], school:sr.ranking||[] };
     hideOverlay();
@@ -681,6 +682,7 @@ function loadStats() {
     room:    studentInfo.room,
     num:     studentInfo.num,
     myScore: studentInfo.score,
+    dateKey: getDateKey(),
   }))
     .then(r => r.json())
     .then(data => renderStats(data))
