@@ -246,13 +246,9 @@ select:focus,input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,2
       <div id="gradeBadge"></div>
     </div>
     <div class="result-grid" id="resultGrid"></div>
-    <div class="cmt-area">
-      <span class="cmt-label">오늘 가장 잘 지킨 규칙 하나 (선택)</span>
-      <textarea id="comment" placeholder="예: 오늘 복도에서 오른쪽으로 걸었어요"></textarea>
-    </div>
     <div class="submit-wrap">
       <button class="btn btn-success" id="submitBtn" onclick="submitResult()">제출하기</button>
-      <div class="submit-info">담임 선생님과 인성생활부에 자동 전달됩니다.<br>개인정보는 학교 내에서만 사용됩니다.</div>
+      <div class="submit-info">인성생활부에 자동 전달됩니다.<br>개인정보는 학교 내에서만 사용됩니다.</div>
     </div>
     <div id="doneArea"></div>
     <div class="spacer"></div>
@@ -566,7 +562,7 @@ function submitResult() {
   const grade   = document.getElementById('grade').value;
   const room    = document.getElementById('room').value;
   const num     = document.getElementById('num').value.trim();
-  const comment = document.getElementById('comment').value;
+  const comment = '';
   const dateKey = getDateKey();
   const key     = `${grade}_${room}_${num}_${dateKey}`;
   const payload = { grade, room, num, answers, comment, dateKey };
@@ -790,7 +786,7 @@ function demoRanking() {
     class: [
       {name:`${studentInfo.grade} ${studentInfo.room} 1번`,  score:95, comment:'교실에서 좋은 태도'},
       {name:`${studentInfo.grade} ${studentInfo.room} 2번`,  score:90, comment:'복도에서 바른 행동'},
-      {name:`${studentInfo.grade} ${studentInfo.room} ${studentInfo.num||3}번`, score:studentInfo.score||87, comment:document.getElementById('comment').value||''},
+      {name:`${studentInfo.grade} ${studentInfo.room} ${studentInfo.num||3}번`, score:studentInfo.score||87, comment:''},
       {name:`${studentInfo.grade} ${studentInfo.room} 5번`,  score:75, comment:'노력 중'},
     ],
     grade: [
@@ -948,7 +944,7 @@ function hideOverlay() {
 function backToHome() {
   answers = {}; curCat = 0;
   studentInfo = { grade:'', room:'', num:'', score:0 };
-  ['grade','room','num','comment'].forEach(id => document.getElementById(id).value = '');
+  ['grade','room','num'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('doneArea').innerHTML   = '';
   document.getElementById('alreadyArea').innerHTML = '';
   const btn = document.getElementById('submitBtn');
