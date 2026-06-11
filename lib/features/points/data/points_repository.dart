@@ -1,0 +1,236 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/supabase/supabase_client.dart';
+import '../models/point_exchange.dart';
+import '../models/point_store_item.dart';
+import '../models/point_transaction.dart';
+import '../models/school_leaderboard_entry.dart';
+
+class PointsRepository {
+  PointsRepository();
+
+  SupabaseClient get _c => SupabaseService.client;
+
+  // ── User balance & history ─────────────────────────────────
+  Future<int> myBalance() async {
+    final uid = _c.auth.currentUser?.id;
+    if (uid == null) return 0;
+    final res = await _c.rpc('get_user_points', params: {'p_user_id': uid});
+    if (res == null) return 0;
+    return (res as num).toInt();
+  }
+
+  Future<int> userBalance(String userId) async {
+    final res = await _c.rpc('get_user_points', params: {'p_user_id': userId});
+    if (res == null) return 0;
+    return (res as num).toInt();
+  }
+
+  Future<List<PointTransaction>> myHistory({int limit = 50}) async {
+    final uid = _c.auth.currentUser?.id;
+    if (uid == null) return [];
+    final rows = await _c
+        .from('point_transactions')
+        .select()
+        .eq('user_id', uid)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return rows
+        .map((m) => PointTransaction.fromMap(m as Map<String, dynamic>))
+        .toList();
+  }
+
+  // ── Store items ────────────────────────────────────────────
+  Future<List<PointStoreItem>> fetchItems(
+    String schoolId, {
+    bool onlyActive = false,
+  }) async {
+    var query =
+        _c.from('point_store_items').select().eq('school_id', schoolId);
+    if (onlyActive) query = query.eq('is_active', true);
+    final rows = await query.order('order_index');
+    return rows
+        .map((m) => PointStoreItem.fromMap(m as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<PointStoreItem> createItem({
+    required String schoolId,
+    required String name,
+    String? description,
+    required int costPoints,
+    int? stock,
+    required int orderIndex,
+  }) async {
+    final row = await _c
+        .from('point_store_items')
+        .insert({
+          'school_id': schoolId,
+          'name': name,
+          'description': description,
+          'cost_points': costPoints,
+          'stock': stock,
+          'is_active': true,
+          'order_index': orderIndex,
+        })
+        .select()
+        .single();
+    return PointStoreItem.fromMap(row);
+  }
+
+  Future<PointStoreItem> updateItem(
+    String id,
+    Map<String, dynamic> patch,
+  ) async {
+    final row = await _c
+        .from('point_store_items')
+        .update({...patch, 'updated_at': DateTime.now().toIso8601String()})
+        .eq('id', id)
+        .select()
+        .single();
+    return PointStoreItem.fromMap(row);
+  }
+
+  Future<void> deleteItem(String id) async {
+    await _c.from('point_store_items').delete().eq('id', id);
+  }
+
+  Future<void> reorderItems(List<PointStoreItem> items) async {
+    for (var i = 0; i < items.length; i++) {
+      await _c
+          .from('point_store_items')
+          .update({'order_index': i})
+          .eq('id', items[i].id);
+    }
+  }
+
+  // ── Exchanges ──────────────────────────────────────────────
+  Future<String> requestExchange(String itemId) async {
+    final res =
+        await _c.rpc('request_exchange', params: {'p_item_id': itemId});
+    return res as String;
+  }
+
+  Future<List<PointExchange>> myExchanges({int limit = 30}) async {
+    final uid = _c.auth.currentUser?.id;
+    if (uid == null) return [];
+    final rows = await _c
+        .from('point_exchanges')
+        .select()
+        .eq('user_id', uid)
+        .order('requested_at', ascending: false)
+        .limit(limit);
+    return rows
+        .map((m) => PointExchange.fromMap(m as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<PointExchange>> fetchSchoolExchanges(
+    String schoolId, {
+    String? status,
+    int limit = 200,
+  }) async {
+    var query = _c
+        .from('point_exchanges')
+        .select()
+        .eq('school_id', schoolId);
+    if (status != null) query = query.eq('status', status);
+    final rows =
+        await query.order('requested_at', ascending: false).limit(limit);
+
+    // Fetch profiles separately and merge in code.
+    // (Direct join fails because point_exchanges.user_id → auth.users(id),
+    //  not profiles.user_id, so PostgREST can't resolve the embed.)
+    final userIds = <String>{
+      for (final r in rows) r['user_id'] as String,
+    }.toList();
+
+    final profilesByUserId = <String, Map<String, dynamic>>{};
+    if (userIds.isNotEmpty) {
+      final profileRows = await _c
+          .from('profiles')
+          .select('user_id, nickname, grade, class_num, student_num')
+          .inFilter('user_id', userIds);
+      for (final p in profileRows) {
+        profilesByUserId[p['user_id'] as String] = p as Map<String, dynamic>;
+      }
+    }
+
+    return rows.map((m) {
+      final row = Map<String, dynamic>.from(m as Map);
+      final profile = profilesByUserId[row['user_id']];
+      if (profile != null) {
+        row['profiles'] = profile; // PointExchange.fromMap reads this key
+      }
+      return PointExchange.fromMap(row);
+    }).toList();
+  }
+
+  Future<void> fulfillExchange(String id, {String? note}) async {
+    await _c.rpc('fulfill_exchange', params: {
+      'p_exchange_id': id,
+      'p_note': note,
+    });
+  }
+
+  Future<void> cancelExchange(String id, {String? note}) async {
+    await _c.rpc('cancel_exchange', params: {
+      'p_exchange_id': id,
+      'p_note': note,
+    });
+  }
+
+  // ── School leaderboard ─────────────────────────────────────
+  Future<List<SchoolLeaderboardEntry>> fetchLeaderboard(
+      {int limit = 50}) async {
+    final rows = await _c
+        .from('school_leaderboard')
+        .select()
+        .order('school_score', ascending: false)
+        .limit(limit);
+    return rows
+        .map((m) => SchoolLeaderboardEntry.fromMap(m as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<SchoolLeaderboardEntry?> fetchMySchool(String schoolId) async {
+    final row = await _c
+        .from('school_leaderboard')
+        .select()
+        .eq('id', schoolId)
+        .maybeSingle();
+    if (row == null) return null;
+    return SchoolLeaderboardEntry.fromMap(row);
+  }
+
+  // ── Teacher: per-student aggregates ────────────────────────
+  Future<Map<String, int>> fetchStudentBalances(List<String> userIds) async {
+    if (userIds.isEmpty) return {};
+    final rows = await _c
+        .from('point_transactions')
+        .select('user_id, amount')
+        .inFilter('user_id', userIds);
+    final balances = <String, int>{};
+    for (final r in rows) {
+      final uid = r['user_id'] as String;
+      final amt = (r['amount'] as num).toInt();
+      balances[uid] = (balances[uid] ?? 0) + amt;
+    }
+    return balances;
+  }
+
+  // ── Award points after check-in ────────────────────────────
+  Future<void> awardCheckinPoints({
+    required String userId,
+    required String schoolId,
+    required DateTime checkinDate,
+  }) async {
+    final dateStr =
+        '${checkinDate.year.toString().padLeft(4, '0')}-${checkinDate.month.toString().padLeft(2, '0')}-${checkinDate.day.toString().padLeft(2, '0')}';
+    await _c.rpc('award_checkin_points', params: {
+      'p_user_id': userId,
+      'p_school_id': schoolId,
+      'p_checkin_date': dateStr,
+    });
+  }
+}

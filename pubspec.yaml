@@ -1,0 +1,71 @@
+name: pbs_plus
+description: "자람 - 함께 자라는 우리 학교 (SWPBS)."
+publish_to: 'none'
+version: 0.4.0+13
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  hooks_riverpod: ^2.5.1
+  flutter_hooks: ^0.20.5
+
+  # Backend
+  supabase_flutter: ^2.5.0
+
+  # Navigation
+  go_router: ^14.0.0
+
+  # Charts & UI
+  fl_chart: ^0.68.0
+  table_calendar: ^3.1.2
+  shimmer: ^3.0.0
+  lottie: ^3.1.2
+  cached_network_image: ^3.3.1
+  flutter_svg: ^2.0.10+1
+  google_fonts: ^6.2.1
+  gap: ^3.0.1
+  qr_flutter: ^4.1.0
+
+  # Notifications
+  flutter_local_notifications: ^17.2.2
+
+  # Storage / utils
+  shared_preferences: ^2.2.3
+  flutter_dotenv: ^5.1.0
+  intl: ^0.19.0
+  uuid: ^4.4.0
+  collection: ^1.18.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
+    - assets/icon/
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 23
+  adaptive_icon_background: "#10B981"
+  adaptive_icon_foreground: "assets/icon/icon.png"
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false

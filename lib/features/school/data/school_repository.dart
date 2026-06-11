@@ -1,0 +1,202 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/supabase/supabase_client.dart';
+import '../../../core/utils/school_code_generator.dart';
+import '../models/school.dart';
+import '../models/school_rule.dart';
+
+class SchoolRepository {
+  SchoolRepository();
+
+  SupabaseClient get _c => SupabaseService.client;
+
+  Future<School> createSchool({
+    required String name,
+    required String region,
+    required String level,
+  }) async {
+    final user = _c.auth.currentUser;
+    if (user == null) throw StateError('로그인 상태가 아닙니다.');
+
+    // Prevent duplicate schools: check if same (name, region, level) exists
+    final dup = await _c
+        .from('schools')
+        .select('school_code')
+        .eq('name', name)
+        .eq('region', region)
+        .eq('level', level)
+        .maybeSingle();
+    if (dup != null) {
+      throw StateError(
+        '이미 등록된 학교예요.\n'
+        '"기존 학교 참여" 탭에서 학교 코드 ${dup['school_code']}로 참여해주세요.\n'
+        '(학교 코드는 첫 번째로 가입한 교사에게 문의)',
+      );
+    }
+
+    final code = await SchoolCodeGenerator.generateUnique();
+    final inserted = await _c
+        .from('schools')
+        .insert({
+          'name': name,
+          'region': region,
+          'level': level,
+          'school_code': code,
+          'created_by': user.id,
+        })
+        .select()
+        .single();
+    final school = School.fromMap(inserted);
+    // seed default rule template
+    await _c.rpc('seed_default_rules', params: {'p_school_id': school.id});
+    return school;
+  }
+
+  Future<School?> findByCode(String code) async {
+    final row = await _c
+        .from('schools')
+        .select()
+        .eq('school_code', code)
+        .maybeSingle();
+    return row == null ? null : School.fromMap(row);
+  }
+
+  Future<School?> findById(String id) async {
+    final row = await _c.from('schools').select().eq('id', id).maybeSingle();
+    return row == null ? null : School.fromMap(row);
+  }
+
+  Future<List<SchoolRule>> fetchRules(String schoolId) async {
+    final rows = await _c
+        .from('school_rules')
+        .select()
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .order('order_index');
+    return rows.map((m) => SchoolRule.fromMap(m as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<SchoolRule>> fetchAllRules(String schoolId) async {
+    final rows = await _c
+        .from('school_rules')
+        .select()
+        .eq('school_id', schoolId)
+        .order('order_index');
+    return rows.map((m) => SchoolRule.fromMap(m as Map<String, dynamic>)).toList();
+  }
+
+  Future<SchoolRule> addRule({
+    required String schoolId,
+    required String space,
+    required String category,
+    required String ruleText,
+    required int orderIndex,
+  }) async {
+    final inserted = await _c
+        .from('school_rules')
+        .insert({
+          'school_id': schoolId,
+          'space': space,
+          'category': category,
+          'rule_text': ruleText,
+          'order_index': orderIndex,
+          'is_active': true,
+        })
+        .select()
+        .single();
+    return SchoolRule.fromMap(inserted);
+  }
+
+  Future<SchoolRule> updateRule(String id, Map<String, dynamic> patch) async {
+    final row = await _c
+        .from('school_rules')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .single();
+    return SchoolRule.fromMap(row);
+  }
+
+  Future<void> deleteRule(String id) async {
+    await _c.from('school_rules').delete().eq('id', id);
+  }
+
+  Future<void> reorderRules(List<SchoolRule> rules) async {
+    for (var i = 0; i < rules.length; i++) {
+      await _c
+          .from('school_rules')
+          .update({'order_index': i})
+          .eq('id', rules[i].id);
+    }
+  }
+
+  // Announcements
+  Future<List<Map<String, dynamic>>> fetchAnnouncements(String schoolId) async {
+    final rows = await _c
+        .from('announcements')
+        .select()
+        .eq('school_id', schoolId)
+        .order('created_at', ascending: false)
+        .limit(20);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>> postAnnouncement({
+    required String schoolId,
+    required String title,
+    required String body,
+  }) async {
+    final user = _c.auth.currentUser;
+    if (user == null) throw StateError('로그인 상태가 아닙니다.');
+    final inserted = await _c
+        .from('announcements')
+        .insert({
+          'school_id': schoolId,
+          'title': title,
+          'body': body,
+          'created_by': user.id,
+        })
+        .select()
+        .single();
+    return inserted;
+  }
+
+  Future<void> deleteAnnouncement(String id) async {
+    await _c.from('announcements').delete().eq('id', id);
+  }
+
+  // Teacher: list students for a school
+  Future<List<Map<String, dynamic>>> fetchStudents(String schoolId) async {
+    final rows = await _c
+        .from('profiles')
+        .select()
+        .eq('school_id', schoolId)
+        .eq('role', 'student')
+        .order('grade')
+        .order('class_num')
+        .order('student_num');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  // List all teachers in a school (for admin permission management)
+  Future<List<Map<String, dynamic>>> fetchTeachers(String schoolId) async {
+    final rows = await _c
+        .from('profiles')
+        .select()
+        .eq('school_id', schoolId)
+        .eq('role', 'teacher')
+        .order('created_at');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  // Admin only: change a teacher's role via RPC (includes safety checks)
+  Future<void> setTeacherRole({
+    required String profileId,
+    required String newRole, // 'admin' | 'regular'
+  }) async {
+    await _c.rpc('set_teacher_role', params: {
+      'p_profile_id': profileId,
+      'p_new_role': newRole,
+    });
+  }
+}

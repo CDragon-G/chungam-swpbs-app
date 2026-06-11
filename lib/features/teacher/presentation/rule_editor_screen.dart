@@ -1,0 +1,556 @@
+import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sizes.dart';
+import '../../../core/constants/app_strings.dart';
+import '../../../shared/providers/profile_provider.dart';
+import '../../../shared/widgets/pbs_card.dart';
+import '../../school/models/school_rule.dart';
+import '../../school/providers/school_provider.dart';
+
+class RuleEditorScreen extends ConsumerStatefulWidget {
+  const RuleEditorScreen({super.key});
+
+  @override
+  ConsumerState<RuleEditorScreen> createState() => _RuleEditorScreenState();
+}
+
+class _RuleEditorScreenState extends ConsumerState<RuleEditorScreen> {
+  bool _reordering = false;
+
+  /// Reassign order_index across ALL rules so that the new space order persists.
+  /// Rules within each space keep their original relative order.
+  Future<void> _reorderSpaces({
+    required List<String> spaces,
+    required Map<String, List<SchoolRule>> grouped,
+    required int oldIdx,
+    required int newIdx,
+  }) async {
+    if (newIdx > oldIdx) newIdx -= 1;
+    if (oldIdx == newIdx) return;
+
+    final newOrder = [...spaces];
+    final moved = newOrder.removeAt(oldIdx);
+    newOrder.insert(newIdx, moved);
+
+    final flat = <SchoolRule>[];
+    for (final s in newOrder) {
+      final spaceRules = [...(grouped[s] ?? const <SchoolRule>[])];
+      spaceRules.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      flat.addAll(spaceRules);
+    }
+
+    setState(() => _reordering = true);
+    try {
+      await ref.read(schoolRepositoryProvider).reorderRules(flat);
+      ref.invalidate(allSchoolRulesProvider);
+      ref.invalidate(schoolRulesProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('순서 저장 실패: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _reordering = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rulesAsync = ref.watch(allSchoolRulesProvider);
+    final profile = ref.watch(profileProvider).value;
+    final canEdit = profile?.isAdminTeacher ?? false;
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        title: Text(
+          canEdit ? '규칙 설정' : '규칙 (읽기 전용)',
+          style: GoogleFonts.notoSansKr(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        actions: [
+          if (_reordering)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          if (canEdit)
+            IconButton(
+              tooltip: '규칙 추가',
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () => _showAddSheet(context, ref),
+            ),
+        ],
+      ),
+      body: rulesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('오류: $e')),
+        data: (rules) {
+          final grouped = groupBy(rules, (r) => r.space);
+          // Sort spaces by min order_index of their rules
+          final spaces = grouped.keys.toList()
+            ..sort((a, b) {
+              final minA = grouped[a]!
+                  .map((r) => r.orderIndex)
+                  .reduce((x, y) => x < y ? x : y);
+              final minB = grouped[b]!
+                  .map((r) => r.orderIndex)
+                  .reduce((x, y) => x < y ? x : y);
+              return minA.compareTo(minB);
+            });
+
+          return ReorderableListView.builder(
+            padding: const EdgeInsets.all(AppSizes.lg),
+            buildDefaultDragHandles: false,
+            itemCount: spaces.length,
+            onReorder: (oldIdx, newIdx) => _reorderSpaces(
+              spaces: spaces,
+              grouped: grouped,
+              oldIdx: oldIdx,
+              newIdx: newIdx,
+            ),
+            itemBuilder: (context, i) {
+              final s = spaces[i];
+              return _SpaceGroup(
+                key: ValueKey(s),
+                space: s,
+                rules: grouped[s] ?? const [],
+                outerIndex: i,
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAddSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(_).viewInsets.bottom,
+        ),
+        child: const _AddRuleSheet(),
+      ),
+    );
+  }
+}
+
+// Backward-compat wrapper: outerIndex is required by _SpaceGroup.
+// (declared above; left here as a marker)
+
+class _SpaceGroup extends ConsumerStatefulWidget {
+  const _SpaceGroup({
+    super.key,
+    required this.space,
+    required this.rules,
+    required this.outerIndex,
+  });
+  final String space;
+  final List<SchoolRule> rules;
+  final int outerIndex;
+
+  @override
+  ConsumerState<_SpaceGroup> createState() => _SpaceGroupState();
+}
+
+class _SpaceGroupState extends ConsumerState<_SpaceGroup> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...widget.rules]
+      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.md),
+      child: PbsCard(
+        padding: const EdgeInsets.all(AppSizes.md),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Drag handle for outer (space) reordering — long press + drag
+                ReorderableDragStartListener(
+                  index: widget.outerIndex,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: Icon(
+                      Icons.drag_indicator_rounded,
+                      size: 22,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: AppColors.spaceColor(widget.space),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.space,
+                            style: GoogleFonts.notoSansKr(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${sorted.length}',
+                            style: GoogleFonts.notoSansKr(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            _expanded
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_expanded)
+              ReorderableListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: true,
+                onReorder: (oldIdx, newIdx) async {
+                  if (newIdx > oldIdx) newIdx -= 1;
+                  final reordered = [...sorted];
+                  final item = reordered.removeAt(oldIdx);
+                  reordered.insert(newIdx, item);
+                  await ref
+                      .read(schoolRepositoryProvider)
+                      .reorderRules(reordered);
+                  ref.invalidate(allSchoolRulesProvider);
+                  ref.invalidate(schoolRulesProvider);
+                },
+                children: [
+                  for (final r in sorted)
+                    _RuleTile(key: ValueKey(r.id), rule: r),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RuleTile extends ConsumerWidget {
+  const _RuleTile({super.key, required this.rule});
+  final SchoolRule rule;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: rule.isActive ? AppColors.background : AppColors.borderLight,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.drag_handle, size: 18, color: AppColors.textTertiary),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.categoryColor(rule.category).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              rule.category,
+              style: GoogleFonts.notoSansKr(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: AppColors.categoryColor(rule.category),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              rule.ruleText,
+              style: GoogleFonts.notoSansKr(
+                fontSize: 13,
+                color: rule.isActive
+                    ? AppColors.textPrimary
+                    : AppColors.textTertiary,
+                decoration: rule.isActive ? null : TextDecoration.lineThrough,
+              ),
+            ),
+          ),
+          Switch.adaptive(
+            value: rule.isActive,
+            onChanged: (v) async {
+              await ref
+                  .read(schoolRepositoryProvider)
+                  .updateRule(rule.id, {'is_active': v});
+              ref.invalidate(allSchoolRulesProvider);
+              ref.invalidate(schoolRulesProvider);
+            },
+          ),
+          IconButton(
+            tooltip: '편집',
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            onPressed: () => _showEdit(context, ref, rule),
+          ),
+          IconButton(
+            tooltip: '삭제',
+            icon: const Icon(Icons.delete_outline_rounded,
+                size: 18, color: AppColors.danger),
+            onPressed: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('삭제하시겠어요?'),
+                  content: const Text('규칙을 영구 삭제합니다. 이미 등록된 학생 응답 데이터는 유지됩니다.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('취소'),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.danger,
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('삭제'),
+                    ),
+                  ],
+                ),
+              );
+              if (ok == true) {
+                await ref.read(schoolRepositoryProvider).deleteRule(rule.id);
+                ref.invalidate(allSchoolRulesProvider);
+                ref.invalidate(schoolRulesProvider);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEdit(BuildContext context, WidgetRef ref, SchoolRule rule) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(_).viewInsets.bottom),
+        child: _AddRuleSheet(existing: rule),
+      ),
+    );
+  }
+}
+
+class _AddRuleSheet extends ConsumerStatefulWidget {
+  const _AddRuleSheet({this.existing});
+  final SchoolRule? existing;
+
+  @override
+  ConsumerState<_AddRuleSheet> createState() => _AddRuleSheetState();
+}
+
+class _AddRuleSheetState extends ConsumerState<_AddRuleSheet> {
+  late String _space;
+  late String _category;
+  late final TextEditingController _text;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _space = widget.existing?.space ?? AppStrings.spaces.first;
+    _category = widget.existing?.category ??
+        (widget.existing?.space == '수업'
+            ? AppStrings.lessonCategories.first
+            : AppStrings.mrsCategories.first);
+    _text = TextEditingController(text: widget.existing?.ruleText ?? '');
+  }
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  List<String> get _categoriesForSpace =>
+      _space == '수업' ? AppStrings.lessonCategories : AppStrings.mrsCategories;
+
+  Future<void> _save() async {
+    if (_text.text.trim().isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      final repo = ref.read(schoolRepositoryProvider);
+      final profile = ref.read(profileProvider).value;
+      if (profile?.schoolId == null) return;
+      if (widget.existing == null) {
+        final rules = ref.read(allSchoolRulesProvider).value ?? [];
+        await repo.addRule(
+          schoolId: profile!.schoolId!,
+          space: _space,
+          category: _category,
+          ruleText: _text.text.trim(),
+          orderIndex: rules.length,
+        );
+      } else {
+        await repo.updateRule(widget.existing!.id, {
+          'space': _space,
+          'category': _category,
+          'rule_text': _text.text.trim(),
+        });
+      }
+      ref.invalidate(allSchoolRulesProvider);
+      ref.invalidate(schoolRulesProvider);
+      if (mounted) Navigator.pop(context);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSizes.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.existing == null ? '새 규칙 추가' : '규칙 편집',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: AppSizes.lg),
+          Text(
+            '공간',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            children: AppStrings.spaces.map((sp) {
+              final selected = _space == sp;
+              return ChoiceChip(
+                label: Text(sp),
+                selected: selected,
+                onSelected: (_) {
+                  setState(() {
+                    _space = sp;
+                    _category = _categoriesForSpace.first;
+                  });
+                },
+                selectedColor: AppColors.spaceColor(sp),
+                labelStyle: GoogleFonts.notoSansKr(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: selected ? Colors.white : AppColors.textPrimary,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  side: BorderSide(color: AppColors.borderLight),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: AppSizes.md),
+          Text(
+            '카테고리',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            children: _categoriesForSpace.map((c) {
+              final selected = _category == c;
+              return ChoiceChip(
+                label: Text(c),
+                selected: selected,
+                onSelected: (_) => setState(() => _category = c),
+                selectedColor: AppColors.categoryColor(c),
+                labelStyle: GoogleFonts.notoSansKr(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: selected ? Colors.white : AppColors.textPrimary,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  side: BorderSide(color: AppColors.borderLight),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: AppSizes.md),
+          PbsTextField(
+            controller: _text,
+            label: '규칙 내용',
+            hint: '예: 수업 시작 종이 칠 때까지 자리에 앉아 있어요',
+          ),
+          const SizedBox(height: AppSizes.lg),
+          PbsPrimaryButton(
+            label: widget.existing == null ? '추가' : '저장',
+            color: AppColors.teacherNavy,
+            loading: _saving,
+            onPressed: _save,
+          ),
+          const SizedBox(height: AppSizes.md),
+        ],
+      ),
+    );
+  }
+}

@@ -1,0 +1,70 @@
+# Codemagic CI/CD — 자람(Jaram) iOS 출시 워크플로우
+# 무료 플랜: macOS M2 인스턴스, 월 500분, 빌드당 120분 제한
+# 참고: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
+
+workflows:
+  ios-testflight:
+    name: iOS TestFlight 배포
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: jaram-asc-key   # Codemagic UI에서 등록할 API Key 이름
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.jaram.app
+      vars:
+        APP_STORE_APPLE_ID: 0000000000   # App Store Connect에서 발급되는 앱 ID로 교체
+        BUNDLE_ID: "com.jaram.app"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+    scripts:
+      - name: .env 파일 생성
+        script: |
+          # Supabase 시크릿은 Codemagic 환경변수 그룹에 저장하고 여기서 꺼내씁니다.
+          cat > .env <<EOF
+          SUPABASE_URL=$SUPABASE_URL
+          SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+          EOF
+
+      - name: Flutter 의존성 설치
+        script: |
+          flutter packages pub get
+
+      - name: Pod install
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
+      - name: 빌드 번호 자동 증가 (TestFlight 기준)
+        script: |
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" || echo "0")
+          NEW_BUILD_NUMBER=$(($LATEST_BUILD_NUMBER + 1))
+          echo "Setting build number to $NEW_BUILD_NUMBER"
+          flutter build ipa --release \
+            --build-name=0.4.0 \
+            --build-number=$NEW_BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - 내부테스터        # App Store Connect TestFlight에서 만든 그룹 이름
+
+      email:
+        recipients:
+          - godspeardragon@gmail.com
+        notify:
+          success: true
+          failure: true
