@@ -10,6 +10,8 @@ workflows:
     integrations:
       app_store_connect: jaram-asc-key   # Codemagic UI에서 등록할 API Key 이름
     environment:
+      groups:
+        - supabase   # Codemagic UI에 등록한 환경변수 그룹 (SUPABASE_URL, SUPABASE_ANON_KEY)
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.jaram.app
