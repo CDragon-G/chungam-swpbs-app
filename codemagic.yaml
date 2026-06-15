@@ -49,12 +49,10 @@ workflows:
           ssh-keygen -t rsa -b 2048 -m PEM -f /tmp/apple_dist_pk -q -N ""
 
           # 2. Apple에 인증서·프로파일 자동 등록 + 다운로드
-          # --save 플래그: 발급된 cert/key를 Codemagic에 영구 저장 (다음 빌드부터 재사용)
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --certificate-key=@file:/tmp/apple_dist_pk \
-            --create \
-            --save
+            --create
 
           # 3. 키체인에 인증서 등록
           keychain add-certificates
