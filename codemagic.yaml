@@ -38,8 +38,9 @@ workflows:
         script: |
           find . -name "Podfile" -execdir pod install \;
 
-      - name: iOS 코드 서명 (인증서·프로비저닝 자동 생성)
+      - name: iOS 코드 서명 (인증서·프로비저닝 자동 생성 + xcconfig 주입)
         # 신규 Apple Developer 계정용: private key를 명시 생성 후 전달
+        # + Release.xcconfig에 서명 설정 강제 주입 (Flutter 자동 서명 실패 우회)
         script: |
           set -e
           keychain initialize
@@ -56,8 +57,28 @@ workflows:
           # 3. 키체인에 인증서 등록
           keychain add-certificates
 
-          # 4. Xcode 프로젝트에 프로파일 적용 (--warn-only: 부분 실패해도 계속)
+          # 4. Xcode 프로젝트에 프로파일 적용 (RunnerTests 매칭 실패는 무시)
           xcode-project use-profiles --warn-only
+
+          # 5. 프로파일에서 Team ID·Profile Name 추출 → Release.xcconfig 강제 주입
+          PROFILE_PATH=$(ls "/Users/builder/Library/Developer/Xcode/UserData/Provisioning Profiles/"*.mobileprovision | head -1)
+          TEAM_ID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract TeamIdentifier.0 raw -)
+          PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name raw -)
+
+          echo "✅ Team ID: $TEAM_ID"
+          echo "✅ Profile Name: $PROFILE_NAME"
+
+          cat >> ios/Flutter/Release.xcconfig <<EOF
+
+          // Codemagic CI 자동 코드 서명 (Flutter automatic signing 우회)
+          DEVELOPMENT_TEAM = $TEAM_ID
+          CODE_SIGN_STYLE = Manual
+          CODE_SIGN_IDENTITY = Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER = $PROFILE_NAME
+          EOF
+
+          echo "─── Release.xcconfig 내용 ───"
+          cat ios/Flutter/Release.xcconfig
 
       - name: 빌드 번호 자동 증가 + IPA 빌드
         script: |
