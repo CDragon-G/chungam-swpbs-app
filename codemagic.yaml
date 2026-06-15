@@ -39,15 +39,26 @@ workflows:
           flutter packages pub get
 
       - name: iOS 코드 서명 (인증서·프로비저닝 자동 생성)
-        # 핵심: 신규 Apple Developer 계정에는 인증서가 없음.
-        # fetch-signing-files --create 명령으로 Apple에 인증서·프로파일 자동 등록.
+        # 핵심: 신규 Apple Developer 계정용.
+        # private key를 먼저 생성한 뒤 --certificate-key로 전달해야
+        # Apple이 "Cannot save Signing Certificates without certificate private key" 에러를 안 냄.
         script: |
           set -e
           keychain initialize
+
+          # 1. RSA 2048 private key 생성 (PEM 포맷, Apple 요구사항)
+          ssh-keygen -t rsa -b 2048 -m PEM -f /tmp/apple_dist_pk -q -N ""
+
+          # 2. Apple에 인증서·프로파일 자동 등록 + 다운로드 (private key 함께 전달)
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key=@file:/tmp/apple_dist_pk \
             --create
+
+          # 3. 키체인에 인증서 등록
           keychain add-certificates
+
+          # 4. Flutter Xcode 프로젝트에 프로파일 자동 적용
           xcode-project use-profiles
 
       - name: Pod install
