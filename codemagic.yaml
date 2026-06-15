@@ -16,7 +16,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.jaram.app
       vars:
-        APP_STORE_APPLE_ID: 0000000000   # App Store Connect에서 발급되는 앱 ID로 교체
+        APP_STORE_APPLE_ID: 6780309774   # 자람(Jaram) App Store Connect ID
         BUNDLE_ID: "com.jaram.app"
       flutter: stable
       xcode: latest
