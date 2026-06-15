@@ -1,10 +1,5 @@
 # Codemagic CI/CD — 자람(Jaram) iOS 출시 워크플로우
 # 무료 플랜: macOS M2 인스턴스, 월 500분, 빌드당 120분 제한
-# 참고: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
-#
-# ⚠️ 신규 Apple Developer 계정용 설정:
-# ios_signing 자동 모드는 "기존 인증서 찾기"만 하므로 신규 계정에서 실패함.
-# 대신 fetch-signing-files --create 명령으로 명시적으로 만들어야 함.
 
 workflows:
   ios-testflight:
@@ -38,18 +33,21 @@ workflows:
         script: |
           flutter packages pub get
 
+      - name: Pod install (Xcode 프로젝트 설정 완성)
+        # 코드 서명 전에 먼저 Pod 설치 — Xcode 프로젝트 설정 완성 필요
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
       - name: iOS 코드 서명 (인증서·프로비저닝 자동 생성)
-        # 핵심: 신규 Apple Developer 계정용.
-        # private key를 먼저 생성한 뒤 --certificate-key로 전달해야
-        # Apple이 "Cannot save Signing Certificates without certificate private key" 에러를 안 냄.
+        # 신규 Apple Developer 계정용: private key를 명시 생성 후 전달
         script: |
           set -e
           keychain initialize
 
-          # 1. RSA 2048 private key 생성 (PEM 포맷, Apple 요구사항)
+          # 1. RSA 2048 private key 생성 (PEM 포맷)
           ssh-keygen -t rsa -b 2048 -m PEM -f /tmp/apple_dist_pk -q -N ""
 
-          # 2. Apple에 인증서·프로파일 자동 등록 + 다운로드 (private key 함께 전달)
+          # 2. Apple에 인증서·프로파일 자동 등록 + 다운로드
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --certificate-key=@file:/tmp/apple_dist_pk \
@@ -58,12 +56,8 @@ workflows:
           # 3. 키체인에 인증서 등록
           keychain add-certificates
 
-          # 4. Flutter Xcode 프로젝트에 프로파일 자동 적용
-          xcode-project use-profiles
-
-      - name: Pod install
-        script: |
-          find . -name "Podfile" -execdir pod install \;
+          # 4. Xcode 프로젝트에 프로파일 적용 (--warn-only: 부분 실패해도 계속)
+          xcode-project use-profiles --warn-only
 
       - name: 빌드 번호 자동 증가 + IPA 빌드
         script: |
