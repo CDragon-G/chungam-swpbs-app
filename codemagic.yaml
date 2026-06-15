@@ -138,9 +138,12 @@ workflows:
 
       - name: 빌드 번호 자동 증가 + IPA 빌드
         script: |
-          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" || echo "0")
+          # TestFlight + App Store 모두 포함한 최신 빌드 번호 가져오기
+          # (get-latest-app-store-build-number는 출시된 빌드만 찾아서 충돌 발생)
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo "0")
           NEW_BUILD_NUMBER=$(($LATEST_BUILD_NUMBER + 1))
-          echo "Setting build number to $NEW_BUILD_NUMBER"
+          echo "Latest build number found: $LATEST_BUILD_NUMBER"
+          echo "Setting build number to: $NEW_BUILD_NUMBER"
           flutter build ipa --release \
             --build-name=0.4.0 \
             --build-number=$NEW_BUILD_NUMBER \
