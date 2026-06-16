@@ -112,16 +112,32 @@ class _RuleEditorScreenState extends ConsumerState<RuleEditorScreen> {
               return minA.compareTo(minB);
             });
 
-          return ReorderableListView.builder(
+          if (canEdit) {
+            return ReorderableListView.builder(
+              padding: const EdgeInsets.all(AppSizes.lg),
+              buildDefaultDragHandles: false,
+              itemCount: spaces.length,
+              onReorder: (oldIdx, newIdx) => _reorderSpaces(
+                spaces: spaces,
+                grouped: grouped,
+                oldIdx: oldIdx,
+                newIdx: newIdx,
+              ),
+              itemBuilder: (context, i) {
+                final s = spaces[i];
+                return _SpaceGroup(
+                  key: ValueKey(s),
+                  space: s,
+                  rules: grouped[s] ?? const [],
+                  outerIndex: i,
+                  canEdit: true,
+                );
+              },
+            );
+          }
+          return ListView.builder(
             padding: const EdgeInsets.all(AppSizes.lg),
-            buildDefaultDragHandles: false,
             itemCount: spaces.length,
-            onReorder: (oldIdx, newIdx) => _reorderSpaces(
-              spaces: spaces,
-              grouped: grouped,
-              oldIdx: oldIdx,
-              newIdx: newIdx,
-            ),
             itemBuilder: (context, i) {
               final s = spaces[i];
               return _SpaceGroup(
@@ -129,6 +145,7 @@ class _RuleEditorScreenState extends ConsumerState<RuleEditorScreen> {
                 space: s,
                 rules: grouped[s] ?? const [],
                 outerIndex: i,
+                canEdit: false,
               );
             },
           );
@@ -164,10 +181,12 @@ class _SpaceGroup extends ConsumerStatefulWidget {
     required this.space,
     required this.rules,
     required this.outerIndex,
+    required this.canEdit,
   });
   final String space;
   final List<SchoolRule> rules;
   final int outerIndex;
+  final bool canEdit;
 
   @override
   ConsumerState<_SpaceGroup> createState() => _SpaceGroupState();
@@ -188,18 +207,19 @@ class _SpaceGroupState extends ConsumerState<_SpaceGroup> {
           children: [
             Row(
               children: [
-                // Drag handle for outer (space) reordering — long press + drag
-                ReorderableDragStartListener(
-                  index: widget.outerIndex,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                    child: Icon(
-                      Icons.drag_indicator_rounded,
-                      size: 22,
-                      color: AppColors.textTertiary,
+                // Drag handle for outer (space) reordering — admin only
+                if (widget.canEdit)
+                  ReorderableDragStartListener(
+                    index: widget.outerIndex,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      child: Icon(
+                        Icons.drag_indicator_rounded,
+                        size: 22,
+                        color: AppColors.textTertiary,
+                      ),
                     ),
                   ),
-                ),
                 Expanded(
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
@@ -248,26 +268,34 @@ class _SpaceGroupState extends ConsumerState<_SpaceGroup> {
               ],
             ),
             if (_expanded)
-              ReorderableListView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                buildDefaultDragHandles: true,
-                onReorder: (oldIdx, newIdx) async {
-                  if (newIdx > oldIdx) newIdx -= 1;
-                  final reordered = [...sorted];
-                  final item = reordered.removeAt(oldIdx);
-                  reordered.insert(newIdx, item);
-                  await ref
-                      .read(schoolRepositoryProvider)
-                      .reorderRules(reordered);
-                  ref.invalidate(allSchoolRulesProvider);
-                  ref.invalidate(schoolRulesProvider);
-                },
-                children: [
-                  for (final r in sorted)
-                    _RuleTile(key: ValueKey(r.id), rule: r),
-                ],
-              ),
+              if (widget.canEdit)
+                ReorderableListView(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: true,
+                  onReorder: (oldIdx, newIdx) async {
+                    if (newIdx > oldIdx) newIdx -= 1;
+                    final reordered = [...sorted];
+                    final item = reordered.removeAt(oldIdx);
+                    reordered.insert(newIdx, item);
+                    await ref
+                        .read(schoolRepositoryProvider)
+                        .reorderRules(reordered);
+                    ref.invalidate(allSchoolRulesProvider);
+                    ref.invalidate(schoolRulesProvider);
+                  },
+                  children: [
+                    for (final r in sorted)
+                      _RuleTile(key: ValueKey(r.id), rule: r, canEdit: true),
+                  ],
+                )
+              else
+                Column(
+                  children: [
+                    for (final r in sorted)
+                      _RuleTile(key: ValueKey(r.id), rule: r, canEdit: false),
+                  ],
+                ),
           ],
         ),
       ),
@@ -276,11 +304,39 @@ class _SpaceGroupState extends ConsumerState<_SpaceGroup> {
 }
 
 class _RuleTile extends ConsumerWidget {
-  const _RuleTile({super.key, required this.rule});
+  const _RuleTile({super.key, required this.rule, required this.canEdit});
   final SchoolRule rule;
+  final bool canEdit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final categoryBadge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.categoryColor(rule.category).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        rule.category,
+        style: GoogleFonts.notoSansKr(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: AppColors.categoryColor(rule.category),
+        ),
+      ),
+    );
+
+    final ruleText = Text(
+      rule.ruleText,
+      style: GoogleFonts.notoSansKr(
+        fontSize: 13,
+        height: 1.4,
+        color:
+            rule.isActive ? AppColors.textPrimary : AppColors.textTertiary,
+        decoration: rule.isActive ? null : TextDecoration.lineThrough,
+      ),
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -288,87 +344,106 @@ class _RuleTile extends ConsumerWidget {
         color: rule.isActive ? AppColors.background : AppColors.borderLight,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.drag_handle, size: 18, color: AppColors.textTertiary),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.categoryColor(rule.category).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              rule.category,
-              style: GoogleFonts.notoSansKr(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: AppColors.categoryColor(rule.category),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              rule.ruleText,
-              style: GoogleFonts.notoSansKr(
-                fontSize: 13,
-                color: rule.isActive
-                    ? AppColors.textPrimary
-                    : AppColors.textTertiary,
-                decoration: rule.isActive ? null : TextDecoration.lineThrough,
-              ),
-            ),
-          ),
-          Switch.adaptive(
-            value: rule.isActive,
-            onChanged: (v) async {
-              await ref
-                  .read(schoolRepositoryProvider)
-                  .updateRule(rule.id, {'is_active': v});
-              ref.invalidate(allSchoolRulesProvider);
-              ref.invalidate(schoolRulesProvider);
-            },
-          ),
-          IconButton(
-            tooltip: '편집',
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            onPressed: () => _showEdit(context, ref, rule),
-          ),
-          IconButton(
-            tooltip: '삭제',
-            icon: const Icon(Icons.delete_outline_rounded,
-                size: 18, color: AppColors.danger),
-            onPressed: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('삭제하시겠어요?'),
-                  content: const Text('규칙을 영구 삭제합니다. 이미 등록된 학생 응답 데이터는 유지됩니다.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('취소'),
-                    ),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.danger,
+      child: canEdit
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      categoryBadge,
+                      const SizedBox(height: 4),
+                      ruleText,
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Transform.scale(
+                  scale: 0.85,
+                  child: Switch.adaptive(
+                    value: rule.isActive,
+                    onChanged: (v) async {
+                      await ref
+                          .read(schoolRepositoryProvider)
+                          .updateRule(rule.id, {'is_active': v});
+                      ref.invalidate(allSchoolRulesProvider);
+                      ref.invalidate(schoolRulesProvider);
+                    },
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded, size: 20),
+                  padding: EdgeInsets.zero,
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      _showEdit(context, ref, rule);
+                    } else if (value == 'delete') {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('삭제하시겠어요?'),
+                          content: const Text(
+                              '규칙을 영구 삭제합니다. 이미 등록된 학생 응답 데이터는 유지됩니다.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('취소'),
+                            ),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.danger,
+                              ),
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('삭제'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok == true) {
+                        await ref
+                            .read(schoolRepositoryProvider)
+                            .deleteRule(rule.id);
+                        ref.invalidate(allSchoolRulesProvider);
+                        ref.invalidate(schoolRulesProvider);
+                      }
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text('편집'),
+                        ],
                       ),
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('삭제'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded,
+                              size: 18, color: AppColors.danger),
+                          SizedBox(width: 8),
+                          Text('삭제',
+                              style: TextStyle(color: AppColors.danger)),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              );
-              if (ok == true) {
-                await ref.read(schoolRepositoryProvider).deleteRule(rule.id);
-                ref.invalidate(allSchoolRulesProvider);
-                ref.invalidate(schoolRulesProvider);
-              }
-            },
-          ),
-        ],
-      ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                categoryBadge,
+                const SizedBox(width: 8),
+                Expanded(child: ruleText),
+              ],
+            ),
     );
   }
 
