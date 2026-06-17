@@ -22,6 +22,16 @@ class AuthRepository {
 
   Future<void> signOut() => _c.auth.signOut();
 
+  /// 계정 완전 삭제 (Apple Guideline 5.1.1 대응).
+  /// Supabase RPC가 auth.users를 삭제하면 CASCADE로 모든 사용자 데이터가 제거됨.
+  /// 삭제 후 로컬 세션도 정리.
+  Future<void> deleteAccount() async {
+    final user = _c.auth.currentUser;
+    if (user == null) throw StateError('로그인 상태가 아닙니다.');
+    await _c.rpc('delete_my_account');
+    await _c.auth.signOut();
+  }
+
   /// Create the profile row matching the current auth user.
   Future<Profile> createProfile({
     required String role,

@@ -8,10 +8,12 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/category_radar_chart.dart';
 import '../../../shared/widgets/participation_heatmap.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../points/providers/points_provider.dart';
 import '../providers/student_stats_provider.dart';
 
@@ -252,9 +254,141 @@ class MyPageScreen extends ConsumerWidget {
               },
             ),
           ),
+
+          // 계정 관리
+          const SectionHeader(title: '⚙️ 계정 관리'),
+          PbsCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded,
+                      color: AppColors.textSecondary),
+                  title: Text(
+                    '로그아웃',
+                    style: GoogleFonts.notoSansKr(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  onTap: () async {
+                    await ref.read(authRepositoryProvider).signOut();
+                    if (context.mounted) context.go('/welcome');
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.person_remove_rounded,
+                      color: AppColors.danger),
+                  title: Text(
+                    '회원 탈퇴',
+                    style: GoogleFonts.notoSansKr(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '계정과 모든 기록이 영구 삭제됩니다',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  onTap: () => _confirmDeleteAccount(context, ref),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteAccount(
+      BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          '회원 탈퇴',
+          style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900),
+        ),
+        content: Text(
+          '정말 탈퇴하시겠어요?\n\n'
+          '• 계정 정보, 자기점검 기록, 포인트, 뱃지가\n'
+          '  모두 영구적으로 삭제됩니다.\n'
+          '• 삭제된 데이터는 복구할 수 없습니다.',
+          style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              '취소',
+              style: GoogleFonts.notoSansKr(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              '탈퇴하기',
+              style: GoogleFonts.notoSansKr(
+                fontWeight: FontWeight.w800,
+                color: AppColors.danger,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      ref.invalidate(profileProvider);
+      if (!context.mounted) return;
+      Navigator.pop(context); // 로딩 닫기
+      context.go('/welcome');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '회원 탈퇴가 완료되었습니다.',
+            style: GoogleFonts.notoSansKr(),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // 로딩 닫기
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('탈퇴 실패',
+              style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+          content: Text(
+            translateError(e),
+            style: GoogleFonts.notoSansKr(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('확인', style: GoogleFonts.notoSansKr()),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
 

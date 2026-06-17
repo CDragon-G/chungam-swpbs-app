@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -77,12 +78,9 @@ class TeacherHomeScreen extends ConsumerWidget {
                 ),
               ),
               IconButton(
-                tooltip: '로그아웃',
-                icon: const Icon(Icons.logout_rounded, size: 20),
-                onPressed: () async {
-                  await ref.read(authRepositoryProvider).signOut();
-                  if (context.mounted) context.go('/welcome');
-                },
+                tooltip: '계정',
+                icon: const Icon(Icons.more_vert_rounded, size: 20),
+                onPressed: () => _showAccountMenu(context, ref),
               ),
             ],
           ),
@@ -380,6 +378,135 @@ class TeacherHomeScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _showAccountMenu(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLg)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.logout_rounded,
+                  color: AppColors.textSecondary),
+              title: Text(
+                '로그아웃',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w700),
+              ),
+              onTap: () async {
+                Navigator.pop(sheetCtx);
+                await ref.read(authRepositoryProvider).signOut();
+                if (context.mounted) context.go('/welcome');
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.person_remove_rounded,
+                  color: AppColors.danger),
+              title: Text(
+                '회원 탈퇴',
+                style: GoogleFonts.notoSansKr(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.danger,
+                ),
+              ),
+              subtitle: Text(
+                '계정과 모든 기록이 영구 삭제됩니다',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _confirmDeleteAccount(context, ref);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteAccount(
+      BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('회원 탈퇴',
+            style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+        content: Text(
+          '정말 탈퇴하시겠어요?\n\n'
+          '• 계정 정보와 관련 기록이 모두 영구적으로 삭제됩니다.\n'
+          '• 삭제된 데이터는 복구할 수 없습니다.\n'
+          '• 학교 관리자인 경우, 탈퇴 전 다른 교사에게 관리자\n'
+          '  권한을 넘겨주는 것을 권장합니다.',
+          style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('취소',
+                style: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('탈퇴하기',
+                style: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w800, color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      ref.invalidate(profileProvider);
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      context.go('/welcome');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('회원 탈퇴가 완료되었습니다.',
+              style: GoogleFonts.notoSansKr()),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('탈퇴 실패',
+              style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+          content: Text(translateError(e),
+              style: GoogleFonts.notoSansKr(fontSize: 13)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('확인', style: GoogleFonts.notoSansKr()),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _showQr(BuildContext context, String code, String schoolName) {
