@@ -144,8 +144,9 @@ workflows:
           NEW_BUILD_NUMBER=$(($LATEST_BUILD_NUMBER + 1))
           echo "Latest build number found: $LATEST_BUILD_NUMBER"
           echo "Setting build number to: $NEW_BUILD_NUMBER"
+          # --build-name 생략 → pubspec.yaml의 version을 자동 사용 (0.4.2)
+          # --build-number만 TestFlight 충돌 방지용으로 자동 증가
           flutter build ipa --release \
-            --build-name=0.4.0 \
             --build-number=$NEW_BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
