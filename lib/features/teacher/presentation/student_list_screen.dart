@@ -1,11 +1,16 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../points/providers/points_provider.dart';
 import '../../school/providers/school_provider.dart';
 
@@ -81,6 +86,7 @@ class _State extends ConsumerState<StudentListScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: AppSizes.sm),
                       child: PbsCard(
+                        onTap: () => _showStudentMenu(s),
                         child: Row(
                           children: [
                             CircleAvatar(
@@ -119,6 +125,9 @@ class _State extends ConsumerState<StudentListScreen> {
                               ),
                             ),
                             _StudentPoints(userId: s['user_id'] as String),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.chevron_right_rounded,
+                                size: 18, color: AppColors.textTertiary),
                           ],
                         ),
                       ),
@@ -131,6 +140,186 @@ class _State extends ConsumerState<StudentListScreen> {
         },
       ),
     );
+  }
+
+  void _showStudentMenu(Map<String, dynamic> student) {
+    final name = student['nickname'] as String;
+    final label =
+        '$name (${student['grade']}학년 ${student['class_num']}반 ${student['student_num']}번)';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLg)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: GoogleFonts.notoSansKr(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.lock_reset_rounded,
+                  color: AppColors.teacherNavy),
+              title: Text(
+                '비밀번호 초기화',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                '임시 비밀번호를 발급해 학생에게 전달하세요',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _resetPassword(student);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resetPassword(Map<String, dynamic> student) async {
+    final name = student['nickname'] as String;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('비밀번호 초기화',
+            style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+        content: Text(
+          '$name 학생의 비밀번호를\n임시 비밀번호로 초기화할까요?\n\n'
+          '초기화 후 임시 비밀번호를 학생에게 전달하면,\n'
+          '학생이 그 비밀번호로 로그인할 수 있어요.',
+          style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('취소',
+                style: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('초기화',
+                style: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.teacherNavy)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    // 임시 비번 생성: 읽기 쉬운 8자리 (혼동 문자 제외)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final r = Random.secure();
+    final tempPw = List.generate(8, (_) => chars[r.nextInt(chars.length)]).join();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await ref.read(authRepositoryProvider).resetStudentPassword(
+            profileId: student['id'] as String,
+            newPassword: tempPw,
+          );
+      if (!mounted) return;
+      Navigator.pop(context); // 로딩 닫기
+      // 임시 비번 표시
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('초기화 완료',
+              style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$name 학생의 임시 비밀번호예요.\n학생에게 전달해주세요.',
+                style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSizes.md),
+                decoration: BoxDecoration(
+                  color: AppColors.teacherNavyLight,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  border: Border.all(color: AppColors.teacherNavy),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      tempPw,
+                      style: GoogleFonts.robotoMono(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                        color: AppColors.teacherNavy,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy_rounded,
+                          color: AppColors.teacherNavy),
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: tempPw));
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('임시 비밀번호를 복사했어요')),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '* 학생은 이 비밀번호로 로그인할 수 있어요.',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('확인',
+                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // 로딩 닫기
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(translateError(e))),
+      );
+    }
   }
 }
 

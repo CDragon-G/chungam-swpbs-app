@@ -234,16 +234,11 @@ class _State extends ConsumerState<StudentSignupScreen> {
     });
     try {
       final auth = ref.read(authRepositoryProvider);
-      await auth.signUp(
+      // 가입 시도 (이미 존재하는 이메일이면 로그인으로 복구)
+      await auth.signUpOrRecover(
         email: _email.text.trim(),
         password: _password.text,
       );
-      try {
-        await auth.signIn(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
-      } catch (_) {/* ignore */}
       await auth.createProfile(
         role: 'student',
         nickname: _nickname.text.trim(),
