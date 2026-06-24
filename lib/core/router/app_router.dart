@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_select_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/presentation/student_signup_screen.dart';
 import '../../features/auth/presentation/teacher_signup_screen.dart';
 import '../../features/auth/presentation/welcome_screen.dart';
@@ -28,7 +29,7 @@ import '../../shared/widgets/pbs_bottom_nav.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefresh(ref);
   return GoRouter(
-    initialLocation: '/welcome',
+    initialLocation: '/splash',
     refreshListenable: refresh,
     redirect: (context, state) {
       final loc = state.matchedLocation;
@@ -37,19 +38,32 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc.startsWith('/signup');
 
       final authValue = ref.read(authStateProvider);
+
+      // 1) 인증 상태 확인 중 → 스플래시 유지 (자동 로그인 진행 표시)
+      if (authValue.isLoading) {
+        return loc == '/splash' ? null : '/splash';
+      }
+
       final user = authValue.value;
       if (user == null) {
+        // 로그아웃 상태: 스플래시에 있으면 welcome으로, 인증 화면은 그대로
         return isAuthRoute ? null : '/welcome';
       }
 
+      // 2) 로그인됨 — 프로필 로딩 중이면 스플래시 유지
       final profileAsync = ref.read(profileProvider);
-      if (profileAsync.isLoading) return null;
+      if (profileAsync.isLoading) {
+        return loc == '/splash' ? null : '/splash';
+      }
       final profile = profileAsync.value;
 
       // signed in but no profile row yet — allow signup screens to finish
-      if (profile == null) return isAuthRoute ? null : '/signup-select';
+      if (profile == null) {
+        return loc.startsWith('/signup') ? null : '/signup-select';
+      }
 
-      if (isAuthRoute) {
+      // 3) 프로필 확인 완료 → 역할별 홈으로 (스플래시·인증 화면에서 진입)
+      if (isAuthRoute || loc == '/splash') {
         return profile.role == 'teacher' ? '/teacher/home' : '/student/home';
       }
       if (profile.role == 'student' && loc.startsWith('/teacher')) {
@@ -62,6 +76,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       // Auth
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/welcome', builder: (_, __) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/signup-select', builder: (_, __) => const SignupSelectScreen()),

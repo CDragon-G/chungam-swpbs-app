@@ -205,6 +205,78 @@ class TeacherHomeScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    // 교사 코드: 관리자에게만 표시 (동료 교사 가입용)
+                    if (profile != null &&
+                        profile.isAdminTeacher &&
+                        sc.teacherCode != null) ...[
+                      const SizedBox(height: AppSizes.sm),
+                      Container(
+                        padding: const EdgeInsets.all(AppSizes.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusMd),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.lock_rounded,
+                                        size: 12, color: Colors.white70),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '교사 코드 (동료 교사 가입용)',
+                                      style: GoogleFonts.notoSansKr(
+                                        fontSize: 11,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  sc.teacherCode!,
+                                  style: GoogleFonts.robotoMono(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              tooltip: '교사 코드 복사',
+                              color: Colors.white,
+                              icon: const Icon(Icons.copy_rounded),
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                    ClipboardData(text: sc.teacherCode!));
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('교사 코드를 복사했어요')),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '⚠️ 학생에게는 공유하지 마세요. 동료 교사에게만 개별 전달하세요.',
+                        style: GoogleFonts.notoSansKr(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               );

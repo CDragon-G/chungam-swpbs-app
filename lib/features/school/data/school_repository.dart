@@ -35,6 +35,7 @@ class SchoolRepository {
     }
 
     final code = await SchoolCodeGenerator.generateUnique();
+    final teacherCode = SchoolCodeGenerator.generateTeacherCode();
     final inserted = await _c
         .from('schools')
         .insert({
@@ -42,6 +43,7 @@ class SchoolRepository {
           'region': region,
           'level': level,
           'school_code': code,
+          'teacher_code': teacherCode,
           'created_by': user.id,
         })
         .select()
@@ -52,11 +54,22 @@ class SchoolRepository {
     return school;
   }
 
+  /// 학생 가입용: school_code로 학교 조회.
   Future<School?> findByCode(String code) async {
     final row = await _c
         .from('schools')
         .select()
         .eq('school_code', code)
+        .maybeSingle();
+    return row == null ? null : School.fromMap(row);
+  }
+
+  /// 교사 가입용: teacher_code로 학교 조회 (기존 학교 참여 시).
+  Future<School?> findByTeacherCode(String code) async {
+    final row = await _c
+        .from('schools')
+        .select()
+        .eq('teacher_code', code)
         .maybeSingle();
     return row == null ? null : School.fromMap(row);
   }

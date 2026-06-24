@@ -104,7 +104,7 @@ class _State extends ConsumerState<TeacherSignupScreen> {
           return null;
         } else {
           if (_verifiedSchool == null) {
-            return '학교 코드를 입력하고 "확인" 버튼을 눌러주세요.';
+            return '교사 코드를 입력하고 "확인" 버튼을 눌러주세요.';
           }
           return null;
         }
@@ -191,9 +191,9 @@ class _State extends ConsumerState<TeacherSignupScreen> {
 
   Future<void> _verifyCode() async {
     final code = SchoolCodeGenerator.normalize(_schoolCode.text);
-    if (code.length < 4) {
+    if (code.length < 6) {
       setState(() {
-        _codeError = '학교 코드를 다시 확인해주세요.';
+        _codeError = '교사 코드를 다시 확인해주세요.';
         _verifiedSchool = null;
       });
       return;
@@ -203,10 +203,13 @@ class _State extends ConsumerState<TeacherSignupScreen> {
       _codeError = null;
     });
     try {
-      final s = await ref.read(schoolRepositoryProvider).findByCode(code);
+      // 교사는 교사 전용 코드(teacher_code)로 검증 (학생 코드와 분리)
+      final s = await ref.read(schoolRepositoryProvider).findByTeacherCode(code);
       setState(() {
         _verifiedSchool = s;
-        if (s == null) _codeError = '학교 코드가 일치하지 않아요.';
+        if (s == null) {
+          _codeError = '교사 코드가 일치하지 않아요. 학교 관리자에게 받은 코드인지 확인해주세요.';
+        }
       });
     } catch (e) {
       setState(() => _codeError = translateError(e));
@@ -276,7 +279,7 @@ class _State extends ConsumerState<TeacherSignupScreen> {
       case 3:
         return '비밀번호';
       case 4:
-        return _mode == _Mode.newSchool ? '학교 정보' : '학교 코드';
+        return _mode == _Mode.newSchool ? '학교 정보' : '교사 코드';
       case 5:
         return '동의';
     }
@@ -545,8 +548,9 @@ class _State extends ConsumerState<TeacherSignupScreen> {
       );
 
   Widget _stepJoinSchool() => WizardActiveStep(
-        prompt: '학교 코드를\n입력해주세요',
-        helper: '학교 관리자에게 받은 6자리 코드를 입력하세요.',
+        prompt: '교사 코드를\n입력해주세요',
+        helper: '학교 관리자(최초 등록 교사)에게 받은 8자리 교사 코드를 입력하세요.\n'
+            '학생용 학교 코드와는 다른 코드예요.',
         input: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -556,10 +560,10 @@ class _State extends ConsumerState<TeacherSignupScreen> {
                   child: PbsTextField(
                     controller: _schoolCode,
                     focusNode: _schoolCodeFocus,
-                    label: '학교 코드',
-                    hint: '예: AA8585',
+                    label: '교사 코드',
+                    hint: '예: K7M2X9PQ',
                     textCapitalization: TextCapitalization.characters,
-                    maxLength: 6,
+                    maxLength: 8,
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
                     ],

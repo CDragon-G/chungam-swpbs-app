@@ -5,6 +5,7 @@ class School {
     required this.region,
     required this.level,
     required this.schoolCode,
+    this.teacherCode,
     this.createdBy,
     required this.createdAt,
   });
@@ -14,6 +15,7 @@ class School {
   final String region;
   final String level;
   final String schoolCode;
+  final String? teacherCode;
   final String? createdBy;
   final DateTime createdAt;
 
@@ -23,6 +25,7 @@ class School {
         region: map['region'] as String,
         level: map['level'] as String,
         schoolCode: map['school_code'] as String,
+        teacherCode: map['teacher_code'] as String?,
         createdBy: map['created_by'] as String?,
         createdAt: DateTime.parse(map['created_at'] as String),
       );
