@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/providers/profile_provider.dart';
 import '../data/school_repository.dart';
+import '../models/roster_entry.dart';
 import '../models/school.dart';
 import '../models/school_rule.dart';
 
@@ -47,4 +48,11 @@ final schoolTeachersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) 
   if (profile?.schoolId == null) return [];
   final repo = ref.read(schoolRepositoryProvider);
   return repo.fetchTeachers(profile!.schoolId!);
+});
+
+final schoolRosterProvider = FutureProvider<List<RosterEntry>>((ref) async {
+  final profile = ref.watch(profileProvider).value;
+  if (profile?.schoolId == null) return [];
+  final repo = ref.read(schoolRepositoryProvider);
+  return repo.fetchRoster(profile!.schoolId!);
 });

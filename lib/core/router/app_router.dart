@@ -19,6 +19,7 @@ import '../../features/student/presentation/my_page_screen.dart';
 import '../../features/student/presentation/student_home_screen.dart';
 import '../../features/teacher/presentation/announcement_screen.dart';
 import '../../features/teacher/presentation/dashboard_screen.dart';
+import '../../features/teacher/presentation/roster_screen.dart';
 import '../../features/teacher/presentation/rule_editor_screen.dart';
 import '../../features/teacher/presentation/student_list_screen.dart';
 import '../../features/teacher/presentation/teacher_home_screen.dart';
@@ -108,6 +109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/teacher/dashboard', builder: (_, __) => const DashboardScreen()),
           GoRoute(path: '/teacher/students', builder: (_, __) => const StudentListScreen()),
           GoRoute(path: '/teacher/rules', builder: (_, __) => const RuleEditorScreen()),
+          GoRoute(path: '/teacher/roster', builder: (_, __) => const RosterScreen()),
           GoRoute(path: '/teacher/store', builder: (_, __) => const TeacherStoreScreen()),
           GoRoute(path: '/teacher/announce', builder: (_, __) => const AnnouncementScreen()),
           GoRoute(path: '/teacher/permissions', builder: (_, __) => const TeacherManagementScreen()),
