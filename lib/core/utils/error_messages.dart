@@ -27,6 +27,8 @@ String translateError(Object error) {
   // ── Supabase DB / RLS ────────────────────────────────────────
   if (error is PostgrestException) {
     final c = error.code;
+    // P0001 = RPC 내부 raise exception → 우리가 작성한 한글 메시지를 그대로 노출
+    if (c == 'P0001' && error.message.trim().isNotEmpty) return error.message;
     if (c == '42501') return '권한이 없어요. 다시 로그인 후 시도해주세요.';
     if (c == '23505') return '이미 존재하는 데이터예요.';
     if (c == '23503') return '연결된 정보가 없어 처리할 수 없어요.';

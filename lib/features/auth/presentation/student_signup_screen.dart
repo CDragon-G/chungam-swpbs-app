@@ -17,8 +17,9 @@ import '../../school/models/school.dart';
 import '../../school/providers/school_provider.dart';
 import '../providers/auth_provider.dart';
 
-/// 토스 스타일 누적식 회원가입 화면.
-/// 이전 입력은 위로 쌓이고, 새 입력 필드는 항상 아래(키보드 위)에 등장합니다.
+/// 명단 기반 학생 회원가입 (토스 스타일 누적식).
+/// 순서: 학교코드 → 학년/반/번호 → PIN(이름 확인) → 이메일 → 비밀번호 → 동의
+/// 이름은 학교가 등록한 명단에서 가져오므로 직접 입력하지 않는다.
 class StudentSignupScreen extends ConsumerStatefulWidget {
   const StudentSignupScreen({super.key});
 
@@ -32,23 +33,27 @@ class _State extends ConsumerState<StudentSignupScreen> {
   final _scrollController = ScrollController();
   int _step = 0;
 
-  final _nickname = TextEditingController();
-  final _email = TextEditingController();
-  final _password = TextEditingController();
   final _schoolCode = TextEditingController();
   final _grade = TextEditingController();
   final _classNum = TextEditingController();
   final _studentNum = TextEditingController();
+  final _pin = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
 
-  final _nicknameFocus = FocusNode();
-  final _emailFocus = FocusNode();
-  final _passwordFocus = FocusNode();
   final _schoolFocus = FocusNode();
   final _gradeFocus = FocusNode();
+  final _pinFocus = FocusNode();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
   School? _verifiedSchool;
   bool _verifying = false;
   String? _codeError;
+
+  String? _verifiedName; // 명단에서 확인된 학생 이름
+  bool _pinVerifying = false;
+  String? _pinError;
 
   bool _agreedPrivacy = false;
   bool _agreedAge = false;
@@ -60,7 +65,7 @@ class _State extends ConsumerState<StudentSignupScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _nicknameFocus.requestFocus();
+      _schoolFocus.requestFocus();
     });
   }
 
@@ -68,22 +73,22 @@ class _State extends ConsumerState<StudentSignupScreen> {
   void dispose() {
     _scrollController.dispose();
     for (final c in [
-      _nickname,
-      _email,
-      _password,
       _schoolCode,
       _grade,
       _classNum,
       _studentNum,
+      _pin,
+      _email,
+      _password,
     ]) {
       c.dispose();
     }
     for (final f in [
-      _nicknameFocus,
-      _emailFocus,
-      _passwordFocus,
       _schoolFocus,
       _gradeFocus,
+      _pinFocus,
+      _emailFocus,
+      _passwordFocus,
     ]) {
       f.dispose();
     }
@@ -95,32 +100,32 @@ class _State extends ConsumerState<StudentSignupScreen> {
   String? _validateStep() {
     switch (_step) {
       case 0:
-        final v = _nickname.text.trim();
-        if (v.isEmpty) return '이름(닉네임)을 입력해주세요.';
-        if (v.length > 20) return '이름은 20자 이하로 입력해주세요.';
+        if (_verifiedSchool == null) {
+          return '학교 코드를 입력하고 "확인" 버튼을 눌러주세요.';
+        }
         return null;
       case 1:
+        if (int.tryParse(_grade.text) == null) return '학년을 숫자로 입력해주세요.';
+        if (int.tryParse(_classNum.text) == null) return '반을 숫자로 입력해주세요.';
+        if (int.tryParse(_studentNum.text) == null) return '번호를 숫자로 입력해주세요.';
+        return null;
+      case 2:
+        if (_verifiedName == null) {
+          return 'PIN을 입력하고 "확인" 버튼을 눌러주세요.';
+        }
+        return null;
+      case 3:
         final v = _email.text.trim();
         if (v.isEmpty) return '이메일을 입력해주세요.';
         if (!v.contains('@') || !v.contains('.')) {
           return '이메일 형식이 올바르지 않아요. 예: name@gmail.com';
         }
         return null;
-      case 2:
+      case 4:
         if (_password.text.isEmpty) return '비밀번호를 입력해주세요.';
         if (_password.text.length < 6) {
           return '비밀번호는 6자 이상이어야 해요. (현재 ${_password.text.length}자)';
         }
-        return null;
-      case 3:
-        if (_verifiedSchool == null) {
-          return '학교 코드를 입력하고 "확인" 버튼을 눌러주세요.';
-        }
-        return null;
-      case 4:
-        if (int.tryParse(_grade.text) == null) return '학년을 숫자로 입력해주세요.';
-        if (int.tryParse(_classNum.text) == null) return '반을 숫자로 입력해주세요.';
-        if (int.tryParse(_studentNum.text) == null) return '번호를 숫자로 입력해주세요.';
         return null;
       case 5:
         if (!_agreedPrivacy) return '개인정보처리방침에 동의해주세요.';
@@ -143,7 +148,6 @@ class _State extends ConsumerState<StudentSignupScreen> {
       return;
     }
     setState(() => _step++);
-    // 다음 스텝의 입력 필드로 포커스 이동 + 스크롤
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusCurrent();
       _scrollToBottom();
@@ -153,16 +157,16 @@ class _State extends ConsumerState<StudentSignupScreen> {
   void _focusCurrent() {
     switch (_step) {
       case 1:
-        _emailFocus.requestFocus();
+        _gradeFocus.requestFocus();
         break;
       case 2:
-        _passwordFocus.requestFocus();
+        _pinFocus.requestFocus();
         break;
       case 3:
-        _schoolFocus.requestFocus();
+        _emailFocus.requestFocus();
         break;
       case 4:
-        _gradeFocus.requestFocus();
+        _passwordFocus.requestFocus();
         break;
       default:
         FocusScope.of(context).unfocus();
@@ -227,6 +231,46 @@ class _State extends ConsumerState<StudentSignupScreen> {
     }
   }
 
+  Future<void> _verifyPin() async {
+    if (_verifiedSchool == null) return;
+    final grade = int.tryParse(_grade.text);
+    final classNum = int.tryParse(_classNum.text);
+    final studentNum = int.tryParse(_studentNum.text);
+    final pin = _pin.text.trim();
+    if (grade == null || classNum == null || studentNum == null) {
+      setState(() => _pinError = '학년·반·번호를 먼저 확인해주세요.');
+      return;
+    }
+    if (pin.length < 4) {
+      setState(() {
+        _pinError = 'PIN 4자리를 입력해주세요.';
+        _verifiedName = null;
+      });
+      return;
+    }
+    setState(() {
+      _pinVerifying = true;
+      _pinError = null;
+    });
+    try {
+      final name = await ref.read(schoolRepositoryProvider).verifyRosterPin(
+            schoolId: _verifiedSchool!.id,
+            grade: grade,
+            classNum: classNum,
+            studentNum: studentNum,
+            pin: pin,
+          );
+      setState(() => _verifiedName = name);
+    } catch (e) {
+      setState(() {
+        _verifiedName = null;
+        _pinError = translateError(e);
+      });
+    } finally {
+      if (mounted) setState(() => _pinVerifying = false);
+    }
+  }
+
   Future<void> _submit() async {
     setState(() {
       _loading = true;
@@ -234,18 +278,30 @@ class _State extends ConsumerState<StudentSignupScreen> {
     });
     try {
       final auth = ref.read(authRepositoryProvider);
-      // 가입 시도 (이미 존재하는 이메일이면 로그인으로 복구)
+      final repo = ref.read(schoolRepositoryProvider);
+      final grade = int.parse(_grade.text);
+      final classNum = int.parse(_classNum.text);
+      final studentNum = int.parse(_studentNum.text);
+
       await auth.signUpOrRecover(
         email: _email.text.trim(),
         password: _password.text,
       );
       await auth.createProfile(
         role: 'student',
-        nickname: _nickname.text.trim(),
+        nickname: _verifiedName!, // 명단의 실명 사용
         schoolId: _verifiedSchool!.id,
-        grade: int.parse(_grade.text),
-        classNum: int.parse(_classNum.text),
-        studentNum: int.parse(_studentNum.text),
+        grade: grade,
+        classNum: classNum,
+        studentNum: studentNum,
+      );
+      // 명단 잠금 (재가입 방지)
+      await repo.claimRoster(
+        schoolId: _verifiedSchool!.id,
+        grade: grade,
+        classNum: classNum,
+        studentNum: studentNum,
+        pin: _pin.text.trim(),
       );
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('last_login_email', _email.text.trim());
@@ -259,42 +315,42 @@ class _State extends ConsumerState<StudentSignupScreen> {
     }
   }
 
-  // ── 토스 스타일: 완료된 스텝들을 위에 누적해서 보여줌 ──────────────
-
-  String _summaryFor(int step) {
-    switch (step) {
-      case 0:
-        return _nickname.text.trim();
-      case 1:
-        return _email.text.trim();
-      case 2:
-        return '•' * _password.text.length;
-      case 3:
-        return _verifiedSchool == null
-            ? ''
-            : '${_verifiedSchool!.name} (${_verifiedSchool!.region})';
-      case 4:
-        return '${_grade.text}학년 ${_classNum.text}반 ${_studentNum.text}번';
-      case 5:
-        return '동의 완료';
-    }
-    return '';
-  }
+  // ── 요약 타일 ──────────────────────────────────────────────
 
   String _labelFor(int step) {
     switch (step) {
       case 0:
-        return '이름';
-      case 1:
-        return '이메일';
-      case 2:
-        return '비밀번호';
-      case 3:
         return '학교';
-      case 4:
+      case 1:
         return '학년·반·번호';
+      case 2:
+        return '이름 확인';
+      case 3:
+        return '이메일';
+      case 4:
+        return '비밀번호';
       case 5:
         return '동의';
+    }
+    return '';
+  }
+
+  String _summaryFor(int step) {
+    switch (step) {
+      case 0:
+        return _verifiedSchool == null
+            ? ''
+            : '${_verifiedSchool!.name} (${_verifiedSchool!.region})';
+      case 1:
+        return '${_grade.text}학년 ${_classNum.text}반 ${_studentNum.text}번';
+      case 2:
+        return _verifiedName ?? '';
+      case 3:
+        return _email.text.trim();
+      case 4:
+        return '•' * _password.text.length;
+      case 5:
+        return '동의 완료';
     }
     return '';
   }
@@ -320,7 +376,6 @@ class _State extends ConsumerState<StudentSignupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ① 이전 입력들 — 가장 오래된 것이 위, 최신이 아래
                     for (int i = 0; i < _step; i++)
                       WizardSummaryTile(
                         label: _labelFor(i),
@@ -328,7 +383,6 @@ class _State extends ConsumerState<StudentSignupScreen> {
                         accentColor: AppColors.studentGreen,
                         onTap: () => _jumpToStep(i),
                       ),
-                    // ② 현재 스텝 — 항상 맨 아래 (키보드 바로 위)
                     _activeStep(),
                   ],
                 ),
@@ -350,21 +404,12 @@ class _State extends ConsumerState<StudentSignupScreen> {
   Widget _activeStep() {
     switch (_step) {
       case 0:
-        return WizardActiveStep(
-          prompt: '안녕하세요!\n어떻게 불러드릴까요?',
-          helper: '닉네임 또는 이름을 입력하면 화면에 표시돼요.',
-          input: PbsTextField(
-            controller: _nickname,
-            focusNode: _nicknameFocus,
-            label: '이름 / 닉네임',
-            hint: '예: 홍길동',
-            onChanged: (_) {
-              if (_stepError != null) setState(() => _stepError = null);
-            },
-            onSubmitted: (_) => _next(),
-          ),
-        );
+        return _stepSchoolCode();
       case 1:
+        return _stepClass();
+      case 2:
+        return _stepPin();
+      case 3:
         return WizardActiveStep(
           prompt: '이메일을\n입력해주세요',
           helper: '로그인 시 사용해요. 평소 쓰는 이메일을 추천합니다.',
@@ -380,7 +425,7 @@ class _State extends ConsumerState<StudentSignupScreen> {
             onSubmitted: (_) => _next(),
           ),
         );
-      case 2:
+      case 4:
         return WizardActiveStep(
           prompt: '비밀번호를\n설정해주세요',
           helper: '6자 이상 입력해주세요. 단순한 비밀번호는 피해주세요.',
@@ -402,146 +447,6 @@ class _State extends ConsumerState<StudentSignupScreen> {
               ),
               const SizedBox(height: 10),
               WizardPasswordStrength(text: _password.text),
-            ],
-          ),
-        );
-      case 3:
-        return WizardActiveStep(
-          prompt: '학교 코드를\n입력해주세요',
-          helper: '담임선생님께 받은 6자리 코드를 입력하세요.',
-          input: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: PbsTextField(
-                      controller: _schoolCode,
-                      focusNode: _schoolFocus,
-                      label: '학교 코드',
-                      hint: '예: AA8585',
-                      textCapitalization: TextCapitalization.characters,
-                      maxLength: 6,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'[A-Z0-9]')),
-                      ],
-                      onChanged: (_) => setState(() {
-                        _verifiedSchool = null;
-                        _codeError = null;
-                      }),
-                    ),
-                  ),
-                  const SizedBox(width: AppSizes.md),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 22),
-                    child: SizedBox(
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: _verifying ? null : _verifyCode,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.studentGreen,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppSizes.radiusMd),
-                          ),
-                        ),
-                        child: _verifying
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                '확인',
-                                style: GoogleFonts.notoSansKr(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (_codeError != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _codeError!,
-                  style: GoogleFonts.notoSansKr(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.danger,
-                  ),
-                ),
-              ],
-              if (_verifiedSchool != null) ...[
-                const SizedBox(height: 12),
-                PbsCard(
-                  color: AppColors.studentGreenLight,
-                  border: Border.all(color: AppColors.studentGreen),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle_rounded,
-                          color: AppColors.studentGreen),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '${_verifiedSchool!.name} (${_verifiedSchool!.region})',
-                          style: GoogleFonts.notoSansKr(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        );
-      case 4:
-        return WizardActiveStep(
-          prompt: '학년·반·번호를\n입력해주세요',
-          helper: '담임선생님이 학급별 관리에 사용해요.',
-          input: Row(
-            children: [
-              Expanded(
-                child: PbsTextField(
-                  controller: _grade,
-                  focusNode: _gradeFocus,
-                  label: '학년',
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) {
-                    if (_stepError != null) setState(() => _stepError = null);
-                  },
-                ),
-              ),
-              const SizedBox(width: AppSizes.md),
-              Expanded(
-                child: PbsTextField(
-                  controller: _classNum,
-                  label: '반',
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) {
-                    if (_stepError != null) setState(() => _stepError = null);
-                  },
-                ),
-              ),
-              const SizedBox(width: AppSizes.md),
-              Expanded(
-                child: PbsTextField(
-                  controller: _studentNum,
-                  label: '번호',
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) {
-                    if (_stepError != null) setState(() => _stepError = null);
-                  },
-                ),
-              ),
             ],
           ),
         );
@@ -573,4 +478,226 @@ class _State extends ConsumerState<StudentSignupScreen> {
     }
     return const SizedBox.shrink();
   }
+
+  Widget _stepSchoolCode() => WizardActiveStep(
+        prompt: '우리 학교\n코드를 입력해주세요',
+        helper: '담임선생님께 받은 학교 코드를 입력하세요.',
+        input: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: PbsTextField(
+                    controller: _schoolCode,
+                    focusNode: _schoolFocus,
+                    label: '학교 코드',
+                    hint: '예: AA8585',
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 6,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
+                    ],
+                    onChanged: (_) => setState(() {
+                      _verifiedSchool = null;
+                      _codeError = null;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: AppSizes.md),
+                Padding(
+                  padding: const EdgeInsets.only(top: 22),
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _verifying ? null : _verifyCode,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.studentGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusMd),
+                        ),
+                      ),
+                      child: _verifying
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text('확인',
+                              style: GoogleFonts.notoSansKr(
+                                  fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_codeError != null) ...[
+              const SizedBox(height: 8),
+              Text(_codeError!,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.danger)),
+            ],
+            if (_verifiedSchool != null) ...[
+              const SizedBox(height: 12),
+              PbsCard(
+                color: AppColors.studentGreenLight,
+                border: Border.all(color: AppColors.studentGreen),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        color: AppColors.studentGreen),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${_verifiedSchool!.name} (${_verifiedSchool!.region})',
+                        style: GoogleFonts.notoSansKr(
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+
+  Widget _stepClass() => WizardActiveStep(
+        prompt: '학년·반·번호를\n입력해주세요',
+        helper: '선생님이 등록한 명단의 번호와 같아야 해요.',
+        input: Row(
+          children: [
+            Expanded(
+              child: PbsTextField(
+                controller: _grade,
+                focusNode: _gradeFocus,
+                label: '학년',
+                keyboardType: TextInputType.number,
+                onChanged: (_) {
+                  if (_stepError != null) setState(() => _stepError = null);
+                },
+              ),
+            ),
+            const SizedBox(width: AppSizes.md),
+            Expanded(
+              child: PbsTextField(
+                controller: _classNum,
+                label: '반',
+                keyboardType: TextInputType.number,
+                onChanged: (_) {
+                  if (_stepError != null) setState(() => _stepError = null);
+                },
+              ),
+            ),
+            const SizedBox(width: AppSizes.md),
+            Expanded(
+              child: PbsTextField(
+                controller: _studentNum,
+                label: '번호',
+                keyboardType: TextInputType.number,
+                onChanged: (_) {
+                  if (_stepError != null) setState(() => _stepError = null);
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _stepPin() => WizardActiveStep(
+        prompt: '본인 확인을 위해\nPIN을 입력해주세요',
+        helper: '담임선생님께 받은 4자리 PIN을 입력하세요.',
+        input: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: PbsTextField(
+                    controller: _pin,
+                    focusNode: _pinFocus,
+                    label: 'PIN (4자리)',
+                    hint: '예: 0314',
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    onChanged: (_) => setState(() {
+                      _verifiedName = null;
+                      _pinError = null;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: AppSizes.md),
+                Padding(
+                  padding: const EdgeInsets.only(top: 22),
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _pinVerifying ? null : _verifyPin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.studentGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusMd),
+                        ),
+                      ),
+                      child: _pinVerifying
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text('확인',
+                              style: GoogleFonts.notoSansKr(
+                                  fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_pinError != null) ...[
+              const SizedBox(height: 8),
+              Text(_pinError!,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.danger)),
+            ],
+            if (_verifiedName != null) ...[
+              const SizedBox(height: 12),
+              PbsCard(
+                color: AppColors.studentGreenLight,
+                border: Border.all(color: AppColors.studentGreen),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        color: AppColors.studentGreen),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '$_verifiedName 학생 맞나요? 맞으면 다음으로 진행하세요.',
+                        style: GoogleFonts.notoSansKr(
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
 }
