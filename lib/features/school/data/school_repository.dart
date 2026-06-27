@@ -276,4 +276,36 @@ class SchoolRepository {
       'p_pin': pin,
     });
   }
+
+  /// 명단 한 줄 추가 (교사 직접 입력용). uploadRoster 1건 버전.
+  Future<void> addRosterEntry({
+    required String schoolId,
+    required int grade,
+    required int classNum,
+    required int studentNum,
+    required String name,
+  }) async {
+    await _c.rpc('upload_roster', params: {
+      'p_school_id': schoolId,
+      'p_rows': [
+        {
+          'grade': grade,
+          'class_num': classNum,
+          'student_num': studentNum,
+          'name': name,
+        }
+      ],
+    });
+  }
+
+  /// 명단 개별 삭제.
+  Future<void> deleteRosterEntry(String id) async {
+    await _c.rpc('delete_roster_entry', params: {'p_id': id});
+  }
+
+  /// 학교 전체 명단 삭제. 삭제된 수 반환.
+  Future<int> clearRoster(String schoolId) async {
+    final res = await _c.rpc('clear_roster', params: {'p_school_id': schoolId});
+    return (res as int?) ?? 0;
+  }
 }
