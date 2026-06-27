@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/utils/school_code_generator.dart';
+import '../models/roster_entry.dart';
 import '../models/school.dart';
 import '../models/school_rule.dart';
 
@@ -210,6 +211,69 @@ class SchoolRepository {
     await _c.rpc('set_teacher_role', params: {
       'p_profile_id': profileId,
       'p_new_role': newRole,
+    });
+  }
+
+  // ── 학생 명단 (roster) ──────────────────────────────────────
+
+  /// 명단 일괄 업로드 (교사 전용). 등록된 행 수를 반환.
+  Future<int> uploadRoster({
+    required String schoolId,
+    required List<RosterDraftRow> rows,
+  }) async {
+    final res = await _c.rpc('upload_roster', params: {
+      'p_school_id': schoolId,
+      'p_rows': rows.map((r) => r.toJson()).toList(),
+    });
+    return (res as int?) ?? rows.length;
+  }
+
+  /// 학교 명단 조회 (PIN 포함, 교사만).
+  Future<List<RosterEntry>> fetchRoster(String schoolId) async {
+    final rows = await _c
+        .from('student_roster')
+        .select()
+        .eq('school_id', schoolId)
+        .order('grade')
+        .order('class_num')
+        .order('student_num');
+    return List<Map<String, dynamic>>.from(rows)
+        .map(RosterEntry.fromMap)
+        .toList();
+  }
+
+  /// 가입 전 명단·PIN 검증. 일치하면 학생 이름 반환, 아니면 예외.
+  Future<String> verifyRosterPin({
+    required String schoolId,
+    required int grade,
+    required int classNum,
+    required int studentNum,
+    required String pin,
+  }) async {
+    final res = await _c.rpc('verify_roster_pin', params: {
+      'p_school_id': schoolId,
+      'p_grade': grade,
+      'p_class_num': classNum,
+      'p_student_num': studentNum,
+      'p_pin': pin,
+    });
+    return res as String;
+  }
+
+  /// 가입 완료 후 명단 잠금 (재가입 방지).
+  Future<void> claimRoster({
+    required String schoolId,
+    required int grade,
+    required int classNum,
+    required int studentNum,
+    required String pin,
+  }) async {
+    await _c.rpc('claim_roster', params: {
+      'p_school_id': schoolId,
+      'p_grade': grade,
+      'p_class_num': classNum,
+      'p_student_num': studentNum,
+      'p_pin': pin,
     });
   }
 }
