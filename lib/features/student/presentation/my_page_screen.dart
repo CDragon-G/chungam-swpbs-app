@@ -11,7 +11,7 @@ import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/category_radar_chart.dart';
-import '../../../shared/widgets/participation_heatmap.dart';
+import '../../../shared/widgets/monthly_participation_calendar.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../points/providers/points_provider.dart';
@@ -289,7 +289,7 @@ class MyPageScreen extends ConsumerWidget {
                   for (final c in s.last30)
                     KstDate.formatYmd(c.checkinDate): c.scorePct,
                 };
-                return ParticipationHeatmap(scoresByDate: byDate, weeks: 8);
+                return MonthlyParticipationCalendar(scoresByDate: byDate);
               },
             ),
           ),
