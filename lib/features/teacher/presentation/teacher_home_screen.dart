@@ -319,6 +319,34 @@ class TeacherHomeScreen extends ConsumerWidget {
             },
           ),
           // Today quick stats
+          const SizedBox(height: AppSizes.md),
+          PbsCard(
+            onTap: () => context.go('/teacher/hall-of-fame'),
+            color: const Color(0xFFFEF9E7),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+            child: Row(
+              children: [
+                const Text('🏆', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('명예의 전당',
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFFB45309))),
+                      Text('이달의 학생 (전교·학년·학급)',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded,
+                    size: 14, color: AppColors.textTertiary),
+              ],
+            ),
+          ),
           const SectionHeader(title: '📊 오늘 현황'),
           overview.when(
             loading: () => const PbsCard(child: SizedBox(height: 100)),

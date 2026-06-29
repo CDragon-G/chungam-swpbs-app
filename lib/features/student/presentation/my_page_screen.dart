@@ -170,6 +170,15 @@ class MyPageScreen extends ConsumerWidget {
                   onTap: () => context.go('/student/points-history'),
                 ),
               ),
+              const SizedBox(width: AppSizes.sm),
+              Expanded(
+                child: _QuickLinkCard(
+                  icon: Icons.military_tech_rounded,
+                  label: '명예의 전당',
+                  color: AppColors.warning,
+                  onTap: () => context.go('/student/hall-of-fame'),
+                ),
+              ),
             ],
           ),
 
