@@ -12,6 +12,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../points/providers/points_provider.dart';
+import '../../praise/providers/praise_provider.dart';
 import '../../school/providers/school_provider.dart';
 
 class StudentListScreen extends ConsumerStatefulWidget {
@@ -168,6 +169,26 @@ class _State extends ConsumerState<StudentListScreen> {
             const SizedBox(height: 8),
             const Divider(height: 1),
             ListTile(
+              leading: const Icon(Icons.favorite_rounded,
+                  color: AppColors.studentGreen),
+              title: Text(
+                '칭찬하기',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                '칭찬 메시지 전송 + 50P 적립 + 칭찬 배지',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _givePraise(student);
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.lock_reset_rounded,
                   color: AppColors.teacherNavy),
               title: Text(
@@ -191,6 +212,107 @@ class _State extends ConsumerState<StudentListScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _givePraise(Map<String, dynamic> student) async {
+    final name = student['nickname'] as String;
+    final controller = TextEditingController();
+    // 빠른 선택용 칭찬 예시
+    const presets = [
+      '오늘 정말 잘했어요!',
+      '친구를 도와주는 모습이 멋졌어요',
+      '수업에 열심히 참여했어요',
+      '약속을 잘 지켰어요',
+      '예의 바른 모습이 보기 좋았어요',
+    ];
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: Text('$name 학생 칭찬하기',
+              style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('칭찬 메시지를 입력하거나 아래에서 골라주세요.',
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 13, color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                maxLines: 2,
+                maxLength: 100,
+                style: GoogleFonts.notoSansKr(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: '예: 오늘 발표를 정말 잘했어요!',
+                  hintStyle: GoogleFonts.notoSansKr(
+                      fontSize: 13, color: AppColors.textTertiary),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  ),
+                ),
+              ),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: presets
+                    .map((p) => ActionChip(
+                          label: Text(p,
+                              style: GoogleFonts.notoSansKr(fontSize: 11)),
+                          onPressed: () => setSt(() => controller.text = p),
+                          backgroundColor: AppColors.studentGreenLight,
+                          side: BorderSide.none,
+                        ))
+                    .toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('취소',
+                  style: GoogleFonts.notoSansKr(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: Text('칭찬 보내기',
+                  style: GoogleFonts.notoSansKr(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.studentGreen)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null || result.isEmpty || !mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final count = await ref.read(praiseRepositoryProvider).givePraise(
+            studentUserId: student['user_id'] as String,
+            message: result,
+          );
+      if (!mounted) return;
+      Navigator.pop(context); // 로딩 닫기
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)'),
+          backgroundColor: AppColors.studentGreen,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(translateError(e))));
+    }
   }
 
   Future<void> _resetPassword(Map<String, dynamic> student) async {

@@ -15,6 +15,7 @@ import '../../../shared/widgets/participation_heatmap.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../points/providers/points_provider.dart';
+import '../../praise/providers/praise_provider.dart';
 import '../providers/student_stats_provider.dart';
 
 class MyPageScreen extends ConsumerWidget {
@@ -171,6 +172,82 @@ class MyPageScreen extends ConsumerWidget {
               ),
             ],
           ),
+
+          // 받은 칭찬
+          const SectionHeader(title: '💚 선생님께 받은 칭찬'),
+          ref.watch(myReceivedPraiseProvider).when(
+                loading: () => const PbsCard(
+                  child: SizedBox(
+                    height: 50,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+                error: (e, _) => PbsCard(
+                  child: Text('칭찬을 불러오지 못했어요',
+                      style: GoogleFonts.notoSansKr(
+                          color: AppColors.textTertiary)),
+                ),
+                data: (list) {
+                  if (list.isEmpty) {
+                    return PbsCard(
+                      child: Text(
+                        '아직 받은 칭찬이 없어요.\n매일 점검하고 선생님께 칭찬받아 보세요! 🌱',
+                        style: GoogleFonts.notoSansKr(
+                          fontSize: 13,
+                          color: AppColors.textTertiary,
+                          height: 1.5,
+                        ),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: list.take(5).map((p) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSizes.sm),
+                        child: PbsCard(
+                          color: AppColors.studentGreenLight,
+                          border: Border.all(
+                              color: AppColors.studentGreen
+                                  .withValues(alpha: 0.3)),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('💬',
+                                  style: TextStyle(fontSize: 18)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      p.message,
+                                      style: GoogleFonts.notoSansKr(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      DateFormat('M월 d일')
+                                          .format(p.createdAt),
+                                      style: GoogleFonts.notoSansKr(
+                                        fontSize: 11,
+                                        color: AppColors.textTertiary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
 
           const SectionHeader(title: '📈 최근 30일 점수 추이'),
           PbsCard(child: SizedBox(height: 200, child: _ScoreTrend(stats: statsAsync))),
