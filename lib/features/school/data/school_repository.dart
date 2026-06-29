@@ -46,6 +46,8 @@ class SchoolRepository {
           'school_code': code,
           'teacher_code': teacherCode,
           'created_by': user.id,
+          // 결제 확인 전까지 pending → 학생 가입 불가. 운영자가 active 전환.
+          'subscription_status': 'pending',
         })
         .select()
         .single();

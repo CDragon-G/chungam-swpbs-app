@@ -221,8 +221,16 @@ class _State extends ConsumerState<StudentSignupScreen> {
     try {
       final s = await ref.read(schoolRepositoryProvider).findByCode(code);
       setState(() {
-        _verifiedSchool = s;
-        if (s == null) _codeError = '학교 코드가 일치하지 않아요.';
+        if (s == null) {
+          _verifiedSchool = null;
+          _codeError = '학교 코드가 일치하지 않아요.';
+        } else if (!s.isActive) {
+          _verifiedSchool = null;
+          _codeError = '아직 활성화되지 않은 학교예요.\n'
+              '학교가 자람 도입을 완료하면 가입할 수 있어요. 담임선생님께 문의하세요.';
+        } else {
+          _verifiedSchool = s;
+        }
       });
     } catch (e) {
       setState(() => _codeError = translateError(e));

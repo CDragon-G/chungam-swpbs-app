@@ -23,6 +23,14 @@ class PraiseRepository {
       'p_student_user_id': studentUserId,
       'p_message': message,
     });
+    // 칭찬받은 학생에게 푸시 발송 (Edge Function).
+    // 미배포/실패해도 칭찬 자체는 정상 처리되도록 무시.
+    try {
+      await _c.functions.invoke('send-praise-push', body: {
+        'student_id': studentUserId,
+        'message': message,
+      });
+    } catch (_) {/* 푸시 실패는 무시 */}
     if (res is Map && res['praise_count'] != null) {
       return (res['praise_count'] as num).toInt();
     }

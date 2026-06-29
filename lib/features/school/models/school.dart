@@ -8,6 +8,8 @@ class School {
     this.teacherCode,
     this.createdBy,
     required this.createdAt,
+    this.subscriptionStatus = 'active',
+    this.subscriptionExpiresAt,
   });
 
   final String id;
@@ -18,6 +20,10 @@ class School {
   final String? teacherCode;
   final String? createdBy;
   final DateTime createdAt;
+  final String subscriptionStatus; // 'pending' | 'active' | 'expired'
+  final DateTime? subscriptionExpiresAt;
+
+  bool get isActive => subscriptionStatus == 'active';
 
   factory School.fromMap(Map<String, dynamic> map) => School(
         id: map['id'] as String,
@@ -28,5 +34,10 @@ class School {
         teacherCode: map['teacher_code'] as String?,
         createdBy: map['created_by'] as String?,
         createdAt: DateTime.parse(map['created_at'] as String),
+        subscriptionStatus:
+            (map['subscription_status'] as String?) ?? 'active',
+        subscriptionExpiresAt: map['subscription_expires_at'] == null
+            ? null
+            : DateTime.parse(map['subscription_expires_at'] as String),
       );
 }

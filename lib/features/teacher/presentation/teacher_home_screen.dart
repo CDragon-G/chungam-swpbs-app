@@ -347,6 +347,35 @@ class TeacherHomeScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: AppSizes.sm),
+          PbsCard(
+            onTap: () => context.go('/teacher/kodr'),
+            color: AppColors.studentGreenLight,
+            border:
+                Border.all(color: AppColors.studentGreen.withValues(alpha: 0.3)),
+            child: Row(
+              children: [
+                const Text('🤝', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('K-ODR 행동 지원',
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.success)),
+                      Text('행동 기록 · 지원이 필요한 학생 발견',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded,
+                    size: 14, color: AppColors.textTertiary),
+              ],
+            ),
+          ),
           const SectionHeader(title: '📊 오늘 현황'),
           overview.when(
             loading: () => const PbsCard(child: SizedBox(height: 100)),
