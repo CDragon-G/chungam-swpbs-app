@@ -76,6 +76,10 @@ begin
     from stats s cross join maxes m
     where s.checkin_days > 0 or s.praise_count > 0  -- 활동이 있는 학생만
   ),
+  ranked_school as (
+    select *, row_number() over (order by total_score desc) as rn
+    from scored
+  ),
   ranked_grade as (
     select *, row_number() over (partition by grade order by total_score desc) as rn
     from scored
@@ -88,7 +92,7 @@ begin
   select 'school'::text, '전교'::text, sc.user_id, sc.nickname,
          sc.grade, sc.class_num, sc.student_num,
          sc.praise_count, sc.checkin_days, round(sc.avg_score, 1), sc.total_score
-  from scored sc order by sc.total_score desc limit 1
+  from ranked_school sc where sc.rn = 1
   union all
   -- 학년별 1위
   select 'grade'::text, sc.grade || '학년', sc.user_id, sc.nickname,
