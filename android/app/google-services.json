@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "992384834533",
+    "project_id": "jaram-4cc16",
+    "storage_bucket": "jaram-4cc16.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:992384834533:android:6205f5463725c93d02ed0c",
+        "android_client_info": {
+          "package_name": "com.jaram.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDr6fv1_UlWX932tkKBQPlbfI8ZYyriy_I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

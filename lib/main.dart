@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,8 +12,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'app.dart';
+import 'core/notifications/fcm_service.dart';
 import 'core/notifications/notifications_service.dart';
 import 'core/supabase/supabase_client.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,5 +52,17 @@ Future<void> main() async {
   await initializeDateFormatting('ko_KR');
   await SupabaseService.initialize();
   await NotificationsService.initialize();
+
+  // Firebase + FCM 원격 푸시
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await FcmService.initialize();
+  } catch (e) {
+    debugPrint('[main] Firebase 초기화 실패(무시하고 계속): $e');
+  }
+
   runApp(const ProviderScope(child: PbsPlusApp()));
 }

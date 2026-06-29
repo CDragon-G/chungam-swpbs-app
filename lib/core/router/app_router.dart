@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../notifications/fcm_service.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_select_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
@@ -124,7 +125,13 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// itself stays the same instance, so navigation stack is preserved.
 class _RouterRefresh extends ChangeNotifier {
   _RouterRefresh(this._ref) {
-    _ref.listen(authStateProvider, (_, __) => notifyListeners());
+    _ref.listen(authStateProvider, (_, next) {
+      notifyListeners();
+      // 로그인되면 이 기기의 FCM 토큰을 Supabase에 등록
+      if (next.value != null) {
+        FcmService.registerToken();
+      }
+    });
     _ref.listen(profileProvider, (_, __) => notifyListeners());
   }
 
