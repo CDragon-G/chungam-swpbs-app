@@ -30,6 +30,8 @@ language plpgsql
 security definer
 set search_path = public, auth
 as $$
+-- 반환 컬럼(user_id, grade 등)과 테이블 컬럼 이름이 겹칠 때 컬럼을 우선 해석
+#variable_conflict use_column
 declare
   ym text := coalesce(p_year_month, to_char((now() at time zone 'Asia/Seoul'), 'YYYY-MM'));
   d_start date := to_date(ym || '-01', 'YYYY-MM-DD');
