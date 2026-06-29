@@ -27,15 +27,27 @@ class HofEntry {
   factory HofEntry.fromMap(Map<String, dynamic> m) => HofEntry(
         scope: m['scope'] as String,
         scopeLabel: m['scope_label'] as String,
-        nickname: m['nickname'] as String,
-        grade: m['grade'] as int,
-        classNum: m['class_num'] as int,
-        studentNum: m['student_num'] as int,
-        praiseCount: (m['praise_count'] as num?)?.toInt() ?? 0,
-        checkinDays: (m['checkin_days'] as num?)?.toInt() ?? 0,
-        avgScore: (m['avg_score'] as num?)?.toDouble() ?? 0,
-        totalScore: (m['total_score'] as num?)?.toDouble() ?? 0,
+        nickname: (m['nickname'] as String?) ?? '',
+        grade: _toInt(m['grade']),
+        classNum: _toInt(m['class_num']),
+        studentNum: _toInt(m['student_num']),
+        praiseCount: _toInt(m['praise_count']),
+        checkinDays: _toInt(m['checkin_days']),
+        avgScore: _toDouble(m['avg_score']),
+        totalScore: _toDouble(m['total_score']),
       );
+
+  // Supabase는 numeric을 문자열로, int를 숫자로 직렬화할 수 있어
+  // 어느 쪽이 와도 안전하게 변환한다.
+  static int _toInt(dynamic v) {
+    if (v is num) return v.toInt();
+    return int.tryParse('$v') ?? 0;
+  }
+
+  static double _toDouble(dynamic v) {
+    if (v is num) return v.toDouble();
+    return double.tryParse('$v') ?? 0;
+  }
 
   /// 이름 마스킹: 신창용 → 신*용, 김민 → 김*
   String get maskedName {

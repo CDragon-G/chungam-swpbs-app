@@ -1,19 +1,21 @@
 -- 014_hall_of_fame.sql
 -- 명예의 전당: 이달의 학생 선정.
 -- 종합 점수 = 칭찬 40% + 연속 참여(점검일수) 30% + 평균 점검 점수 30%
--- 각 지표를 0~100으로 정규화한 뒤 가중 합산.
--- 학급/학년/전교 단위로 최고 학생을 반환한다.
 --
--- 주의: count(*)는 bigint, avg(float)는 float을 반환하므로 명시적으로
---       int / numeric 으로 캐스팅한다 (반환 타입과 round() 호환).
+-- 반환 타입은 double precision 사용:
+--   numeric은 PostgREST가 JSON 문자열로 직렬화해 앱의 num 캐스팅이 깨진다.
+--   double precision은 JSON 숫자로 직렬화되어 안전하다.
+-- 반환 타입을 바꾸므로 기존 함수를 먼저 drop 한다.
+
+drop function if exists public.hall_of_fame(uuid, text);
 
 create or replace function public.hall_of_fame(
   p_school_id uuid,
-  p_year_month text default null  -- 'YYYY-MM', null이면 이번 달
+  p_year_month text default null
 )
 returns table (
-  scope text,            -- 'class' | 'grade' | 'school'
-  scope_label text,      -- '1학년 1반' | '1학년' | '전교'
+  scope text,
+  scope_label text,
   user_id uuid,
   nickname text,
   grade int,
@@ -21,8 +23,8 @@ returns table (
   student_num int,
   praise_count int,
   checkin_days int,
-  avg_score numeric,
-  total_score numeric
+  avg_score double precision,
+  total_score double precision
 )
 language plpgsql
 security definer
@@ -68,42 +70,39 @@ begin
   ),
   scored as (
     select s.*,
-      round(
+      (round(
         (s.praise_count::numeric / m.mp) * 40
         + (s.checkin_days::numeric / m.md) * 30
         + (s.avg_score / 100.0) * 30
-      , 1) as total_score
+      , 1))::double precision as total_score
     from stats s cross join maxes m
-    where s.checkin_days > 0 or s.praise_count > 0  -- 활동이 있는 학생만
+    where s.checkin_days > 0 or s.praise_count > 0
   ),
   ranked_school as (
-    select *, row_number() over (order by total_score desc) as rn
-    from scored
+    select *, row_number() over (order by total_score desc) as rn from scored
   ),
   ranked_grade as (
-    select *, row_number() over (partition by grade order by total_score desc) as rn
-    from scored
+    select *, row_number() over (partition by grade order by total_score desc) as rn from scored
   ),
   ranked_class as (
-    select *, row_number() over (partition by grade, class_num order by total_score desc) as rn
-    from scored
+    select *, row_number() over (partition by grade, class_num order by total_score desc) as rn from scored
   )
-  -- 전교 1위
   select 'school'::text, '전교'::text, sc.user_id, sc.nickname,
          sc.grade, sc.class_num, sc.student_num,
-         sc.praise_count, sc.checkin_days, round(sc.avg_score, 1), sc.total_score
+         sc.praise_count, sc.checkin_days,
+         (round(sc.avg_score, 1))::double precision, sc.total_score
   from ranked_school sc where sc.rn = 1
   union all
-  -- 학년별 1위
   select 'grade'::text, sc.grade || '학년', sc.user_id, sc.nickname,
          sc.grade, sc.class_num, sc.student_num,
-         sc.praise_count, sc.checkin_days, round(sc.avg_score, 1), sc.total_score
+         sc.praise_count, sc.checkin_days,
+         (round(sc.avg_score, 1))::double precision, sc.total_score
   from ranked_grade sc where sc.rn = 1
   union all
-  -- 학급별 1위
   select 'class'::text, sc.grade || '학년 ' || sc.class_num || '반', sc.user_id, sc.nickname,
          sc.grade, sc.class_num, sc.student_num,
-         sc.praise_count, sc.checkin_days, round(sc.avg_score, 1), sc.total_score
+         sc.praise_count, sc.checkin_days,
+         (round(sc.avg_score, 1))::double precision, sc.total_score
   from ranked_class sc where sc.rn = 1;
 end;
 $$;
