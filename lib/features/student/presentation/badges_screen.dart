@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../shared/models/badge.dart';
+import '../../school/providers/school_provider.dart';
 import '../providers/badge_provider.dart';
 
 class BadgesScreen extends ConsumerWidget {
@@ -15,6 +16,7 @@ class BadgesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final allBadges = ref.watch(allBadgesProvider);
     final earned = ref.watch(userBadgesProvider);
+    final schoolShort = ref.watch(schoolProvider).value?.shortName;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -51,7 +53,7 @@ class BadgesScreen extends ConsumerWidget {
               final ub = earnedMap[b.id];
               final earnedThis = ub != null;
               return GestureDetector(
-                onTap: () => _showBadgeSheet(context, b, ub),
+                onTap: () => _showBadgeSheet(context, b, ub, schoolShort),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
@@ -77,7 +79,7 @@ class BadgesScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        b.name,
+                        b.displayName(schoolShort),
                         textAlign: TextAlign.center,
                         style: GoogleFonts.notoSansKr(
                           fontSize: 14,
@@ -111,7 +113,8 @@ class BadgesScreen extends ConsumerWidget {
     );
   }
 
-  void _showBadgeSheet(BuildContext context, BadgeDef b, UserBadge? ub) {
+  void _showBadgeSheet(
+      BuildContext context, BadgeDef b, UserBadge? ub, String? schoolShort) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -126,7 +129,7 @@ class BadgesScreen extends ConsumerWidget {
             Text(b.iconEmoji, style: const TextStyle(fontSize: 80)),
             const SizedBox(height: AppSizes.md),
             Text(
-              b.name,
+              b.displayName(schoolShort),
               style: GoogleFonts.notoSansKr(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
