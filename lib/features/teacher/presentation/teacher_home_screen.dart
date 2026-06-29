@@ -318,8 +318,38 @@ class TeacherHomeScreen extends ConsumerWidget {
               );
             },
           ),
-          // Today quick stats
+          // 학생 칭찬 — 가장 자주 쓰는 동작이라 상단에 눈에 띄게
           const SizedBox(height: AppSizes.md),
+          PbsCard(
+            onTap: () => context.go('/teacher/students'),
+            color: AppColors.studentGreenLight,
+            border:
+                Border.all(color: AppColors.studentGreen.withValues(alpha: 0.3)),
+            child: Row(
+              children: [
+                const Text('💚', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('학생 칭찬하기',
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.success)),
+                      Text('학생을 검색해 칭찬 한마디 + 50P + 배지',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded,
+                    size: 14, color: AppColors.textTertiary),
+              ],
+            ),
+          ),
+          // Today quick stats
+          const SizedBox(height: AppSizes.sm),
           PbsCard(
             onTap: () => context.go('/teacher/hall-of-fame'),
             color: const Color(0xFFFEF9E7),

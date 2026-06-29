@@ -8,6 +8,7 @@ import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../../shared/widgets/student_picker_sheet.dart';
 import '../../school/providers/school_provider.dart';
 import '../constants/kodr_codes.dart';
 import '../models/kodr.dart';
@@ -31,6 +32,102 @@ class _State extends ConsumerState<KodrScreen>
     super.dispose();
   }
 
+  void _showLegalInfo(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        builder: (_, ctrl) => ListView(
+          controller: ctrl,
+          padding: const EdgeInsets.all(AppSizes.xl),
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.verified_user_rounded,
+                    color: AppColors.teacherNavy, size: 26),
+                const SizedBox(width: 8),
+                Text('개인정보 안내 · 법적 근거',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 18, fontWeight: FontWeight.w900)),
+              ],
+            ),
+            const SizedBox(height: AppSizes.lg),
+            _legalSection(
+              '🎯  목적은 지원, 처벌이 아닙니다',
+              'K-ODR은 학생의 어려움을 조기에 발견해 교육적으로 지원하기 위한 '
+                  '관찰 기록입니다. 징계·낙인·처벌을 위한 자료가 아니며, 학생을 '
+                  '더 잘 돕기 위한 긍정적 행동지원(PBS)의 도구입니다.',
+            ),
+            _legalSection(
+              '⚖️  법적 근거',
+              '• 초·중등교육법 제20조의2 (교원의 학생생활지도)\n'
+                  '• 교원의 학생생활지도에 관한 고시 (교육부고시 제2023-28호)\n'
+                  '• 개인정보 보호법 제15조 — 법령에서 정한 소관 업무 및 '
+                  '교육 목적 수행을 위한 개인정보의 적법한 처리\n'
+                  '• 학교생활기록 작성 및 관리지침\n\n'
+                  '학교와 교원은 학생 생활지도를 위해 행동을 관찰·기록할 '
+                  '법적 권한과 책무를 가집니다.',
+            ),
+            _legalSection(
+              '🔒  엄격한 접근 제한',
+              '• 같은 학교의 교사만 열람할 수 있습니다.\n'
+                  '• 학생 본인, 다른 학생, 외부에는 공개되지 않습니다.\n'
+                  '• 명예의 전당 등 공개 화면에서는 이름이 마스킹(신*용)됩니다.\n'
+                  '• 데이터는 암호화 전송·저장되며 교육 목적 외 사용이 금지됩니다.',
+            ),
+            _legalSection(
+              '🤝  지원으로 이어집니다',
+              '반복되는 어려움이 확인되면(월 3건 이상) 멘토 교사와 함께하는 '
+                  '동행 지원(CICO)을 제안합니다. 기록은 비난이 아니라 '
+                  '맞춤형 도움의 출발점입니다.',
+            ),
+            const SizedBox(height: AppSizes.md),
+            SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teacherNavy,
+                    foregroundColor: Colors.white),
+                child: Text('확인했습니다',
+                    style:
+                        GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+              ),
+            ),
+            const SizedBox(height: AppSizes.md),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legalSection(String title, String body) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSizes.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.teacherNavy)),
+            const SizedBox(height: 6),
+            Text(body,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 13,
+                    height: 1.7,
+                    color: AppColors.textSecondary)),
+          ],
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,6 +140,14 @@ class _State extends ConsumerState<KodrScreen>
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.verified_user_outlined,
+                color: AppColors.teacherNavy),
+            tooltip: '법적 근거 · 개인정보 안내',
+            onPressed: () => _showLegalInfo(context),
+          ),
+        ],
         bottom: TabBar(
           controller: _tab,
           labelColor: AppColors.teacherNavy,
@@ -210,34 +315,8 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
 
   Future<void> _pickStudent() async {
     final students = ref.read(schoolStudentsProvider).value ?? [];
-    final picked = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.7,
-        builder: (_, ctrl) => ListView(
-          controller: ctrl,
-          padding: const EdgeInsets.all(AppSizes.lg),
-          children: [
-            Text('학생 선택',
-                style: GoogleFonts.notoSansKr(
-                    fontWeight: FontWeight.w900, fontSize: 16)),
-            const SizedBox(height: 12),
-            ...students.map((s) => ListTile(
-                  title: Text(
-                      '${s['nickname']} (${s['grade']}-${s['class_num']}-${s['student_num']})',
-                      style: GoogleFonts.notoSansKr(
-                          fontWeight: FontWeight.w600)),
-                  onTap: () => Navigator.pop(context, s),
-                )),
-          ],
-        ),
-      ),
-    );
+    final picked = await StudentPickerSheet.show(context, students,
+        title: '학생 선택');
     if (picked != null) setState(() => _student = picked);
   }
 

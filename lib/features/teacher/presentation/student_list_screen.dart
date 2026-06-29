@@ -24,6 +24,16 @@ class StudentListScreen extends ConsumerStatefulWidget {
 
 class _State extends ConsumerState<StudentListScreen> {
   String _filterGrade = '전체';
+  String _query = '';
+
+  bool _matchesQuery(Map<String, dynamic> s) {
+    if (_query.trim().isEmpty) return true;
+    final q = _query.toLowerCase().replaceAll(' ', '');
+    final name = (s['nickname'] as String? ?? '').toLowerCase();
+    final g = '${s['grade']}', c = '${s['class_num']}', n = '${s['student_num']}';
+    return [name, '$g-$c-$n', '$g학년$c반$n번', '$g$c$n', n]
+        .any((x) => x.contains(q));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,15 +57,38 @@ class _State extends ConsumerState<StudentListScreen> {
         error: (e, _) => Center(child: Text('오류: $e')),
         data: (students) {
           final grades = {'전체', for (final s in students) '${s['grade']}학년'};
-          final filtered = _filterGrade == '전체'
-              ? students
-              : students
-                  .where((s) => '${s['grade']}학년' == _filterGrade)
-                  .toList();
+          final filtered = students
+              .where((s) =>
+                  (_filterGrade == '전체' ||
+                      '${s['grade']}학년' == _filterGrade) &&
+                  _matchesQuery(s))
+              .toList();
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(AppSizes.lg),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSizes.lg, AppSizes.lg, AppSizes.lg, AppSizes.sm),
+                child: TextField(
+                  style: GoogleFonts.notoSansKr(fontSize: 14),
+                  onChanged: (v) => setState(() => _query = v),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    hintText: '이름 또는 학번 검색 (예: 신창용, 1-2-10)',
+                    hintStyle: GoogleFonts.notoSansKr(
+                        fontSize: 13, color: AppColors.textTertiary),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
                 child: Wrap(
                   spacing: 6,
                   children: grades.map((g) {
@@ -78,6 +111,7 @@ class _State extends ConsumerState<StudentListScreen> {
                   }).toList(),
                 ),
               ),
+              const SizedBox(height: AppSizes.sm),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
@@ -126,9 +160,15 @@ class _State extends ConsumerState<StudentListScreen> {
                               ),
                             ),
                             _StudentPoints(userId: s['user_id'] as String),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.chevron_right_rounded,
-                                size: 18, color: AppColors.textTertiary),
+                            const SizedBox(width: 2),
+                            // 칭찬 바로가기 (가장 자주 쓰는 동작이라 직접 노출)
+                            IconButton(
+                              icon: const Icon(Icons.favorite_rounded,
+                                  color: AppColors.studentGreen),
+                              tooltip: '칭찬하기',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => _givePraise(s),
+                            ),
                           ],
                         ),
                       ),
