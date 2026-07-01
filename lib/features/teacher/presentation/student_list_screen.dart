@@ -271,7 +271,9 @@ class _State extends ConsumerState<StudentListScreen> {
         builder: (ctx, setSt) => AlertDialog(
           title: Text('$name 학생 칭찬하기',
               style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
-          content: Column(
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -307,6 +309,7 @@ class _State extends ConsumerState<StudentListScreen> {
                     .toList(),
               ),
             ],
+          ),
           ),
           actions: [
             TextButton(

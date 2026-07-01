@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase/supabase_client.dart';
@@ -24,13 +26,13 @@ class PraiseRepository {
       'p_message': message,
     });
     // 칭찬받은 학생에게 푸시 발송 (Edge Function).
-    // 미배포/실패해도 칭찬 자체는 정상 처리되도록 무시.
-    try {
-      await _c.functions.invoke('send-praise-push', body: {
+    // 백그라운드로 보내(await 안 함) — 미배포/지연/실패가 칭찬 완료를 막지 않게.
+    unawaited(
+      _c.functions.invoke('send-praise-push', body: {
         'student_id': studentUserId,
         'message': message,
-      });
-    } catch (_) {/* 푸시 실패는 무시 */}
+      }).then((_) {}).catchError((_) {/* 푸시 실패는 무시 */}),
+    );
     if (res is Map && res['praise_count'] != null) {
       return (res['praise_count'] as num).toInt();
     }
