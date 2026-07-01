@@ -36,7 +36,7 @@ create policy pr_insert on purchase_requests
 drop policy if exists pr_admin_select on purchase_requests;
 create policy pr_admin_select on purchase_requests
   for select to authenticated
-  using (auth.jwt() ->> 'email' = 'godspeardragon@gmail.com');
+  using (auth.jwt() ->> 'email' = 'toyswar987@naver.com');
 
 -- ── 코드 생성 헬퍼 (혼동 문자 제외) ──────────────────────────
 create or replace function gen_unique_school_code()
@@ -114,7 +114,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if auth.jwt() ->> 'email' <> 'godspeardragon@gmail.com' then
+  if auth.jwt() ->> 'email' <> 'toyswar987@naver.com' then
     raise exception '운영자만 조회할 수 있습니다.';
   end if;
   return query select * from purchase_requests order by
@@ -132,7 +132,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if auth.jwt() ->> 'email' <> 'godspeardragon@gmail.com' then
+  if auth.jwt() ->> 'email' <> 'toyswar987@naver.com' then
     raise exception '운영자만 변경할 수 있습니다.';
   end if;
   if p_status not in ('pending', 'paid', 'rejected') then
@@ -157,7 +157,7 @@ declare
   t_code text;
   lvl text;
 begin
-  if auth.jwt() ->> 'email' <> 'godspeardragon@gmail.com' then
+  if auth.jwt() ->> 'email' <> 'toyswar987@naver.com' then
     raise exception '운영자만 승인할 수 있습니다.';
   end if;
 
