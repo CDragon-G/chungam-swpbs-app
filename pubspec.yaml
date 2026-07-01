@@ -1,7 +1,7 @@
 name: pbs_plus
 description: "자람 - 함께 자라는 우리 학교 (SWPBS)."
 publish_to: 'none'
-version: 0.8.5+28
+version: 0.8.6+29
 
 environment:
   sdk: ^3.5.0

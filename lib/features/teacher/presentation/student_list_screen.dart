@@ -311,7 +311,8 @@ class _State extends ConsumerState<StudentListScreen> {
                 style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
             content: SizedBox(
               width: double.maxFinite,
-              child: Column(
+              child: SingleChildScrollView(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -351,6 +352,7 @@ class _State extends ConsumerState<StudentListScreen> {
                         .toList(),
                   ),
                 ],
+              ),
               ),
             ),
             actions: [
