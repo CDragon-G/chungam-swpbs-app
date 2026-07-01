@@ -673,16 +673,18 @@ class TeacherHomeScreen extends ConsumerWidget {
 
     try {
       await ref.read(authRepositoryProvider).deleteAccount();
+      // 로딩을 먼저 닫는다 (상태 갱신으로 mounted가 false 되기 전에).
+      if (context.mounted) Navigator.pop(context);
       ref.invalidate(profileProvider);
-      if (!context.mounted) return;
-      Navigator.pop(context);
-      context.go('/welcome');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('회원 탈퇴가 완료되었습니다.',
-              style: GoogleFonts.notoSansKr()),
-        ),
-      );
+      if (context.mounted) {
+        context.go('/welcome');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('회원 탈퇴가 완료되었습니다.',
+                style: GoogleFonts.notoSansKr()),
+          ),
+        );
+      }
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context);

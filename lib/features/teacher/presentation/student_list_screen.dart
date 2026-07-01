@@ -265,97 +265,120 @@ class _State extends ConsumerState<StudentListScreen> {
       '약속을 잘 지켰어요',
       '예의 바른 모습이 보기 좋았어요',
     ];
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: Text('$name 학생 칭찬하기',
-              style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('칭찬 메시지를 입력하거나 아래에서 골라주세요.',
-                  style: GoogleFonts.notoSansKr(
-                      fontSize: 13, color: AppColors.textSecondary)),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                maxLines: 2,
-                maxLength: 100,
-                style: GoogleFonts.notoSansKr(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: '예: 오늘 발표를 정말 잘했어요!',
-                  hintStyle: GoogleFonts.notoSansKr(
-                      fontSize: 13, color: AppColors.textTertiary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                ),
-              ),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: presets
-                    .map((p) => ActionChip(
-                          label: Text(p,
-                              style: GoogleFonts.notoSansKr(fontSize: 11)),
-                          onPressed: () => setSt(() => controller.text = p),
-                          backgroundColor: AppColors.studentGreenLight,
-                          side: BorderSide.none,
-                        ))
-                    .toList(),
-              ),
-            ],
-          ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('취소',
-                  style: GoogleFonts.notoSansKr(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: Text('칭찬 보내기',
-                  style: GoogleFonts.notoSansKr(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.studentGreen)),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (result == null || result.isEmpty || !mounted) return;
+    var sending = false;
 
-    showDialog(
+    // 별도 로딩 다이얼로그 없이, 입력 다이얼로그 내부에서 전송을 처리한다.
+    // (로딩 다이얼로그가 mounted 문제로 닫히지 않아 검은 화면이 되던 문제 방지)
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-    try {
-      final count = await ref.read(praiseRepositoryProvider).givePraise(
-            studentUserId: student['user_id'] as String,
-            message: result,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setSt) {
+          Future<void> submit() async {
+            final msg = controller.text.trim();
+            if (msg.isEmpty) {
+              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                const SnackBar(content: Text('칭찬 메시지를 입력해주세요.')),
+              );
+              return;
+            }
+            setSt(() => sending = true);
+            try {
+              final count = await ref.read(praiseRepositoryProvider).givePraise(
+                    studentUserId: student['user_id'] as String,
+                    message: msg,
+                  );
+              if (dialogCtx.mounted) Navigator.pop(dialogCtx); // 다이얼로그 닫기
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      '$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)'),
+                  backgroundColor: AppColors.studentGreen,
+                ),
+              );
+            } catch (e) {
+              if (!dialogCtx.mounted) return;
+              setSt(() => sending = false);
+              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                SnackBar(content: Text(translateError(e))),
+              );
+            }
+          }
+
+          return AlertDialog(
+            title: Text('$name 학생 칭찬하기',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('칭찬 메시지를 입력하거나 아래에서 골라주세요.',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 13, color: AppColors.textSecondary)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    maxLines: 2,
+                    maxLength: 100,
+                    enabled: !sending,
+                    style: GoogleFonts.notoSansKr(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: '예: 오늘 발표를 정말 잘했어요!',
+                      hintStyle: GoogleFonts.notoSansKr(
+                          fontSize: 13, color: AppColors.textTertiary),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      ),
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: presets
+                        .map((p) => ActionChip(
+                              label: Text(p,
+                                  style:
+                                      GoogleFonts.notoSansKr(fontSize: 11)),
+                              onPressed: sending
+                                  ? null
+                                  : () => setSt(() => controller.text = p),
+                              backgroundColor: AppColors.studentGreenLight,
+                              side: BorderSide.none,
+                            ))
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: sending ? null : () => Navigator.pop(dialogCtx),
+                child: Text('취소',
+                    style: GoogleFonts.notoSansKr(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary)),
+              ),
+              TextButton(
+                onPressed: sending ? null : submit,
+                child: sending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text('칭찬 보내기',
+                        style: GoogleFonts.notoSansKr(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.studentGreen)),
+              ),
+            ],
           );
-      if (!mounted) return;
-      Navigator.pop(context); // 로딩 닫기
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)'),
-          backgroundColor: AppColors.studentGreen,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(translateError(e))));
-    }
+        },
+      ),
+    );
   }
 
   Future<void> _resetPassword(Map<String, dynamic> student) async {
