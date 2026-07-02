@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../notifications/fcm_service.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/cico/presentation/cico_home_screen.dart';
+import '../../features/cico/presentation/student_cico_screen.dart';
 import '../../features/hall_of_fame/presentation/hall_of_fame_screen.dart';
 import '../../features/kodr/presentation/kodr_screen.dart';
 import '../../features/auth/presentation/signup_select_screen.dart';
@@ -102,6 +103,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/student/points-history', builder: (_, __) => const StudentStoreScreen()),
           GoRoute(path: '/student/compare', builder: (_, __) => const CompareScreen()),
           GoRoute(path: '/student/hall-of-fame', builder: (_, __) => const HallOfFameScreen()),
+          GoRoute(path: '/student/cico', builder: (_, __) => const StudentCicoScreen()),
         ],
       ),
 

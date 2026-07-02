@@ -15,6 +15,7 @@ import '../../../shared/widgets/streak_badge_widget.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../checkin/models/daily_checkin.dart';
 import '../../checkin/providers/checkin_provider.dart';
+import '../../cico/providers/cico_provider.dart';
 import '../../school/providers/school_provider.dart';
 import '../providers/badge_provider.dart';
 import '../providers/student_stats_provider.dart';
@@ -93,6 +94,49 @@ class StudentHomeScreen extends ConsumerWidget {
             todayAsync: today,
             onCheckIn: () => context.go('/student/checkin'),
           ),
+
+          // CICO 진행 중일 때만 표시되는 동행 점검 카드
+          ref.watch(myCicoProvider).maybeWhen(
+                data: (e) => e == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(top: AppSizes.sm),
+                        child: PbsCard(
+                          onTap: () => context.go('/student/cico'),
+                          color: AppColors.teacherNavyLight,
+                          border: Border.all(
+                              color: AppColors.teacherNavy
+                                  .withValues(alpha: 0.25)),
+                          child: Row(
+                            children: [
+                              const Text('🤝',
+                                  style: TextStyle(fontSize: 24)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text('나의 동행 점검',
+                                        style: GoogleFonts.notoSansKr(
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.teacherNavy)),
+                                    Text('오늘 목표 확인 · 소감 쓰기 · 보호자 확인',
+                                        style: GoogleFonts.notoSansKr(
+                                            fontSize: 11,
+                                            color:
+                                                AppColors.textSecondary)),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios_rounded,
+                                  size: 14, color: AppColors.textTertiary),
+                            ],
+                          ),
+                        ),
+                      ),
+                orElse: () => const SizedBox.shrink(),
+              ),
 
           // Announcements
           announcements.when(
