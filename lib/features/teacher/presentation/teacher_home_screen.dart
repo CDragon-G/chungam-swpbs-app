@@ -26,9 +26,9 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // 교사 첫 접속 시 활용 안내 캐로셀
+    // 교사 접속 시 SWPBS 안내 캐로셀 (처음 + 7일마다 다시)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) TeacherOnboarding.showIfFirstLaunch(context);
+      if (mounted) TeacherOnboarding.showIfDue(context);
     });
   }
 

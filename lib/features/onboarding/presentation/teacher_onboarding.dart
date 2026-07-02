@@ -6,27 +6,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 
-const _kTeacherOnboardingKey = 'teacher_onboarding_done_v1';
+/// 마지막으로 보여준 시각(ms). 일정 주기마다 다시 보여준다.
+const _kLastShownKey = 'teacher_onboarding_last_ms';
 
-/// 교사가 처음 접속했을 때 자람 활용법을 안내하는 캐로셀.
-/// 학생 온보딩과 별개 키로 관리한다.
+/// 다시 보여주는 주기 (일). SWPBS 철학을 주기적으로 상기시키기 위함.
+const _kReshowDays = 7;
+
+/// 교사 접속 시 자람·SWPBS 활용 안내 캐로셀.
+/// 처음 + 이후 7일마다 자동 표시 (건너뛰기 가능).
 class TeacherOnboarding {
   TeacherOnboarding._();
   static bool _busy = false;
 
-  static Future<void> showIfFirstLaunch(BuildContext context) async {
+  static Future<void> showIfDue(BuildContext context) async {
     if (_busy) return;
     _busy = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool(_kTeacherOnboardingKey) == true) return;
+      final last = prefs.getInt(_kLastShownKey) ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final due = now - last >= _kReshowDays * 24 * 60 * 60 * 1000;
+      if (!due) return;
       if (!context.mounted) return;
       await showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => const _TeacherOnboardingDialog(),
       );
-      await prefs.setBool(_kTeacherOnboardingKey, true);
+      await prefs.setInt(_kLastShownKey, now);
     } finally {
       _busy = false;
     }
@@ -59,6 +66,8 @@ class _TPage {
     this.warning,
     this.ctaLabel,
     this.ctaRoute,
+    this.pyramid = false,
+    this.flow,
   });
 
   final String emoji;
@@ -72,18 +81,63 @@ class _TPage {
   final String? warning;
   final String? ctaLabel;
   final String? ctaRoute;
+  final bool pyramid; // Tier 1~3 피라미드 표시
+  final List<(String, String)>? flow; // (이모지, 텍스트) 흐름 박스
 }
 
 const _pages = <_TPage>[
+  // 1 ── SWPBS란 (연구 기반)
   _TPage(
-    emoji: '🌱',
-    subtitle: '교사 시작 가이드',
-    title: '자람으로 SWPBS를 시작해요',
-    body: '자람은 학교차원 긍정적 행동지원(SWPBS)을 한 곳에서 실행하도록 돕습니다.\n\n'
-        '① 규칙 세우기 → ② 매일 긍정적 강화 → ③ 지원이 필요한 학생 발견,\n'
-        '이 3단계를 차례로 안내할게요.',
+    emoji: '🏫',
+    subtitle: '학교차원 긍정적 행동지원',
+    title: 'SWPBS는 검증된 시스템이에요',
+    body: 'SWPBS(SWPBIS)는 처벌 대신 "기대행동을 가르치고 인정하는" '
+        '학교 운영 시스템으로, 미국에서만 2만 곳이 넘는 학교가 사용하는 '
+        '증거기반 실천(EBP)이에요.\n\n'
+        '자람은 이 시스템을 우리나라 학교에 맞게 담은 플랫폼입니다.',
+    researchNote: '📊 무작위 대조 연구에서 SWPBS 시행 학교는 훈육 의뢰와 정학이 '
+        '유의미하게 감소하고 학교 분위기가 개선되었어요(Bradshaw 외, 2010). '
+        '또래 괴롭힘과 따돌림도 줄어드는 것으로 나타났습니다(Waasdorp 외, 2012).',
     color: AppColors.studentGreen,
   ),
+  // 2 ── 3단 피라미드
+  _TPage(
+    emoji: '🔺',
+    subtitle: '3단계 지원 체계',
+    title: 'Tier 1이 튼튼할수록\n위층이 줄어들어요',
+    body: '모든 학생에게 주는 보편적 지원(Tier 1)이 잘 될수록, '
+        '더 많은 도움이 필요한 학생(Tier 2·3)이 줄어듭니다.\n\n'
+        '매일의 자기점검·칭찬·규칙 지도가 곧 예방 활동인 이유예요.',
+    pyramid: true,
+    researchNote: '💡 Tier 1이 충실히 운영되면 약 80%의 학생은 그것만으로 충분하고, '
+        '나머지 학생만 표적(Tier 2)·집중(Tier 3) 지원으로 올라갑니다. '
+        '토대가 약하면 위층 부담이 커져요.',
+    color: AppColors.teacherNavy,
+  ),
+  // 3 ── 예방의 원리 (사전 신호)
+  _TPage(
+    emoji: '🚨',
+    subtitle: '왜 예방이 가능한가',
+    title: '심각한 문제행동은\n갑자기 일어나지 않아요',
+    body: '학교폭력 같은 심각한 행동 이전에는 거의 언제나 '
+        '작은 신호들이 먼저 나타납니다. 문제는 그 신호가 '
+        '기록되지 않고 흩어져 사라진다는 것이에요.\n\n'
+        '가해 학생이 된 "후"에 움직이는 게 아니라, '
+        '신호가 보일 "때" 움직이는 것 — 그게 자람의 방식입니다.',
+    researchNote: '📊 미국 비밀경호국·교육부의 학교 공격 사례 연구(Safe School '
+        'Initiative, 2002)에서 가해 학생의 93%는 공격 전에 주변이 우려할 만한 '
+        '행동 신호를 보였고, 81%는 주변의 누군가가 계획을 알고 있었어요. '
+        '신호는 있었지만, 모아서 본 사람이 없었던 것입니다.',
+    flow: [
+      ('👀', '작은 신호 — 지각, 수업 이탈, 갈등…'),
+      ('📋', 'K-ODR — 흩어진 신호를 기록으로 모아요'),
+      ('🔎', '이달 3건 이상 → "지원 권장" 자동 표시'),
+      ('🤝', 'CICO — 멘토와 동행하며 방향을 바꿔요'),
+      ('🌱', '심각해지기 전에, 예방 완료'),
+    ],
+    color: AppColors.teacherNavy,
+  ),
+  // 4 ── STEP 1 규칙
   _TPage(
     emoji: '📋',
     subtitle: 'STEP 1 · 가장 중요한 첫걸음',
@@ -91,13 +145,14 @@ const _pages = <_TPage>[
     body: '3~4월 초, 학급자치 시간을 활용해 학생과 교사가 함께 규칙을 정하세요.\n\n'
         "규칙은 '복도에서 뛰지 않기'(✕)가 아니라 "
         "'복도에서는 걸어다녀요'(○)처럼 긍정문으로 세워야 합니다.\n\n"
-        '명확하고 지킬 수 있는 약속이 자람 활용의 첫걸음이에요.',
-    researchNote: '💡 긍정문으로 표현된 명확한 규칙은 학생이 "무엇을 하면 되는지"를 알게 해, '
-        '문제행동 예방과 규칙 준수율 향상에 효과적입니다. (SWPBS 기대행동 설정 원리)',
+        '이 규칙이 자기점검·CICO의 공통 기준이 돼요.',
+    researchNote: '💡 긍정문으로 표현된 명확한 기대행동은 학생이 "무엇을 하면 되는지"를 '
+        '알게 해, 문제행동 예방과 규칙 준수율 향상에 효과적입니다.',
     ctaLabel: '규칙 설정하러 가기',
     ctaRoute: '/teacher/rules',
     color: AppColors.teacherNavy,
   ),
+  // 5 ── STEP 2 강화
   _TPage(
     emoji: '💚',
     subtitle: 'STEP 2 · 매일의 긍정적 강화',
@@ -105,8 +160,12 @@ const _pages = <_TPage>[
     body: '학생은 매일 스스로 행동을 점검하고 포인트·배지를 모아요. '
         '선생님은 즉석 칭찬(+50P)과 명예의 전당으로 격려할 수 있어요.\n\n'
         '잘못을 지적하기보다 "잘한 행동을 알아주는 것"이 SWPBS의 핵심입니다.',
+    researchNote: '💡 일일 행동 자기점검은 자기조절 능력을 길러 학업 성취, 또래 관계, '
+        '문제행동 감소에 효과가 있다는 연구 결과가 있어요. 칭찬과 인정은 '
+        '기대행동을 유지시키는 가장 강력한 강화물입니다.',
     color: AppColors.primary,
   ),
+  // 6 ── STEP 3 K-ODR 안심
   _TPage(
     emoji: '🛡️',
     subtitle: 'STEP 3 · 지원이 필요한 학생 발견',
@@ -150,7 +209,6 @@ class _State extends State<_TeacherOnboardingDialog> {
   }
 
   void _goTo(String route) {
-    // 팝 이후에도 안전하도록 라우터를 먼저 캡처.
     final router = GoRouter.of(context);
     Navigator.of(context).pop();
     router.go(route);
@@ -173,7 +231,7 @@ class _State extends State<_TeacherOnboardingDialog> {
       backgroundColor: Colors.white,
       child: ConstrainedBox(
         constraints:
-            BoxConstraints(maxHeight: size.height * 0.8, maxWidth: 420),
+            BoxConstraints(maxHeight: size.height * 0.82, maxWidth: 420),
         child: Column(
           children: [
             Align(
@@ -258,16 +316,16 @@ class _PageContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 88,
-            height: 88,
+            width: 80,
+            height: 80,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: page.color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Text(page.emoji, style: const TextStyle(fontSize: 46)),
+            child: Text(page.emoji, style: const TextStyle(fontSize: 42)),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           Text(page.subtitle,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
@@ -279,24 +337,26 @@ class _PageContent extends StatelessWidget {
           Text(page.title,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
-                  fontSize: 21,
+                  fontSize: 20,
                   fontWeight: FontWeight.w900,
                   color: AppColors.textPrimary,
                   height: 1.3)),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(page.body,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
                   height: 1.6)),
+          if (page.pyramid) _pyramid(),
+          if (page.flow != null) _flowBox(page.flow!, page.color),
           if (page.researchNote != null) _box(page.researchNote!, page.color),
           if (page.notice != null) _noticeBox(page.notice!),
           if (page.bullets != null) _bullets(page.bullets!),
           if (page.warning != null) _warningBox(page.warning!),
           if (page.ctaLabel != null && page.ctaRoute != null) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -321,8 +381,110 @@ class _PageContent extends StatelessWidget {
     );
   }
 
+  // ── Tier 1~3 피라미드 ─────────────────────────────────────
+  Widget _pyramid() {
+    Widget tier(String label, String pct, Color color, double widthFactor,
+        {Color? textColor}) {
+      return FractionallySizedBox(
+        widthFactor: widthFactor,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Text(label,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: textColor ?? Colors.white)),
+              Text(pct,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          (textColor ?? Colors.white).withValues(alpha: 0.85))),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        children: [
+          tier('Tier 3 · 집중 지원', '약 5%', const Color(0xFFF87171), 0.42),
+          tier('Tier 2 · 표적 지원 (CICO)', '약 15%', const Color(0xFFFBBF24),
+              0.68,
+              textColor: const Color(0xFF7C5800)),
+          tier('Tier 1 · 보편적 예방 (모든 학생)', '약 80%',
+              const Color(0xFF34D399), 0.96,
+              textColor: const Color(0xFF065F46)),
+          const SizedBox(height: 6),
+          Text('⬇️ 토대가 튼튼할수록 위층이 작아져요',
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textTertiary)),
+        ],
+      ),
+    );
+  }
+
+  // ── 신호→예방 흐름 박스 ───────────────────────────────────
+  Widget _flowBox(List<(String, String)> steps, Color color) => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        ),
+        child: Column(
+          children: [
+            for (var i = 0; i < steps.length; i++) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(steps[i].$1, style: const TextStyle(fontSize: 17)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(steps[i].$2,
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            height: 1.45,
+                            color: AppColors.textPrimary)),
+                  ),
+                ],
+              ),
+              if (i != steps.length - 1)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 1),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 5),
+                      child: Text('↓',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: color.withValues(alpha: 0.6))),
+                    ),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      );
+
   Widget _box(String text, Color color) => Container(
-        margin: const EdgeInsets.only(top: 16),
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 14),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
@@ -342,7 +504,8 @@ class _PageContent extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.studentGreenLight,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          border: Border.all(color: AppColors.studentGreen.withValues(alpha: 0.5)),
+          border:
+              Border.all(color: AppColors.studentGreen.withValues(alpha: 0.5)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,6 +553,7 @@ class _PageContent extends StatelessWidget {
       );
 
   Widget _warningBox(String text) => Container(
+        width: double.infinity,
         margin: const EdgeInsets.only(top: 14),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
