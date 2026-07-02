@@ -421,6 +421,35 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               ],
             ),
           ),
+          const SizedBox(height: AppSizes.sm),
+          PbsCard(
+            onTap: () => context.go('/teacher/cico'),
+            color: AppColors.teacherNavyLight,
+            border: Border.all(
+                color: AppColors.teacherNavy.withValues(alpha: 0.25)),
+            child: Row(
+              children: [
+                const Text('🤝', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('CICO 동행 점검',
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.teacherNavy)),
+                      Text('Tier 2 표적 지원 · 멘토와 매일 체크인·체크아웃',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded,
+                    size: 14, color: AppColors.textTertiary),
+              ],
+            ),
+          ),
           const SectionHeader(title: '📊 오늘 현황'),
           overview.when(
             loading: () => const PbsCard(child: SizedBox(height: 100)),
