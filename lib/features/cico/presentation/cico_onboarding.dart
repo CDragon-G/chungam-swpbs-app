@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/utils/text_utils.dart';
 
 const _kCicoOnboardingKey = 'cico_onboarding_done_v1';
 
@@ -250,6 +251,7 @@ class _PageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final narrow = MediaQuery.sizeOf(context).width < 370;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -266,7 +268,7 @@ class _PageContent extends StatelessWidget {
             child: Text(page.emoji, style: const TextStyle(fontSize: 44)),
           ),
           const SizedBox(height: 16),
-          Text(page.subtitle,
+          Text(page.subtitle.wordSafe,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
                   fontSize: 12,
@@ -274,18 +276,18 @@ class _PageContent extends StatelessWidget {
                   color: page.color,
                   letterSpacing: 0.3)),
           const SizedBox(height: 6),
-          Text(page.title,
+          Text(page.title.wordSafe,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
-                  fontSize: 20,
+                  fontSize: narrow ? 18 : 20,
                   fontWeight: FontWeight.w900,
                   color: AppColors.textPrimary,
                   height: 1.3)),
           const SizedBox(height: 12),
-          Text(page.body,
+          Text(page.body.wordSafe,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
-                  fontSize: 13.5,
+                  fontSize: narrow ? 12.5 : 13.5,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
                   height: 1.6)),
@@ -309,7 +311,7 @@ class _PageContent extends StatelessWidget {
                                   style: const TextStyle(fontSize: 18)),
                               const SizedBox(width: 10),
                               Expanded(
-                                child: Text(s.$2,
+                                child: Text(s.$2.wordSafe,
                                     style: GoogleFonts.notoSansKr(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -332,7 +334,7 @@ class _PageContent extends StatelessWidget {
                 color: AppColors.studentGreenLight,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
-              child: Text(page.tip!,
+              child: Text(page.tip!.wordSafe,
                   style: GoogleFonts.notoSansKr(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

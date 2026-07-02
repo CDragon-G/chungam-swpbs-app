@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/utils/text_utils.dart';
 
 /// 마지막으로 보여준 시각(ms). 일정 주기마다 다시 보여준다.
 const _kLastShownKey = 'teacher_onboarding_last_ms';
@@ -310,6 +311,8 @@ class _PageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 좁은 화면에서는 글자를 살짝 줄여 한 문장이 자연스럽게 들어가도록
+    final narrow = MediaQuery.sizeOf(context).width < 370;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -326,7 +329,7 @@ class _PageContent extends StatelessWidget {
             child: Text(page.emoji, style: const TextStyle(fontSize: 42)),
           ),
           const SizedBox(height: 14),
-          Text(page.subtitle,
+          Text(page.subtitle.wordSafe,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
                   fontSize: 12,
@@ -334,18 +337,18 @@ class _PageContent extends StatelessWidget {
                   color: page.color,
                   letterSpacing: 0.3)),
           const SizedBox(height: 6),
-          Text(page.title,
+          Text(page.title.wordSafe,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
-                  fontSize: 20,
+                  fontSize: narrow ? 18 : 20,
                   fontWeight: FontWeight.w900,
                   color: AppColors.textPrimary,
                   height: 1.3)),
           const SizedBox(height: 12),
-          Text(page.body,
+          Text(page.body.wordSafe,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
-                  fontSize: 13.5,
+                  fontSize: narrow ? 12.5 : 13.5,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
                   height: 1.6)),
@@ -454,7 +457,7 @@ class _PageContent extends StatelessWidget {
                   Text(steps[i].$1, style: const TextStyle(fontSize: 17)),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(steps[i].$2,
+                    child: Text(steps[i].$2.wordSafe,
                         style: GoogleFonts.notoSansKr(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
@@ -490,7 +493,7 @@ class _PageContent extends StatelessWidget {
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         ),
-        child: Text(text,
+        child: Text(text.wordSafe,
             style: GoogleFonts.notoSansKr(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -513,7 +516,7 @@ class _PageContent extends StatelessWidget {
             Text(n.emoji, style: const TextStyle(fontSize: 18)),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(n.text,
+              child: Text(n.text.wordSafe,
                   style: GoogleFonts.notoSansKr(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
@@ -538,7 +541,7 @@ class _PageContent extends StatelessWidget {
                                 fontSize: 14, fontWeight: FontWeight.w900)),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(t,
+                          child: Text(t.wordSafe,
                               style: GoogleFonts.notoSansKr(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w500,
@@ -561,7 +564,7 @@ class _PageContent extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           border: Border.all(color: const Color(0xFFFECACA)),
         ),
-        child: Text(text,
+        child: Text(text.wordSafe,
             textAlign: TextAlign.center,
             style: GoogleFonts.notoSansKr(
                 fontSize: 12.5,

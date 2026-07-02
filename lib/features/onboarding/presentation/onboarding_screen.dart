@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/utils/text_utils.dart';
 
 const _kOnboardingDoneKey = 'onboarding_done_v1';
 
@@ -227,7 +228,7 @@ class _PageContent extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            page.subtitle,
+            page.subtitle.wordSafe,
             style: GoogleFonts.notoSansKr(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -237,7 +238,7 @@ class _PageContent extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            page.title,
+            page.title.wordSafe,
             textAlign: TextAlign.center,
             style: GoogleFonts.notoSansKr(
               fontSize: 22,
@@ -248,7 +249,7 @@ class _PageContent extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            page.body,
+            page.body.wordSafe,
             textAlign: TextAlign.center,
             style: GoogleFonts.notoSansKr(
               fontSize: 14,
@@ -266,7 +267,7 @@ class _PageContent extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
               child: Text(
-                page.researchNote!,
+                page.researchNote!.wordSafe,
                 textAlign: TextAlign.start,
                 style: GoogleFonts.notoSansKr(
                   fontSize: 12,
