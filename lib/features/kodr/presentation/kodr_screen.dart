@@ -9,6 +9,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../../shared/widgets/student_picker_sheet.dart';
+import '../../cico/presentation/cico_start_dialog.dart';
 import '../../school/providers/school_provider.dart';
 import '../constants/kodr_codes.dart';
 import '../models/kodr.dart';
@@ -227,7 +228,7 @@ class _SummaryTab extends ConsumerWidget {
                     style: GoogleFonts.notoSansKr(
                         fontSize: 12, color: AppColors.textSecondary)),
                 const SizedBox(height: 10),
-                ...cico.map((e) => _row(e, highlight: true)),
+                ...cico.map((e) => _row(context, ref, e, highlight: true)),
                 const SizedBox(height: AppSizes.lg),
               ],
               if (others.isNotEmpty) ...[
@@ -235,7 +236,7 @@ class _SummaryTab extends ConsumerWidget {
                     style: GoogleFonts.notoSansKr(
                         fontWeight: FontWeight.w800, fontSize: 14)),
                 const SizedBox(height: 10),
-                ...others.map((e) => _row(e)),
+                ...others.map((e) => _row(context, ref, e)),
               ],
               if (list.isEmpty)
                 Padding(
@@ -254,39 +255,70 @@ class _SummaryTab extends ConsumerWidget {
     );
   }
 
-  Widget _row(KodrSummaryEntry e, {bool highlight = false}) => Padding(
+  Widget _row(BuildContext context, WidgetRef ref, KodrSummaryEntry e,
+          {bool highlight = false}) =>
+      Padding(
         padding: const EdgeInsets.only(bottom: AppSizes.sm),
         child: PbsCard(
           color: highlight ? const Color(0xFFFFF7ED) : null,
           border: highlight
               ? Border.all(color: AppColors.warning.withValues(alpha: 0.4))
               : null,
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text('${e.nickname} (${e.classLabel})',
-                    style: GoogleFonts.notoSansKr(
-                        fontWeight: FontWeight.w700, fontSize: 14)),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('${e.nickname} (${e.classLabel})',
+                        style: GoogleFonts.notoSansKr(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                  ),
+                  if (highlight)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text('지원 권장',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFFB45309))),
+                    ),
+                  Text('${e.recordCount}건',
+                      style: GoogleFonts.notoSansKr(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.teacherNavy)),
+                ],
               ),
               if (highlight)
-                Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => showCicoStartDialog(
+                      context,
+                      ref,
+                      studentUserId: e.studentId,
+                      studentName: e.nickname,
+                      initialReason:
+                          '이달 K-ODR ${e.recordCount}건 — 동행 지원 시작',
+                    ),
+                    icon: const Text('🤝', style: TextStyle(fontSize: 14)),
+                    label: Text('CICO 시작하기',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.teacherNavy)),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
                   ),
-                  child: Text('지원 권장',
-                      style: GoogleFonts.notoSansKr(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFFB45309))),
                 ),
-              Text('${e.recordCount}건',
-                  style: GoogleFonts.notoSansKr(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.teacherNavy)),
             ],
           ),
         ),
