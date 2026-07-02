@@ -11,14 +11,29 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../onboarding/presentation/teacher_onboarding.dart';
 import '../../school/providers/school_provider.dart';
 import '../providers/dashboard_provider.dart';
 
-class TeacherHomeScreen extends ConsumerWidget {
+class TeacherHomeScreen extends ConsumerStatefulWidget {
   const TeacherHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TeacherHomeScreen> createState() => _TeacherHomeScreenState();
+}
+
+class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 교사 첫 접속 시 활용 안내 캐로셀
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) TeacherOnboarding.showIfFirstLaunch(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider).value;
     final school = ref.watch(schoolProvider);
     final overview = ref.watch(schoolOverviewProvider);
