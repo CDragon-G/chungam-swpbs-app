@@ -13,14 +13,29 @@ import '../../school/providers/school_provider.dart';
 import '../models/cico.dart';
 import '../providers/cico_provider.dart';
 import 'cico_daily_screen.dart';
+import 'cico_onboarding.dart';
 import 'cico_start_dialog.dart';
 
 /// 교사: CICO 동행 점검 홈 — 진행 중 학생 목록 + 새 학생 등록.
-class CicoHomeScreen extends ConsumerWidget {
+class CicoHomeScreen extends ConsumerStatefulWidget {
   const CicoHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CicoHomeScreen> createState() => _CicoHomeScreenState();
+}
+
+class _CicoHomeScreenState extends ConsumerState<CicoHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 첫 진입 시 CICO 사용법 캐로셀
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) CicoOnboarding.showIfFirstLaunch(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final enrollments = ref.watch(cicoEnrollmentsProvider);
 
     return Scaffold(
@@ -37,8 +52,8 @@ class CicoHomeScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.help_outline_rounded,
                 color: AppColors.teacherNavy),
-            tooltip: 'CICO란?',
-            onPressed: () => _showInfo(context),
+            tooltip: 'CICO 사용법',
+            onPressed: () => CicoOnboarding.showAlways(context),
           ),
         ],
       ),
@@ -111,33 +126,6 @@ class CicoHomeScreen extends ConsumerWidget {
               color: AppColors.success),
         ),
       );
-
-  void _showInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('CICO(체크인·체크아웃)란?',
-            style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
-        content: Text(
-          '증거기반(EBP) Tier 2 표적 지원 프로그램이에요.\n\n'
-          '① 아침: 멘토와 체크인 — 오늘 목표 확인\n'
-          '② 하루: 학교 규칙별로 0/1/2 점수\n'
-          '③ 하교: 멘토와 체크아웃 — 격려 피드백\n'
-          '④ 가정: 학생 소감 + 보호자 확인\n\n'
-          '목표 달성률(기본 80%)을 꾸준히 채우면 졸업하고 '
-          'Tier 1으로 돌아갑니다. 처벌이 아닌 지원이 목적이에요.',
-          style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.7),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('확인',
-                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ── 새 학생 등록 ──────────────────────────────────────────
   Future<void> _startCico(BuildContext context, WidgetRef ref) async {
