@@ -20,22 +20,22 @@ class SchoolRepository {
     if (user == null) throw StateError('로그인 상태가 아닙니다.');
 
     // Prevent duplicate schools: check if same (name, region, level) exists
-    final dup = await _c
-        .from('schools')
-        .select('school_code')
-        .eq('name', name)
-        .eq('region', region)
-        .eq('level', level)
-        .maybeSingle();
-    if (dup != null) {
+    // (schools 직접 조회 대신 RPC — teacher_code 노출 차단)
+    final dupCode = await _c.rpc('check_duplicate_school', params: {
+      'p_name': name,
+      'p_region': region,
+      'p_level': level,
+    });
+    if (dupCode != null && (dupCode as String).isNotEmpty) {
       throw StateError(
         '이미 등록된 학교예요.\n'
-        '"기존 학교 참여" 탭에서 학교 코드 ${dup['school_code']}로 참여해주세요.\n'
+        '"기존 학교 참여" 탭에서 학교 코드 $dupCode로 참여해주세요.\n'
         '(학교 코드는 첫 번째로 가입한 교사에게 문의)',
       );
     }
 
-    final code = await SchoolCodeGenerator.generateUnique();
+    // 코드 유일성은 서버(SECURITY DEFINER)에서 전체를 보고 생성 — schools 조회 제한과 무관.
+    final code = await _c.rpc('gen_unique_school_code') as String;
     final teacherCode = SchoolCodeGenerator.generateTeacherCode();
     final inserted = await _c
         .from('schools')
@@ -57,24 +57,20 @@ class SchoolRepository {
     return school;
   }
 
-  /// 학생 가입용: school_code로 학교 조회.
+  /// 학생 가입용: school_code로 학교 조회 (RPC — teacher_code 미노출).
   Future<School?> findByCode(String code) async {
-    final row = await _c
-        .from('schools')
-        .select()
-        .eq('school_code', code)
-        .maybeSingle();
-    return row == null ? null : School.fromMap(row);
+    final res = await _c
+        .rpc('find_school_by_student_code', params: {'p_code': code});
+    final list = List<Map<String, dynamic>>.from(res as List);
+    return list.isEmpty ? null : School.fromMap(list.first);
   }
 
-  /// 교사 가입용: teacher_code로 학교 조회 (기존 학교 참여 시).
+  /// 교사 가입용: teacher_code로 학교 조회 (RPC).
   Future<School?> findByTeacherCode(String code) async {
-    final row = await _c
-        .from('schools')
-        .select()
-        .eq('teacher_code', code)
-        .maybeSingle();
-    return row == null ? null : School.fromMap(row);
+    final res = await _c
+        .rpc('find_school_by_teacher_code', params: {'p_code': code});
+    final list = List<Map<String, dynamic>>.from(res as List);
+    return list.isEmpty ? null : School.fromMap(list.first);
   }
 
   Future<School?> findById(String id) async {
