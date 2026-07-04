@@ -10,6 +10,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const OPERATOR = "toyswar987@naver.com";
 const HOME = "https://jaramedu.kr";
+const IOS_URL = "https://apps.apple.com/app/id6780309774";
+const ANDROID_URL = "https://play.google.com/store/apps/details?id=com.jaram.app";
 
 async function sendEmail(
   apiKey: string, from: string, to: string, bcc: string | null,
@@ -58,7 +60,8 @@ function buildHtml(pr: Record<string, string>): string {
     </div>
 
     <div style="text-align:center;margin:20px 0">
-      <a href="${HOME}" style="display:inline-block;background:#10B981;color:#fff;text-decoration:none;font-weight:700;padding:12px 28px;border-radius:8px">앱 설치 · 시작하기</a>
+      <a href="${IOS_URL}" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:8px;margin:4px">📱 App Store</a>
+      <a href="${ANDROID_URL}" style="display:inline-block;background:#10B981;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:8px;margin:4px">▶️ Google Play</a>
     </div>
 
     <p style="margin:16px 0 0;font-size:13px;color:#6b7280">
