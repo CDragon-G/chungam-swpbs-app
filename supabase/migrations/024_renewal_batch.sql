@@ -91,7 +91,7 @@ begin
     jsonb_build_object(
       'active', m.active,
       'checkins', m.cnt,
-      'avg_score', round(m.avgp, 1),
+      'avg_score', round(m.avgp::numeric, 1),
       'praise', (select count(*) from praise pz
                    where pz.school_id = r.id and pz.created_at >= current_date - interval '1 year'),
       'kodr', (select count(*) from kodr_records kr
