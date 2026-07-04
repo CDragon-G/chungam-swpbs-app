@@ -1,9 +1,11 @@
 // supabase/functions/send-welcome/index.ts
 // 도입 신청 승인 직후 담당자에게 환영 메일(학교코드·교사코드·시작가이드)을 자동 발송한다.
-// admin.html이 approve_purchase_request 성공 후 이 함수를 호출한다. (거래성 메일 → 수신동의 불필요)
+// admin.html(브라우저)이 approve_purchase_request 성공 후 이 함수를 호출한다.
+//   → 브라우저 크로스도메인 호출이므로 CORS(OPTIONS 프리플라이트) 처리가 필수.
+//   → "Verify JWT"는 반드시 OFF (프리플라이트엔 인증헤더가 없어 게이트웨이가 막음).
+//     대신 함수 내부에서 운영자 JWT를 검증한다. (거래성 메일 → 수신동의 불필요)
 //
-// 시크릿 (send-renewal-reminders와 공유):
-//   RESEND_API_KEY, RESEND_FROM, OPERATOR_EMAIL
+// 시크릿 (공유): RESEND_API_KEY, RESEND_FROM, OPERATOR_EMAIL
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (기본 제공)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -12,6 +14,19 @@ const OPERATOR = "toyswar987@naver.com";
 const HOME = "https://jaramedu.kr";
 const IOS_URL = "https://apps.apple.com/app/id6780309774";
 const ANDROID_URL = "https://play.google.com/store/apps/details?id=com.jaram.app";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 async function sendEmail(
   apiKey: string, from: string, to: string, bcc: string | null,
@@ -74,63 +89,45 @@ function buildHtml(pr: Record<string, string>): string {
 }
 
 Deno.serve(async (req) => {
+  // CORS 프리플라이트
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // 호출자 = 운영자 검증 (admin.html이 운영자 JWT로 호출)
+    // 호출자 = 운영자 검증 (Verify JWT OFF이므로 함수 내부 검증이 유일한 방어선)
     const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
     const { data: userData } = await supabase.auth.getUser(token);
     if (!userData?.user || userData.user.email !== OPERATOR) {
-      return new Response(JSON.stringify({ error: "운영자만 호출할 수 있어요." }), {
-        status: 403, headers: { "Content-Type": "application/json" },
-      });
+      return json({ error: "운영자만 호출할 수 있어요." }, 403);
     }
 
     const { request_id } = await req.json();
-    if (!request_id) {
-      return new Response(JSON.stringify({ error: "request_id 누락" }), {
-        status: 400, headers: { "Content-Type": "application/json" },
-      });
-    }
+    if (!request_id) return json({ error: "request_id 누락" }, 400);
 
     const { data: pr } = await supabase
       .from("purchase_requests").select("*").eq("id", request_id).single();
-    if (!pr) {
-      return new Response(JSON.stringify({ error: "신청을 찾을 수 없어요." }), {
-        status: 404, headers: { "Content-Type": "application/json" },
-      });
-    }
+    if (!pr) return json({ error: "신청을 찾을 수 없어요." }, 404);
     if (pr.status !== "approved" || !pr.school_code) {
-      return new Response(JSON.stringify({ error: "아직 승인되지 않은 신청이에요." }), {
-        status: 409, headers: { "Content-Type": "application/json" },
-      });
+      return json({ error: "아직 승인되지 않은 신청이에요." }, 409);
     }
-    if (!pr.contact_email) {
-      return new Response(JSON.stringify({ error: "담당자 이메일이 없어요." }), {
-        status: 422, headers: { "Content-Type": "application/json" },
-      });
-    }
+    if (!pr.contact_email) return json({ error: "담당자 이메일이 없어요." }, 422);
 
     const apiKey = Deno.env.get("RESEND_API_KEY");
     const from = Deno.env.get("RESEND_FROM");
-    if (!apiKey || !from) {
-      return new Response(JSON.stringify({ error: "RESEND 미설정" }), {
-        status: 500, headers: { "Content-Type": "application/json" },
-      });
-    }
+    if (!apiKey || !from) return json({ error: "RESEND 미설정" }, 500);
     const operator = Deno.env.get("OPERATOR_EMAIL") ?? null;
 
     const subject = `[자람] ${pr.school_name} 도입이 완료됐어요 — 학교 코드 안내`;
     const ok = await sendEmail(apiKey, from, pr.contact_email, operator, subject, buildHtml(pr));
 
-    return new Response(JSON.stringify({ sent: ok, to: pr.contact_email }), {
-      status: ok ? 200 : 502,
-      headers: { "Content-Type": "application/json" },
-    });
+    return json({ sent: ok, to: pr.contact_email }, ok ? 200 : 502);
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    return json({ error: String(e) }, 500);
   }
 });
