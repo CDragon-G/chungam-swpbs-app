@@ -21,6 +21,8 @@ interface Row {
   };
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function sendEmail(
   apiKey: string, from: string, to: string, subject: string, html: string,
 ): Promise<boolean> {
@@ -115,10 +117,15 @@ Deno.serve(async (req) => {
     let sent = 0;
     const failed: string[] = [];
     for (const row of rows) {
-      const ok = await sendEmail(
-        apiKey, from, row.teacher_email,
-        `[자람] ${row.school_name} 주간 리포트`, buildHtml(row));
+      const subject = `[자람] ${row.school_name} 주간 리포트`;
+      const html = buildHtml(row);
+      let ok = await sendEmail(apiKey, from, row.teacher_email, subject, html);
+      if (!ok) {                       // 429 등 일시 실패 → 잠깐 쉬고 1회 재시도
+        await sleep(1200);
+        ok = await sendEmail(apiKey, from, row.teacher_email, subject, html);
+      }
       if (ok) sent++; else failed.push(row.teacher_email);
+      await sleep(600);                // Resend 초당 2건 제한 준수
     }
 
     return new Response(JSON.stringify({ candidates: rows.length, sent, failed }),
