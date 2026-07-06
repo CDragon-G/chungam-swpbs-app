@@ -159,4 +159,15 @@ class AuthRepository {
   Stream<AuthState> authStateChanges() => _c.auth.onAuthStateChange;
 
   User? get currentUser => _c.auth.currentUser;
+
+  /// 마케팅(광고성) 이메일 수신동의 현재 상태.
+  Future<bool> getMarketingConsent() async {
+    final r = await _c.rpc('get_my_marketing_consent');
+    return r == true;
+  }
+
+  /// 마케팅 수신동의 on/off.
+  Future<void> setMarketingConsent(bool optIn) async {
+    await _c.rpc('set_marketing_consent', params: {'p_opt_in': optIn});
+  }
 }

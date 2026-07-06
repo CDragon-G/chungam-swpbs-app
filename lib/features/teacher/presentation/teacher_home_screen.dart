@@ -631,6 +631,8 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
+            const _MarketingConsentTile(),
+            const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout_rounded,
                   color: AppColors.textSecondary),
@@ -795,6 +797,63 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
             const SizedBox(height: AppSizes.lg),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 교사 마케팅(광고성) 이메일 수신동의 토글. 현재 상태를 서버에서 읽어 표시.
+class _MarketingConsentTile extends ConsumerStatefulWidget {
+  const _MarketingConsentTile();
+
+  @override
+  ConsumerState<_MarketingConsentTile> createState() =>
+      _MarketingConsentTileState();
+}
+
+class _MarketingConsentTileState extends ConsumerState<_MarketingConsentTile> {
+  bool? _optIn; // null = 로딩 중
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = await ref.read(authRepositoryProvider).getMarketingConsent();
+      if (mounted) setState(() => _optIn = v);
+    } catch (_) {
+      if (mounted) setState(() => _optIn = false);
+    }
+  }
+
+  Future<void> _toggle(bool v) async {
+    setState(() => _optIn = v);
+    try {
+      await ref.read(authRepositoryProvider).setMarketingConsent(v);
+    } catch (_) {
+      if (mounted) setState(() => _optIn = !v); // 실패 시 되돌림
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      value: _optIn ?? false,
+      onChanged: _optIn == null ? null : _toggle,
+      activeColor: AppColors.primary,
+      secondary: const Icon(Icons.mark_email_read_rounded,
+          color: AppColors.textSecondary),
+      title: Text(
+        '자람 소식 메일 받기',
+        style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w700),
+      ),
+      subtitle: Text(
+        '새 기능·교육자료·혜택 안내 (선택)',
+        style: GoogleFonts.notoSansKr(
+            fontSize: 11, color: AppColors.textTertiary),
       ),
     );
   }

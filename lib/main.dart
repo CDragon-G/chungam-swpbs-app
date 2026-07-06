@@ -14,6 +14,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/notifications/notifications_service.dart';
+import 'core/notifications/reminder_prefs.dart';
 import 'core/supabase/supabase_client.dart';
 import 'firebase_options.dart';
 
@@ -52,6 +53,7 @@ Future<void> main() async {
   await initializeDateFormatting('ko_KR');
   await SupabaseService.initialize();
   await NotificationsService.initialize();
+  await ReminderPrefs.reschedule(); // 일일 리마인더 재예약 보정
 
   // Firebase + FCM 원격 푸시
   try {

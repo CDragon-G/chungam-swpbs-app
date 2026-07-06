@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/notifications/notifications_service.dart';
+import '../../../core/notifications/reminder_prefs.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
@@ -341,6 +343,10 @@ class MyPageScreen extends ConsumerWidget {
             ),
           ),
 
+          // 알림 설정
+          const SectionHeader(title: '🔔 알림 설정'),
+          const _ReminderSettings(),
+
           // 계정 관리
           const SectionHeader(title: '⚙️ 계정 관리'),
           PbsCard(
@@ -477,6 +483,129 @@ class MyPageScreen extends ConsumerWidget {
         ),
       );
     }
+  }
+}
+
+class _ReminderSettings extends StatefulWidget {
+  const _ReminderSettings();
+
+  @override
+  State<_ReminderSettings> createState() => _ReminderSettingsState();
+}
+
+class _ReminderSettingsState extends State<_ReminderSettings> {
+  bool _enabled = false;
+  int _hour = 17;
+  int _minute = 0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final s = await ReminderPrefs.load();
+    if (!mounted) return;
+    setState(() {
+      _enabled = s.enabled;
+      _hour = s.hour;
+      _minute = s.minute;
+      _loading = false;
+    });
+  }
+
+  Future<void> _apply() =>
+      ReminderPrefs.save(enabled: _enabled, hour: _hour, minute: _minute);
+
+  Future<void> _onToggle(bool v) async {
+    if (v) {
+      final granted = await NotificationsService.requestPermission();
+      if (!granted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '알림 권한이 꺼져 있어요. 휴대폰 설정 → 알림에서 자람 알림을 켜주세요.',
+                style: GoogleFonts.notoSansKr(),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    }
+    setState(() => _enabled = v);
+    await _apply();
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _hour, minute: _minute),
+    );
+    if (picked == null) return;
+    setState(() {
+      _hour = picked.hour;
+      _minute = picked.minute;
+    });
+    await _apply();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const PbsCard(
+        child: SizedBox(
+          height: 56,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    return PbsCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          SwitchListTile(
+            value: _enabled,
+            onChanged: _onToggle,
+            activeColor: AppColors.studentGreen,
+            title: Text(
+              '매일 점검 알림',
+              style: GoogleFonts.notoSansKr(
+                  fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+            subtitle: Text(
+              '정해진 시간에 자기점검을 잊지 않게 알려드려요',
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 11, color: AppColors.textTertiary),
+            ),
+          ),
+          if (_enabled) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.access_time_rounded,
+                  color: AppColors.textSecondary),
+              title: Text(
+                '알림 시간',
+                style: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+              trailing: Text(
+                TimeOfDay(hour: _hour, minute: _minute).format(context),
+                style: GoogleFonts.notoSansKr(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: AppColors.studentGreen,
+                ),
+              ),
+              onTap: _pickTime,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
