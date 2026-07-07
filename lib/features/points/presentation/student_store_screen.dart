@@ -66,7 +66,6 @@ class StudentStoreScreen extends ConsumerWidget {
             ),
           ),
 
-          const SectionHeader(title: '🛒 교환 가능 상품'),
           itemsAsync.when(
             loading: () => const Padding(
               padding: EdgeInsets.symmetric(vertical: 32),
@@ -78,28 +77,62 @@ class StudentStoreScreen extends ConsumerWidget {
             ),
             data: (items) {
               if (items.isEmpty) {
-                return PbsCard(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      '아직 등록된 상품이 없어요.\n담임선생님께 상점 등록을 요청해보세요!',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.notoSansKr(
-                        color: AppColors.textTertiary,
-                        fontSize: 13,
+                return Column(
+                  children: [
+                    const SectionHeader(title: '🛒 교환 가능 상품'),
+                    PbsCard(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text(
+                          '아직 등록된 상품이 없어요.\n담임선생님께 상점 등록을 요청해보세요!',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.notoSansKr(
+                            color: AppColors.textTertiary,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 );
               }
+              final classItems =
+                  items.where((it) => it.isClassItem).toList();
+              final schoolItems =
+                  items.where((it) => !it.isClassItem).toList();
+              Widget cards(List<PointStoreItem> list) => Column(
+                    children: list
+                        .map((it) => _ItemCard(
+                              item: it,
+                              balance: balance.value ?? 0,
+                              onExchange: () =>
+                                  _confirmExchange(context, ref, it),
+                            ))
+                        .toList(),
+                  );
               return Column(
-                children: items
-                    .map((it) => _ItemCard(
-                          item: it,
-                          balance: balance.value ?? 0,
-                          onExchange: () => _confirmExchange(context, ref, it),
-                        ))
-                    .toList(),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (classItems.isNotEmpty) ...[
+                    const SectionHeader(title: '🧑‍🏫 우리 반 상점'),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        '담임선생님이 우리 반을 위해 준비한 특별 상품이에요!',
+                        style: GoogleFonts.notoSansKr(
+                          fontSize: 12,
+                          color: AppColors.studentGreen,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    cards(classItems),
+                  ],
+                  if (schoolItems.isNotEmpty) ...[
+                    const SectionHeader(title: '🏫 학교 상점'),
+                    cards(schoolItems),
+                  ],
+                ],
               );
             },
           ),
@@ -147,7 +180,8 @@ class StudentStoreScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: Text('${it.name} 교환'),
         content: Text(
-          '${it.costPoints}P가 차감됩니다.\n교환하시겠어요?\n\n수령은 인성생활부에서 받을 수 있어요.',
+          '${it.costPoints}P가 차감됩니다.\n교환하시겠어요?\n\n'
+          '${it.isClassItem ? "수령은 담임선생님께 받을 수 있어요." : "수령은 담당 선생님께 받을 수 있어요."}',
         ),
         actions: [
           TextButton(
@@ -170,7 +204,9 @@ class StudentStoreScreen extends ConsumerWidget {
       ref.invalidate(activeStoreItemsProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('교환 신청 완료! 인성생활부에서 수령하세요.')),
+          SnackBar(content: Text(it.isClassItem
+              ? '교환 신청 완료! 담임선생님께 수령하세요.'
+              : '교환 신청 완료! 담당 선생님께 수령하세요.')),
         );
       }
     } catch (e) {
@@ -255,7 +291,7 @@ class _ItemCard extends StatelessWidget {
                 color: AppColors.studentGreenLight,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
-              child: const Text('🎁', style: TextStyle(fontSize: 24)),
+              child: Text(item.emoji, style: const TextStyle(fontSize: 24)),
             ),
             const SizedBox(width: AppSizes.md),
             Expanded(

@@ -54,6 +54,27 @@ class PointsRepository {
         .toList();
   }
 
+  /// 학생용: 전교 공통 상품 + 우리 반(grade/classNum) 상품만.
+  Future<List<PointStoreItem>> fetchItemsForStudent({
+    required String schoolId,
+    required int? grade,
+    required int? classNum,
+  }) async {
+    final classFilter = (grade != null && classNum != null)
+        ? ',and(grade.eq.$grade,class_num.eq.$classNum)'
+        : '';
+    final rows = await _c
+        .from('point_store_items')
+        .select()
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .or('grade.is.null$classFilter')
+        .order('order_index');
+    return rows
+        .map((m) => PointStoreItem.fromMap(m as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<PointStoreItem> createItem({
     required String schoolId,
     required String name,
@@ -61,7 +82,11 @@ class PointsRepository {
     required int costPoints,
     int? stock,
     required int orderIndex,
+    String emoji = '🎁',
+    int? grade,
+    int? classNum,
   }) async {
+    final uid = _c.auth.currentUser?.id;
     final row = await _c
         .from('point_store_items')
         .insert({
@@ -72,6 +97,10 @@ class PointsRepository {
           'stock': stock,
           'is_active': true,
           'order_index': orderIndex,
+          'emoji': emoji,
+          'grade': grade,
+          'class_num': classNum,
+          'created_by': uid,
         })
         .select()
         .single();

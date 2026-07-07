@@ -38,7 +38,8 @@ class _State extends ConsumerState<TeacherStoreScreen>
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider).value;
-    final canEdit = profile?.isAdminTeacher ?? false;
+    // 관리자: 전교+학급 상품, 일반 교사: 자기 학급 상품 등록 가능
+    final canEdit = profile?.isTeacher ?? false;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -144,6 +145,10 @@ class _ItemRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(profileProvider).value;
+    // 관리자는 전부, 일반 교사는 자기가 등록한 상품만 관리
+    final canManage = (profile?.isAdminTeacher ?? false) ||
+        (item.createdBy != null && item.createdBy == profile?.userId);
     return PbsCard(
       child: Row(
         children: [
@@ -152,10 +157,12 @@ class _ItemRow extends ConsumerWidget {
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.teacherNavyLight,
+              color: item.isClassItem
+                  ? AppColors.studentGreenLight
+                  : AppColors.teacherNavyLight,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             ),
-            child: const Text('🎁', style: TextStyle(fontSize: 22)),
+            child: Text(item.emoji, style: const TextStyle(fontSize: 22)),
           ),
           const SizedBox(width: AppSizes.md),
           Expanded(
@@ -173,15 +180,31 @@ class _ItemRow extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
+                  '${item.scopeLabel} · ${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
                   style: GoogleFonts.notoSansKr(
                     fontSize: 11,
-                    color: AppColors.textSecondary,
+                    color: item.isClassItem
+                        ? AppColors.studentGreen
+                        : AppColors.textSecondary,
+                    fontWeight:
+                        item.isClassItem ? FontWeight.w700 : FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
+          if (!canManage)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                item.isActive ? '판매중' : '중지',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ),
+          if (canManage) ...[
           Switch.adaptive(
             value: item.isActive,
             onChanged: (v) async {
@@ -227,6 +250,7 @@ class _ItemRow extends ConsumerWidget {
               }
             },
           ),
+          ],
         ],
       ),
     );
@@ -256,6 +280,14 @@ class _AddItemSheet extends ConsumerStatefulWidget {
   ConsumerState<_AddItemSheet> createState() => _AddItemSheetState();
 }
 
+/// 강화물 아이콘 후보 — 간식·문구·쿠폰·특권·놀이 등 학교 보상에 인기 있는 이모지.
+const kStoreEmojis = [
+  '🎁', '🍫', '🍬', '🍭', '🍪', '🥤', '🧃', '🍦',
+  '🍜', '🍕', '🍔', '🍩', '✏️', '📓', '🖊️', '📚',
+  '🎟️', '🎫', '🎧', '🎵', '🎮', '⚽', '🏀', '🎲',
+  '🪑', '⏰', '🏆', '⭐', '👑', '💝', '🍀', '📸',
+];
+
 class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
   late final TextEditingController _name;
   late final TextEditingController _desc;
@@ -263,6 +295,10 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
   late final TextEditingController _stock;
   bool _unlimited = true;
   bool _saving = false;
+  String _emoji = '🎁';
+  bool _schoolWide = true; // 전교 공통 vs 특정 학급
+  int _grade = 1;
+  int _classNum = 1;
 
   @override
   void initState() {
@@ -273,6 +309,12 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     _cost = TextEditingController(text: e?.costPoints.toString() ?? '');
     _stock = TextEditingController(text: e?.stock?.toString() ?? '');
     _unlimited = e?.stock == null;
+    _emoji = e?.emoji ?? '🎁';
+    if (e != null) {
+      _schoolWide = !e.isClassItem;
+      _grade = e.grade ?? 1;
+      _classNum = e.classNum ?? 1;
+    }
   }
 
   @override
@@ -306,18 +348,24 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
       final repo = ref.read(pointsRepositoryProvider);
       final profile = ref.read(profileProvider).value;
       if (profile?.schoolId == null) return;
+      // 일반 교사는 전교 공통 불가 (서버 RLS도 차단하지만 UI에서 먼저)
+      final isAdmin = profile!.isAdminTeacher;
+      final schoolWide = isAdmin && _schoolWide;
 
       if (widget.existing == null) {
         final existing =
             ref.read(allStoreItemsProvider).value ?? const <PointStoreItem>[];
         await repo.createItem(
-          schoolId: profile!.schoolId!,
+          schoolId: profile.schoolId!,
           name: _name.text.trim(),
           description:
               _desc.text.trim().isEmpty ? null : _desc.text.trim(),
           costPoints: cost,
           stock: stock,
           orderIndex: existing.length,
+          emoji: _emoji,
+          grade: schoolWide ? null : _grade,
+          classNum: schoolWide ? null : _classNum,
         );
       } else {
         await repo.updateItem(widget.existing!.id, {
@@ -326,6 +374,9 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
               _desc.text.trim().isEmpty ? null : _desc.text.trim(),
           'cost_points': cost,
           'stock': stock,
+          'emoji': _emoji,
+          'grade': schoolWide ? null : _grade,
+          'class_num': schoolWide ? null : _classNum,
         });
       }
       ref.invalidate(allStoreItemsProvider);
@@ -344,6 +395,8 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(profileProvider).value;
+    final isAdmin = profile?.isAdminTeacher ?? false;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.xl),
       child: Column(
@@ -358,6 +411,125 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
             ),
           ),
           const SizedBox(height: AppSizes.lg),
+
+          // ── 아이콘 선택 ─────────────────────────────
+          Text(
+            '아이콘',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: kStoreEmojis.map((e) {
+              final selected = e == _emoji;
+              return GestureDetector(
+                onTap: () => setState(() => _emoji = e),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.teacherNavyLight
+                        : AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.teacherNavy
+                          : AppColors.borderLight,
+                      width: selected ? 2 : 1,
+                    ),
+                  ),
+                  child: Text(e, style: const TextStyle(fontSize: 20)),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: AppSizes.md),
+
+          // ── 판매 대상 ───────────────────────────────
+          Text(
+            '판매 대상',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (isAdmin)
+            Row(
+              children: [
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text('🏫 전교 공통'),
+                    selected: _schoolWide,
+                    onSelected: (_) => setState(() => _schoolWide = true),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text('🧑‍🏫 특정 학급'),
+                    selected: !_schoolWide,
+                    onSelected: (_) => setState(() => _schoolWide = false),
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              '우리 학급 학생에게만 보여요. (전교 공통 상품은 관리자 선생님이 등록)',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 12,
+                color: AppColors.textTertiary,
+              ),
+            ),
+          if (!isAdmin || !_schoolWide) ...[
+            const SizedBox(height: AppSizes.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _grade,
+                    decoration: const InputDecoration(
+                      labelText: '학년',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (var g = 1; g <= 6; g++)
+                        DropdownMenuItem(value: g, child: Text('$g학년')),
+                    ],
+                    onChanged: (v) => setState(() => _grade = v ?? 1),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _classNum,
+                    decoration: const InputDecoration(
+                      labelText: '반',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (var c = 1; c <= 20; c++)
+                        DropdownMenuItem(value: c, child: Text('$c반')),
+                    ],
+                    onChanged: (v) => setState(() => _classNum = v ?? 1),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: AppSizes.md),
+
           PbsTextField(
             controller: _name,
             label: '상품명',

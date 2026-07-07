@@ -26,9 +26,12 @@ final activeStoreItemsProvider =
     FutureProvider<List<PointStoreItem>>((ref) async {
   final profile = ref.watch(profileProvider).value;
   if (profile?.schoolId == null) return [];
-  return ref
-      .read(pointsRepositoryProvider)
-      .fetchItems(profile!.schoolId!, onlyActive: true);
+  // 학생: 전교 공통 + 우리 반 상품만. (교사가 미리보기로 봐도 동일 로직)
+  return ref.read(pointsRepositoryProvider).fetchItemsForStudent(
+        schoolId: profile!.schoolId!,
+        grade: profile.grade,
+        classNum: profile.classNum,
+      );
 });
 
 final myExchangesProvider =
