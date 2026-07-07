@@ -184,9 +184,10 @@ class SchoolRepository {
         .select()
         .eq('school_id', schoolId)
         .eq('role', 'student')
-        .order('grade')
-        .order('class_num')
-        .order('student_num');
+        // supabase-dart order()는 기본 내림차순 → 1번부터 보이게 오름차순 명시
+        .order('grade', ascending: true)
+        .order('class_num', ascending: true)
+        .order('student_num', ascending: true);
     return List<Map<String, dynamic>>.from(rows);
   }
 
@@ -232,9 +233,10 @@ class SchoolRepository {
         .from('student_roster')
         .select()
         .eq('school_id', schoolId)
-        .order('grade')
-        .order('class_num')
-        .order('student_num');
+        // supabase-dart order()는 기본 내림차순 → 1번부터 보이게 오름차순 명시
+        .order('grade', ascending: true)
+        .order('class_num', ascending: true)
+        .order('student_num', ascending: true);
     return List<Map<String, dynamic>>.from(rows)
         .map(RosterEntry.fromMap)
         .toList();

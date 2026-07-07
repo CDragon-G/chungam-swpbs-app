@@ -43,4 +43,14 @@ class ReminderPrefs {
       await NotificationsService.scheduleDailyReminder(s.hour, s.minute);
     }
   }
+
+  /// 학생 첫 로그인 시 기본 ON (opt-out).
+  /// 아직 한 번도 설정한 적 없을 때만 켠다 — 학생이 껐다면 존중.
+  /// 교사에게는 점검 알림이 가면 안 되므로 학생 화면에서만 호출할 것.
+  static Future<void> ensureDefaultOnForStudent() async {
+    final p = await SharedPreferences.getInstance();
+    if (p.containsKey(_kEnabled)) return; // 이미 사용자가 선택함
+    final granted = await NotificationsService.requestPermission();
+    await save(enabled: granted, hour: 17, minute: 0);
+  }
 }

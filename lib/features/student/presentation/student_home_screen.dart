@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/notifications/reminder_prefs.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../shared/models/badge.dart';
 import '../../../shared/providers/profile_provider.dart';
@@ -20,11 +21,25 @@ import '../../school/providers/school_provider.dart';
 import '../providers/badge_provider.dart';
 import '../providers/student_stats_provider.dart';
 
-class StudentHomeScreen extends ConsumerWidget {
+class StudentHomeScreen extends ConsumerStatefulWidget {
   const StudentHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudentHomeScreen> createState() => _StudentHomeScreenState();
+}
+
+class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 학생 첫 진입 시 일일 리마인더 기본 ON (한 번도 설정 안 했을 때만)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ReminderPrefs.ensureDefaultOnForStudent();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider).value;
     final stats = ref.watch(studentStatsProvider);
     final today = ref.watch(todayCheckinProvider);
