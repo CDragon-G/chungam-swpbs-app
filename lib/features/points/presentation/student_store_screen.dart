@@ -316,6 +316,15 @@ class _ItemCard extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                  if (item.isClassItem && item.createdByName != null)
+                    Text(
+                      '🧑‍🏫 ${item.createdByName} 선생님',
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.studentGreen,
+                      ),
+                    ),
                   Row(
                     children: [
                       Text(

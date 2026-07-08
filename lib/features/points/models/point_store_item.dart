@@ -12,6 +12,7 @@ class PointStoreItem {
     this.grade,
     this.classNum,
     this.createdBy,
+    this.createdByName,
     required this.createdAt,
   });
 
@@ -27,6 +28,7 @@ class PointStoreItem {
   final int? grade; // null = 전교 공통
   final int? classNum; // null = 전교 공통
   final String? createdBy; // 등록 교사 user_id
+  final String? createdByName; // 등록 교사 이름 (표시용)
   final DateTime createdAt;
 
   bool get isUnlimited => stock == null;
@@ -52,6 +54,9 @@ class PointStoreItem {
         grade: (map['grade'] as num?)?.toInt(),
         classNum: (map['class_num'] as num?)?.toInt(),
         createdBy: map['created_by'] as String?,
+        createdByName: (map['created_by_name'] as String?)?.trim().isNotEmpty == true
+            ? (map['created_by_name'] as String).trim()
+            : null,
         createdAt: DateTime.parse(map['created_at'] as String),
       );
 }

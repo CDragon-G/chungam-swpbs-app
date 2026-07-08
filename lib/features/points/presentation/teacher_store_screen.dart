@@ -190,6 +190,14 @@ class _ItemRow extends ConsumerWidget {
                         item.isClassItem ? FontWeight.w700 : FontWeight.w400,
                   ),
                 ),
+                if (item.createdByName != null)
+                  Text(
+                    '🧑‍🏫 등록: ${item.createdByName} 선생님',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 10.5,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -366,6 +374,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
           emoji: _emoji,
           grade: schoolWide ? null : _grade,
           classNum: schoolWide ? null : _classNum,
+          createdByName: profile.nickname,
         );
       } else {
         await repo.updateItem(widget.existing!.id, {

@@ -85,6 +85,7 @@ class PointsRepository {
     String emoji = '🎁',
     int? grade,
     int? classNum,
+    String? createdByName,
   }) async {
     final uid = _c.auth.currentUser?.id;
     final row = await _c
@@ -101,6 +102,7 @@ class PointsRepository {
           'grade': grade,
           'class_num': classNum,
           'created_by': uid,
+          'created_by_name': createdByName,
         })
         .select()
         .single();
