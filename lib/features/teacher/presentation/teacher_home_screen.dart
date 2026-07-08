@@ -99,80 +99,78 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               ),
             ],
           ),
-          // Admin-only: teacher permissions card
-          if (profile != null && profile.isAdminTeacher) ...[
-            const SizedBox(height: AppSizes.md),
-            PbsCard(
-              onTap: () => context.go('/teacher/permissions'),
-              color: AppColors.primaryLight,
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-              child: Row(
-                children: [
-                  const Text('👑', style: TextStyle(fontSize: 24)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '교사 권한 관리',
-                          style: GoogleFonts.notoSansKr(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        Text(
-                          'SWPBS 리더십팀 임명 / 해제',
-                          style: GoogleFonts.notoSansKr(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.arrow_forward_ios_rounded,
-                      size: 14, color: AppColors.textTertiary),
-                ],
+          // 최근 공지 — 인사말 바로 아래
+          SectionHeader(
+            title: '📢 최근 공지',
+            action: TextButton.icon(
+              onPressed: () => context.go('/teacher/announce'),
+              icon: const Icon(Icons.edit_rounded, size: 14),
+              label: Text(
+                '공지 쓰기',
+                style: GoogleFonts.notoSansKr(fontSize: 12),
               ),
             ),
-            const SizedBox(height: AppSizes.sm),
-            PbsCard(
-              onTap: () => context.go('/teacher/roster'),
-              color: AppColors.teacherNavyLight,
-              border:
-                  Border.all(color: AppColors.teacherNavy.withValues(alpha: 0.2)),
-              child: Row(
-                children: [
-                  const Text('📋', style: TextStyle(fontSize: 24)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '학생 명단 관리',
-                          style: GoogleFonts.notoSansKr(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.teacherNavy,
-                          ),
-                        ),
-                        Text(
-                          '전교생 명단 등록 / 학번 PIN 발급',
-                          style: GoogleFonts.notoSansKr(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+          ),
+          announcements.when(
+            loading: () => const PbsCard(child: SizedBox(height: 60)),
+            error: (e, _) => PbsCard(child: Text('오류: $e')),
+            data: (anns) {
+              if (anns.isEmpty) {
+                return PbsCard(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      '아직 등록된 공지가 없어요.',
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 13,
+                        color: AppColors.textTertiary,
+                      ),
                     ),
                   ),
-                  const Icon(Icons.arrow_forward_ios_rounded,
-                      size: 14, color: AppColors.textTertiary),
-                ],
-              ),
-            ),
-          ],
+                );
+              }
+              return Column(
+                children: anns.take(3).map((a) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: PbsCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            a['title'] as String,
+                            style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            a['body'] as String,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.notoSansKr(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+
+          // 메뉴 그리드 (크몽 스타일: 아이콘 + 이름)
+          const SizedBox(height: AppSizes.md),
+          PbsCard(
+            padding: const EdgeInsets.symmetric(
+                vertical: AppSizes.lg, horizontal: AppSizes.sm),
+            child: _MenuGrid(isAdmin: profile?.isAdminTeacher ?? false),
+          ),
+
           const SizedBox(height: AppSizes.md),
           // School info card
           school.when(
@@ -333,123 +331,6 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               );
             },
           ),
-          // 학생 칭찬 — 가장 자주 쓰는 동작이라 상단에 눈에 띄게
-          const SizedBox(height: AppSizes.md),
-          PbsCard(
-            onTap: () => context.go('/teacher/students'),
-            color: AppColors.studentGreenLight,
-            border:
-                Border.all(color: AppColors.studentGreen.withValues(alpha: 0.3)),
-            child: Row(
-              children: [
-                const Text('💚', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('학생 칭찬하기',
-                          style: GoogleFonts.notoSansKr(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.success)),
-                      Text('학생을 검색해 칭찬 한마디 + 50P + 배지',
-                          style: GoogleFonts.notoSansKr(
-                              fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.arrow_forward_ios_rounded,
-                    size: 14, color: AppColors.textTertiary),
-              ],
-            ),
-          ),
-          // Today quick stats
-          const SizedBox(height: AppSizes.sm),
-          PbsCard(
-            onTap: () => context.go('/teacher/hall-of-fame'),
-            color: const Color(0xFFFEF9E7),
-            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-            child: Row(
-              children: [
-                const Text('🏆', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('명예의 전당',
-                          style: GoogleFonts.notoSansKr(
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFFB45309))),
-                      Text('이달의 학생 (전교·학년·학급)',
-                          style: GoogleFonts.notoSansKr(
-                              fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.arrow_forward_ios_rounded,
-                    size: 14, color: AppColors.textTertiary),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSizes.sm),
-          PbsCard(
-            onTap: () => context.go('/teacher/kodr'),
-            color: AppColors.studentGreenLight,
-            border:
-                Border.all(color: AppColors.studentGreen.withValues(alpha: 0.3)),
-            child: Row(
-              children: [
-                const Text('🤝', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('K-ODR 행동 지원',
-                          style: GoogleFonts.notoSansKr(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.success)),
-                      Text('행동 기록 · 지원이 필요한 학생 발견',
-                          style: GoogleFonts.notoSansKr(
-                              fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.arrow_forward_ios_rounded,
-                    size: 14, color: AppColors.textTertiary),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSizes.sm),
-          PbsCard(
-            onTap: () => context.go('/teacher/cico'),
-            color: AppColors.teacherNavyLight,
-            border: Border.all(
-                color: AppColors.teacherNavy.withValues(alpha: 0.25)),
-            child: Row(
-              children: [
-                const Text('🤝', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('CICO 동행 점검',
-                          style: GoogleFonts.notoSansKr(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.teacherNavy)),
-                      Text('Tier 2 표적 지원 · 멘토와 매일 체크인·체크아웃',
-                          style: GoogleFonts.notoSansKr(
-                              fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.arrow_forward_ios_rounded,
-                    size: 14, color: AppColors.textTertiary),
-              ],
-            ),
-          ),
           const SectionHeader(title: '📊 오늘 현황'),
           overview.when(
             loading: () => const PbsCard(child: SizedBox(height: 100)),
@@ -548,69 +429,6 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                     ),
                   ),
                 ],
-              );
-            },
-          ),
-          // Announcements
-          SectionHeader(
-            title: '📢 최근 공지',
-            action: TextButton.icon(
-              onPressed: () => context.go('/teacher/announce'),
-              icon: const Icon(Icons.edit_rounded, size: 14),
-              label: Text(
-                '공지 쓰기',
-                style: GoogleFonts.notoSansKr(fontSize: 12),
-              ),
-            ),
-          ),
-          announcements.when(
-            loading: () => const PbsCard(child: SizedBox(height: 60)),
-            error: (e, _) => PbsCard(child: Text('오류: $e')),
-            data: (anns) {
-              if (anns.isEmpty) {
-                return PbsCard(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      '아직 등록된 공지가 없어요.',
-                      style: GoogleFonts.notoSansKr(
-                        fontSize: 13,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ),
-                );
-              }
-              return Column(
-                children: anns.take(3).map((a) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: PbsCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            a['title'] as String,
-                            style: GoogleFonts.notoSansKr(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            a['body'] as String,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.notoSansKr(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
               );
             },
           ),
@@ -797,6 +615,86 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
             const SizedBox(height: AppSizes.lg),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 홈 메뉴 그리드 (크몽 스타일: 아이콘 + 이름만, 설명은 각 화면에서).
+class _MenuGrid extends StatelessWidget {
+  const _MenuGrid({required this.isAdmin});
+  final bool isAdmin;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_MenuItem>[
+      if (isAdmin)
+        const _MenuItem('👑', '교사 권한 관리', '/teacher/permissions',
+            AppColors.primaryLight),
+      if (isAdmin)
+        const _MenuItem('👥', '학생 명단 관리', '/teacher/roster',
+            AppColors.teacherNavyLight),
+      const _MenuItem('📋', 'K-ODR 행동지원', '/teacher/kodr',
+          AppColors.studentGreenLight),
+      const _MenuItem('💚', '학생 칭찬하기', '/teacher/students',
+          AppColors.studentGreenLight),
+      const _MenuItem('🏆', '명예의 전당', '/teacher/hall-of-fame',
+          Color(0xFFFEF9E7)),
+      const _MenuItem('🤝', 'CICO 동행점검', '/teacher/cico',
+          AppColors.teacherNavyLight),
+    ];
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: AppSizes.md,
+      childAspectRatio: 1.05,
+      children: items.map((m) => _MenuTile(item: m)).toList(),
+    );
+  }
+}
+
+class _MenuItem {
+  const _MenuItem(this.emoji, this.label, this.route, this.color);
+  final String emoji;
+  final String label;
+  final String route;
+  final Color color;
+}
+
+class _MenuTile extends StatelessWidget {
+  const _MenuTile({required this.item});
+  final _MenuItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.go(item.route),
+      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: item.color,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(item.emoji, style: const TextStyle(fontSize: 26)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.notoSansKr(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

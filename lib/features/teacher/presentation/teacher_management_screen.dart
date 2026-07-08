@@ -51,13 +51,25 @@ class TeacherManagementScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/teacher/home'),
         ),
-        title: Text(
-          '교사 권한 관리',
-          style: GoogleFonts.notoSansKr(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '교사 권한 관리',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              'SWPBS 리더십팀 임명 / 해제',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
       body: RefreshIndicator(

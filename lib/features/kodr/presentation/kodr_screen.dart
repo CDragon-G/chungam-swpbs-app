@@ -136,11 +136,19 @@ class _State extends ConsumerState<KodrScreen>
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text('K-ODR 행동 지원',
-            style: GoogleFonts.notoSansKr(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('K-ODR 행동 지원',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            Text('행동 기록 · 지원이 필요한 학생 발견',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 11, color: AppColors.textSecondary)),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.verified_user_outlined,

@@ -43,11 +43,19 @@ class _CicoHomeScreenState extends ConsumerState<CicoHomeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text('CICO 동행 점검',
-            style: GoogleFonts.notoSansKr(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('CICO 동행 점검',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            Text('Tier 2 표적 지원 · 멘토와 매일 체크인·체크아웃',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 11, color: AppColors.textSecondary)),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded,

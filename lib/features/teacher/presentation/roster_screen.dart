@@ -37,13 +37,25 @@ class _State extends ConsumerState<RosterScreen>
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text(
-          '학생 명단 관리',
-          style: GoogleFonts.notoSansKr(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '학생 명단 관리',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              '전교생 명단 등록 / 학번 PIN 발급',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ),
         bottom: TabBar(
           controller: _tab,

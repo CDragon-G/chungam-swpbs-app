@@ -22,13 +22,26 @@ class HallOfFameScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text(
-          '🏆 명예의 전당',
-          style: GoogleFonts.notoSansKr(
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '🏆 명예의 전당',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              '이달의 학생 (전교·학년·학급)',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
       body: RefreshIndicator(

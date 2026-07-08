@@ -43,13 +43,25 @@ class _State extends ConsumerState<StudentListScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text(
-          '학생 관리',
-          style: GoogleFonts.notoSansKr(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '학생 칭찬하기',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              '학생을 검색해 칭찬 한마디 + 50P + 배지',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
       body: studentsAsync.when(
