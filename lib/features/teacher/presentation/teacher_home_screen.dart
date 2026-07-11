@@ -11,6 +11,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../growth/presentation/school_sprout_card.dart';
 import '../../onboarding/presentation/teacher_onboarding.dart';
 import '../../school/providers/school_provider.dart';
 import '../providers/dashboard_provider.dart';
@@ -99,7 +100,11 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               ),
             ],
           ),
-          // 최근 공지 — 인사말 바로 아래
+          // 🌱 학교 공동 새싹 — 모두가 함께 키우는 히어로 카드
+          const SizedBox(height: AppSizes.md),
+          const SchoolSproutCard(),
+
+          // 최근 공지
           SectionHeader(
             title: '📢 최근 공지',
             action: TextButton.icon(
