@@ -15,17 +15,57 @@ class GrowthStatus {
   final GrowthActivity activity;
 
   // ── 레벨 (7단계) ────────────────────────────────
-  static const levelThresholds = [0, 15, 40, 70, 105, 145, 180];
+  // 만점 200 대비 Lv.7=160 → 여유 40점. "모든 기능 만점"이 아니라
+  // "꾸준한 실천"으로 닿는 수준. 대신 핵심 단계는 관문(gate)으로 강제.
+  static const levelThresholds = [0, 15, 40, 70, 100, 130, 160];
   static const levelEmojis = ['🌰', '🌱', '🌿', '🪴', '🌳', '🌸', '🍎'];
   static const levelNames = ['씨앗', '새싹', '푸른 잎', '어린나무', '튼튼한 나무', '꽃나무', '열매나무'];
 
-  /// 1~7
-  int get level {
+  bool _done(String key) => missions.any((m) => m.key == key && m.done);
+
+  /// 점수만으로 도달 가능한 레벨 (1~7)
+  int get scoreLevel {
     var lv = 1;
     for (var i = 0; i < levelThresholds.length; i++) {
       if (score >= levelThresholds[i]) lv = i + 1;
     }
     return lv;
+  }
+
+  /// 관문이 허용하는 최대 레벨 — 핵심 미션을 안 하면 점수가 있어도 잠김.
+  ///   Lv.2 규칙 / Lv.3 명단+첫점검 / Lv.4 절반가입+첫칭찬 /
+  ///   Lv.5 첫 K-ODR / Lv.6 CICO 또는 수업맛집 / Lv.7 점수만
+  int get gateCap {
+    if (!_done('rules')) return 1;
+    if (!(_done('roster') && _done('checkin'))) return 2;
+    if (!(_done('join') && _done('praise'))) return 3;
+    if (!_done('kodr')) return 4;
+    if (!(_done('cico') || _done('vote'))) return 5;
+    return 7;
+  }
+
+  /// 실제 레벨 = 점수 레벨과 관문 중 낮은 쪽.
+  int get level => scoreLevel < gateCap ? scoreLevel : gateCap;
+
+  /// 점수는 충분한데 핵심 미션이 없어 잠긴 상태인가.
+  bool get isGateLocked => !isMaxLevel && scoreLevel > level;
+
+  /// 잠금을 여는 열쇠 미션 안내 (관문에 걸렸을 때만).
+  String? get gateKeyLabel {
+    if (!isGateLocked) return null;
+    switch (level) {
+      case 1:
+        return '우리 학교 규칙 만들기';
+      case 2:
+        return !_done('roster') ? '전교생 명단 등록하기' : '첫 일일 자기점검 받기';
+      case 3:
+        return !_done('join') ? '학생 절반 이상 가입하기' : '첫 칭찬 보내기';
+      case 4:
+        return '첫 K-ODR 기록하기';
+      case 5:
+        return 'CICO 또는 수업맛집 시작하기';
+    }
+    return null;
   }
 
   String get levelEmoji => levelEmojis[level - 1];
@@ -35,6 +75,7 @@ class GrowthStatus {
   /// 다음 레벨까지 진행률 0.0~1.0 (최고 레벨이면 1.0)
   double get progressToNext {
     if (isMaxLevel) return 1.0;
+    if (isGateLocked) return 1.0; // 점수는 찼고 열쇠만 남음
     final cur = levelThresholds[level - 1];
     final next = levelThresholds[level];
     return ((score - cur) / (next - cur)).clamp(0.0, 1.0);

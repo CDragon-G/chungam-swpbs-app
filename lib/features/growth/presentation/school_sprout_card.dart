@@ -82,10 +82,16 @@ class SchoolSproutCard extends ConsumerWidget {
                   Text(
                     g.isMaxLevel
                         ? '🎉 열매를 맺었어요! 모두가 함께 키운 결실이에요.'
-                        : '다음 단계(${GrowthStatus.levelEmojis[g.level]} ${GrowthStatus.levelNames[g.level]})까지 ${g.pointsToNext}점 — 함께 키워요!',
+                        : g.isGateLocked
+                            ? '🔑 다음 단계 열쇠: ${g.gateKeyLabel}'
+                            : '다음 단계(${GrowthStatus.levelEmojis[g.level]} ${GrowthStatus.levelNames[g.level]})까지 ${g.pointsToNext}점 — 함께 키워요!',
                     style: GoogleFonts.notoSansKr(
                       fontSize: 11,
-                      color: AppColors.textSecondary,
+                      fontWeight:
+                          g.isGateLocked ? FontWeight.w700 : FontWeight.w400,
+                      color: g.isGateLocked
+                          ? const Color(0xFFB45309)
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ],
