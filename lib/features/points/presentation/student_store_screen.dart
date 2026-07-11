@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../growth/growth_celebration.dart';
 import '../models/point_exchange.dart';
 import '../models/point_store_item.dart';
 import '../providers/points_provider.dart';
@@ -203,11 +204,10 @@ class StudentStoreScreen extends ConsumerWidget {
       ref.invalidate(myExchangesProvider);
       ref.invalidate(activeStoreItemsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(it.isClassItem
-              ? '교환 신청 완료! 담임선생님께 수령하세요.'
-              : '교환 신청 완료! 담당 선생님께 수령하세요.')),
-        );
+        celebrateGrowth(context, ref,
+            headline: it.isClassItem
+                ? '교환 신청 완료! 담임선생님께 수령하세요 🎁'
+                : '교환 신청 완료! 담당 선생님께 수령하세요 🎁');
       }
     } catch (e) {
       if (context.mounted) {

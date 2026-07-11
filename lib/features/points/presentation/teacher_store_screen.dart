@@ -8,6 +8,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../growth/growth_celebration.dart';
 import '../models/point_exchange.dart';
 import '../models/point_store_item.dart';
 import '../providers/points_provider.dart';
@@ -394,7 +395,12 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
       }
       ref.invalidate(allStoreItemsProvider);
       ref.invalidate(activeStoreItemsProvider);
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        if (widget.existing == null) {
+          celebrateGrowth(context, ref, headline: '강화물 등록 완료! 🎁');
+        }
+        Navigator.pop(context);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -11,6 +11,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../growth/growth_celebration.dart';
 import '../../points/providers/points_provider.dart';
 import '../../praise/providers/praise_provider.dart';
 import '../../school/providers/school_provider.dart';
@@ -378,13 +379,9 @@ class _State extends ConsumerState<StudentListScreen> {
                   );
               if (dialogCtx.mounted) Navigator.pop(dialogCtx); // 다이얼로그 닫기
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                      '$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)'),
-                  backgroundColor: AppColors.studentGreen,
-                ),
-              );
+              celebrateGrowth(context, ref,
+                  headline:
+                      '$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)');
             } catch (e) {
               if (!dialogCtx.mounted) return;
               setSt(() => sending = false);

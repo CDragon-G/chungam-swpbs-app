@@ -9,6 +9,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../growth/growth_celebration.dart';
 import '../../school/models/school_rule.dart';
 import '../../school/providers/school_provider.dart';
 import '../../points/providers/points_provider.dart';
@@ -158,6 +159,7 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
       ref.invalidate(myPointsHistoryProvider);
       await evaluateAndAwardBadges(ref);
       if (!mounted) return;
+      celebrateGrowth(context, ref, headline: '오늘의 자기점검 완료! ✅');
       context.go('/student/checkin/result');
     } catch (e) {
       if (!mounted) return;

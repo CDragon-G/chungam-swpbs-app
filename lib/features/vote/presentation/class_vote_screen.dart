@@ -8,6 +8,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../growth/growth_celebration.dart';
 import '../../school/providers/school_provider.dart';
 import '../data/vote_repository.dart';
 import 'vote_hint_card.dart';
@@ -60,11 +61,8 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
       ref.invalidate(voteTallyProvider(round.id));
       ref.invalidate(voteHintProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('🍽️ $_grade학년 $_classNum반에 투표했어요!',
-                  style: GoogleFonts.notoSansKr())),
-        );
+        celebrateGrowth(context, ref,
+            headline: '🍽️ $_grade학년 $_classNum반에 투표했어요!');
       }
     } catch (e) {
       if (mounted) {

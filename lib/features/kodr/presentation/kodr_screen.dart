@@ -10,6 +10,7 @@ import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../../shared/widgets/student_picker_sheet.dart';
 import '../../cico/presentation/cico_start_dialog.dart';
+import '../../growth/growth_celebration.dart';
 import '../../school/providers/school_provider.dart';
 import '../constants/kodr_codes.dart';
 import '../models/kodr.dart';
@@ -387,7 +388,8 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
           );
       ref.invalidate(kodrSummaryProvider);
       if (!mounted) return;
-      _toast('기록되었습니다. 학생 지원에 활용됩니다.');
+      celebrateGrowth(context, ref,
+          headline: '행동 기록 완료 — 학생 지원에 활용돼요 📋');
       setState(() {
         _behavior = _place = _situation = _immediate =
             _secondary = _reaction = null;

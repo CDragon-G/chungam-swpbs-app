@@ -70,6 +70,17 @@ const _pages = <_OnboardingPage>[
         '나·우리 반·학년·전교생 평균을 비교하고, 전국 자람 사용 학교들과 학교 점수로 경쟁! 모두가 참여할수록 우리 학교 점수가 올라가요.',
     color: AppColors.teacherNavy,
   ),
+  _OnboardingPage(
+    emoji: '🌳',
+    title: '우리 학교 새싹을 키워요',
+    subtitle: '자람만의 공동 성장',
+    body: '홈 화면의 새싹은 우리 학교 모두의 것! 내가 점검하고, 칭찬받고, '
+        '보상을 교환할 때마다 새싹이 자라요. 선생님들과 힘을 모아 '
+        '씨앗 🌰에서 열매나무 🍎까지 키워보세요!',
+    researchNote:
+        '💡 나의 긍정적 행동 하나하나가 학교 전체의 성장이 되는 것 — 그게 자람(성장)이라는 이름의 의미예요.',
+    color: AppColors.studentGreen,
+  ),
 ];
 
 class _OnboardingDialog extends StatefulWidget {

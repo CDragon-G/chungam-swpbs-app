@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../growth/growth_celebration.dart';
 import '../../school/providers/school_provider.dart';
 
 class AnnouncementScreen extends ConsumerStatefulWidget {
@@ -43,9 +44,7 @@ class _State extends ConsumerState<AnnouncementScreen> {
       _body.clear();
       ref.invalidate(announcementsProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('공지를 등록했어요')),
-        );
+        celebrateGrowth(context, ref, headline: '공지를 등록했어요 📢');
       }
     } catch (e) {
       if (mounted) {
