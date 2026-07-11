@@ -160,6 +160,32 @@ class AuthRepository {
 
   User? get currentUser => _c.auth.currentUser;
 
+  // ── 비밀번호 찾기 (이메일 OTP) ────────────────────────────
+  /// 재설정 6자리 코드를 이메일로 발송.
+  Future<void> sendPasswordResetEmail(String email) =>
+      _c.auth.resetPasswordForEmail(email);
+
+  /// 이메일로 받은 코드 검증 → 새 비밀번호 설정 (성공 시 로그인 상태가 됨).
+  Future<void> confirmPasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    await _c.auth.verifyOTP(
+      type: OtpType.recovery,
+      email: email,
+      token: token,
+    );
+    await _c.auth.updateUser(UserAttributes(password: newPassword));
+  }
+
+  /// 교사: 같은 학교 학생의 로그인 이메일 조회 (이메일 찾기 지원).
+  Future<String> getStudentEmail(String profileId) async {
+    final res = await _c
+        .rpc('get_student_email', params: {'p_profile_id': profileId});
+    return res as String;
+  }
+
   /// 마케팅(광고성) 이메일 수신동의 현재 상태.
   Future<bool> getMarketingConsent() async {
     final r = await _c.rpc('get_my_marketing_consent');

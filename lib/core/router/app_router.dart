@@ -12,6 +12,8 @@ import '../../features/auth/presentation/signup_select_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/presentation/student_signup_screen.dart';
 import '../../features/auth/presentation/teacher_signup_screen.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
+import '../../features/vote/presentation/class_vote_screen.dart';
 import '../../features/auth/presentation/welcome_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/checkin/presentation/checkin_result_screen.dart';
@@ -41,6 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       final isAuthRoute = loc.startsWith('/welcome') ||
           loc.startsWith('/login') ||
+          loc.startsWith('/forgot-password') ||
           loc.startsWith('/signup');
 
       final authValue = ref.read(authStateProvider);
@@ -85,6 +88,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/welcome', builder: (_, __) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+          path: '/forgot-password',
+          builder: (_, __) => const ForgotPasswordScreen()),
       GoRoute(path: '/signup-select', builder: (_, __) => const SignupSelectScreen()),
       GoRoute(path: '/signup/teacher', builder: (_, __) => const TeacherSignupScreen()),
       GoRoute(path: '/signup/student', builder: (_, __) => const StudentSignupScreen()),
@@ -118,6 +124,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/teacher/rules', builder: (_, __) => const RuleEditorScreen()),
           GoRoute(path: '/teacher/roster', builder: (_, __) => const RosterScreen()),
           GoRoute(path: '/teacher/store', builder: (_, __) => const TeacherStoreScreen()),
+          GoRoute(path: '/teacher/vote', builder: (_, __) => const ClassVoteScreen()),
           GoRoute(path: '/teacher/announce', builder: (_, __) => const AnnouncementScreen()),
           GoRoute(path: '/teacher/permissions', builder: (_, __) => const TeacherManagementScreen()),
           GoRoute(path: '/teacher/hall-of-fame', builder: (_, __) => const HallOfFameScreen()),

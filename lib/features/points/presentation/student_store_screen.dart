@@ -300,6 +300,8 @@ class _ItemCard extends StatelessWidget {
                 children: [
                   Text(
                     item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.notoSansKr(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,

@@ -134,6 +134,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: AppSizes.md),
                       TextButton(
+                        onPressed: () => context.go('/forgot-password'),
+                        child: Text(
+                          '비밀번호를 잊으셨나요?',
+                          style: GoogleFonts.notoSansKr(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      TextButton(
                         onPressed: () => context.go('/signup-select'),
                         child: Text(
                           '아직 계정이 없어요 → 회원가입',

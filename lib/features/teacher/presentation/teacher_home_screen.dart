@@ -642,6 +642,8 @@ class _MenuGrid extends StatelessWidget {
           Color(0xFFFEF9E7)),
       const _MenuItem('🤝', 'CICO 동행점검', '/teacher/cico',
           AppColors.teacherNavyLight),
+      const _MenuItem('🍽️', '수업맛집', '/teacher/vote',
+          Color(0xFFFFF1F2)),
     ];
     return GridView.count(
       crossAxisCount: 3,
@@ -685,13 +687,20 @@ class _MenuTile extends StatelessWidget {
             child: Text(item.emoji, style: const TextStyle(fontSize: 26)),
           ),
           const SizedBox(height: 6),
-          Text(
-            item.label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.notoSansKr(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+          // 큰 글꼴에서도 한 줄 유지 (넘치면 자동 축소)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                item.label,
+                maxLines: 1,
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
             ),
           ),
         ],

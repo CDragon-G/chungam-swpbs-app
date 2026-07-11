@@ -171,6 +171,8 @@ class _ItemRow extends ConsumerWidget {
               children: [
                 Text(
                   item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.notoSansKr(
                     fontWeight: FontWeight.w800,
                     color: item.isActive
@@ -181,6 +183,8 @@ class _ItemRow extends ConsumerWidget {
                 ),
                 Text(
                   '${item.scopeLabel} · ${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.notoSansKr(
                     fontSize: 11,
                     color: item.isClassItem

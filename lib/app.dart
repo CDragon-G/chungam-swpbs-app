@@ -56,6 +56,13 @@ class _PbsPlusAppState extends ConsumerState<PbsPlusApp> {
           scrolledUnderElevation: 0,
         ),
       ),
+      // 시스템 글꼴 확대 시에도 레이아웃이 깨지지 않게 확대 상한을 둔다.
+      // (접근성 확대는 1.3배까지 존중, 그 이상은 클램프)
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: 0.85,
+        maxScaleFactor: 1.3,
+        child: child ?? const SizedBox.shrink(),
+      ),
       routerConfig: router,
     );
   }

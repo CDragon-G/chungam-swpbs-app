@@ -259,11 +259,87 @@ class _State extends ConsumerState<StudentListScreen> {
                 _resetPassword(student);
               },
             ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.alternate_email_rounded,
+                  color: AppColors.textSecondary),
+              title: Text(
+                '로그인 이메일 확인',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                '이메일을 잊은 학생에게 알려주세요',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _showStudentEmail(student);
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
       ),
     );
+  }
+
+  /// 학생 로그인 이메일 조회 (이메일 찾기 지원 — 같은 학교 교사만, 서버 검증).
+  Future<void> _showStudentEmail(Map<String, dynamic> student) async {
+    final name = student['nickname'] as String;
+    try {
+      final email = await ref
+          .read(authRepositoryProvider)
+          .getStudentEmail(student['id'] as String);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('$name 학생의 로그인 이메일',
+              style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText(
+                email,
+                style: GoogleFonts.robotoMono(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.teacherNavy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '비밀번호도 잊었다면 "비밀번호 초기화"를 함께 해주세요.',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 12, color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: email));
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: Text('복사', style: GoogleFonts.notoSansKr()),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('확인', style: GoogleFonts.notoSansKr()),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(translateError(e))),
+      );
+    }
   }
 
   Future<void> _givePraise(Map<String, dynamic> student) async {
