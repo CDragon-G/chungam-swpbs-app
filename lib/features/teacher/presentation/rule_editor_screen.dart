@@ -116,6 +116,7 @@ class _RuleEditorScreenState extends ConsumerState<RuleEditorScreen> {
             return ReorderableListView.builder(
               padding: const EdgeInsets.all(AppSizes.lg),
               buildDefaultDragHandles: false,
+              header: const _VoteLinkBanner(),
               itemCount: spaces.length,
               onReorder: (oldIdx, newIdx) => _reorderSpaces(
                 spaces: spaces,
@@ -174,6 +175,43 @@ class _RuleEditorScreenState extends ConsumerState<RuleEditorScreen> {
 
 // Backward-compat wrapper: outerIndex is required by _SpaceGroup.
 // (declared above; left here as a marker)
+
+/// '수업' 규칙 ↔ 🍽️ 수업맛집 연계 안내.
+class _VoteLinkBanner extends StatelessWidget {
+  const _VoteLinkBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.md),
+      padding: const EdgeInsets.all(AppSizes.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F2),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(color: const Color(0xFFFECDD3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('🍽️', style: TextStyle(fontSize: 18)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "'수업' 공간의 규칙은 수업맛집 투표와 연계돼요. "
+              '교사들이 매주 이 규칙을 가장 잘 실천한 학급에 투표하고, '
+              '학기별 수업맛집 학급을 선정해 강화(현판·간식 등)할 수 있어요.',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 12,
+                height: 1.5,
+                color: const Color(0xFF9F1239),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _SpaceGroup extends ConsumerStatefulWidget {
   const _SpaceGroup({

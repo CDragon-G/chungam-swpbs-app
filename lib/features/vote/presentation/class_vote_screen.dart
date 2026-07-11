@@ -8,11 +8,14 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../school/providers/school_provider.dart';
 import '../data/vote_repository.dart';
+import 'vote_hint_card.dart';
 import '../models/vote_models.dart';
 import '../providers/vote_provider.dart';
 
-/// 🍽️ 수업맛집 — 수업 3끝 규칙을 잘 지킨 학급을 교사들이 매주 투표.
+/// 🍽️ 수업맛집 — 우리 학교 수업 규칙을 잘 지킨 학급을 교사들이 매주 투표.
+/// (규칙 이름은 학교마다 달라요 — 라운드 개설은 '수업' 규칙이 있어야 가능)
 class ClassVoteScreen extends ConsumerStatefulWidget {
   const ClassVoteScreen({super.key});
 
@@ -29,6 +32,7 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
   void _refreshAll() {
     ref.invalidate(voteRoundsProvider);
     ref.invalidate(voteSubjectsProvider);
+    ref.invalidate(voteHintProvider);
     final round = ref.read(openRoundProvider);
     if (round != null) {
       ref.invalidate(myVotesProvider(round.id));
@@ -54,6 +58,7 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
           );
       ref.invalidate(myVotesProvider(round.id));
       ref.invalidate(voteTallyProvider(round.id));
+      ref.invalidate(voteHintProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -92,7 +97,7 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary)),
-            Text('수업 3끝 규칙을 잘 지킨 학급 투표',
+            Text('수업 규칙을 잘 지킨 학급 투표',
                 style: GoogleFonts.notoSansKr(
                     fontSize: 11, color: AppColors.textSecondary)),
           ],
@@ -150,6 +155,7 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
                 ] else ...[
                   _RoundHeader(round: openRound),
                   const SizedBox(height: AppSizes.md),
+                  const VoteHintCard(),
                   _buildVoteForm(openRound),
                   const SectionHeader(title: '🗳️ 이번 주 내 투표'),
                   _MyWeekVotes(round: openRound),
@@ -337,10 +343,46 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
   }
 
   Future<void> _showCreateRound(BuildContext context) async {
+    // 개설 전제: '수업' 규칙이 설정돼 있어야 함 (서버 트리거로도 강제)
+    final profile = ref.read(profileProvider).value;
+    final schoolId = profile?.schoolId;
+    if (schoolId == null) return;
+    try {
+      final rules =
+          await ref.read(schoolRepositoryProvider).fetchRules(schoolId);
+      final hasClassRules = rules.any((r) => r.space == '수업');
+      if (!hasClassRules) {
+        if (!mounted) return;
+        await showDialog<void>(
+          context: this.context,
+          builder: (ctx) => AlertDialog(
+            title: Text('수업 규칙을 먼저 설정해주세요',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+            content: Text(
+              '수업맛집은 우리 학교의 수업 규칙을 기준으로\n'
+              '가장 잘 실천한 학급에 투표하는 프로그램이에요.\n\n'
+              '하단 [규칙] 탭에서 \'수업\' 공간의 규칙을\n'
+              '먼저 만든 뒤 투표를 시작할 수 있어요.',
+              style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    } catch (_) {/* 조회 실패 시 서버 트리거가 최종 방어 */}
+    if (!mounted) return;
+
     final title = TextEditingController();
     var votes = 2;
+    var weeks = 5;
     await showDialog<void>(
-      context: context,
+      context: this.context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
           title: Text('새 투표 시작',
@@ -376,6 +418,25 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
                   ),
                 ],
               ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('총 진행 주차',
+                        style: GoogleFonts.notoSansKr(fontSize: 13)),
+                  ),
+                  IconButton(
+                    onPressed: weeks > 1 ? () => setSt(() => weeks--) : null,
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  Text('$weeks주',
+                      style: GoogleFonts.notoSansKr(
+                          fontWeight: FontWeight.w900, fontSize: 16)),
+                  IconButton(
+                    onPressed: weeks < 20 ? () => setSt(() => weeks++) : null,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
             ],
           ),
           actions: [
@@ -384,13 +445,12 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
             FilledButton(
               onPressed: () async {
                 if (title.text.trim().isEmpty) return;
-                final profile = ref.read(profileProvider).value;
-                if (profile?.schoolId == null) return;
                 try {
                   await ref.read(voteRepositoryProvider).createRound(
-                        schoolId: profile!.schoolId!,
+                        schoolId: schoolId,
                         title: title.text,
                         votesPerWeek: votes,
+                        totalWeeks: weeks,
                       );
                   if (ctx.mounted) Navigator.pop(ctx);
                   _refreshAll();
@@ -508,6 +568,16 @@ class _RoundHeader extends StatelessWidget {
   const _RoundHeader({required this.round});
   final VoteRound round;
 
+  /// 시작일 기준 현재 몇 주차인지 (KST, 서버 vote_hint와 동일 규칙).
+  static int _weekNow(VoteRound round) {
+    final kstNow = DateTime.now().toUtc().add(const Duration(hours: 9));
+    final kstStart = round.createdAt.toUtc().add(const Duration(hours: 9));
+    final days = DateTime(kstNow.year, kstNow.month, kstNow.day)
+        .difference(DateTime(kstStart.year, kstStart.month, kstStart.day))
+        .inDays;
+    return ((days ~/ 7) + 1).clamp(1, round.totalWeeks);
+  }
+
   @override
   Widget build(BuildContext context) {
     return PbsCard(
@@ -516,14 +586,35 @@ class _RoundHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(round.title,
-              style: GoogleFonts.notoSansKr(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(round.title,
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white)),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '📅 ${_weekNow(round)}/${round.totalWeeks}주차',
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text(
-            '매주 수업 3끝(입실끝·준비끝·수행끝)을 가장 잘 실천한 학급에 투표해주세요. '
+            '매주 우리 학교 수업 규칙을 가장 잘 실천한 학급에 투표해주세요. '
             '교사 1인당 주 ${round.votesPerWeek}표, 매주 새로 투표할 수 있어요.',
             style: GoogleFonts.notoSansKr(
                 fontSize: 12, color: Colors.white70, height: 1.5),

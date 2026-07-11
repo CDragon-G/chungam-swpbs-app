@@ -17,6 +17,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../checkin/models/daily_checkin.dart';
 import '../../checkin/providers/checkin_provider.dart';
 import '../../cico/providers/cico_provider.dart';
+import '../../vote/presentation/vote_hint_card.dart';
 import '../../school/providers/school_provider.dart';
 import '../providers/badge_provider.dart';
 import '../providers/student_stats_provider.dart';
@@ -103,6 +104,9 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             child: StreakBadge(days: stats.value?.streak ?? 0),
           ),
           const SizedBox(height: AppSizes.lg),
+
+          // 🍽️ 수업맛집 진행 현황 (투표 중일 때만 표시)
+          const VoteHintCard(compact: true),
 
           // Today's status card
           _TodayStatusCard(

@@ -20,11 +20,11 @@ class VoteRepository {
 
   // ── 과목 ─────────────────────────────────────────────────
   Future<List<VoteSubject>> fetchSubjects(String schoolId) async {
+    // 추가 순서와 무관하게 항상 ㄱㄴㄷ순 정렬
     final rows = await _c
         .from('vote_subjects')
         .select()
         .eq('school_id', schoolId)
-        .order('order_index', ascending: true)
         .order('name', ascending: true);
     return rows.map((m) => VoteSubject.fromMap(m)).toList();
   }
@@ -56,12 +56,20 @@ class VoteRepository {
     required String schoolId,
     required String title,
     required int votesPerWeek,
+    required int totalWeeks,
   }) async {
     await _c.from('vote_rounds').insert({
       'school_id': schoolId,
       'title': title.trim(),
       'votes_per_week': votesPerWeek,
+      'total_weeks': totalWeeks,
     });
+  }
+
+  /// 진행 중 라운드 재미 힌트 (교사·학생 공용).
+  Future<VoteHint> fetchHint() async {
+    final res = await _c.rpc('vote_hint');
+    return VoteHint.fromMap(Map<String, dynamic>.from(res as Map));
   }
 
   Future<void> closeRound(String id) async {

@@ -36,3 +36,10 @@ final voteTallyProvider =
     FutureProvider.family<List<VoteTallyRow>, String>((ref, roundId) async {
   return ref.read(voteRepositoryProvider).tally(roundId);
 });
+
+/// 진행 중 라운드 재미 힌트 — 교사·학생 화면 공용.
+final voteHintProvider = FutureProvider<VoteHint>((ref) async {
+  final profile = ref.watch(profileProvider).value;
+  if (profile?.schoolId == null) return VoteHint(hasRound: false);
+  return ref.read(voteRepositoryProvider).fetchHint();
+});
