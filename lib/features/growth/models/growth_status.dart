@@ -121,6 +121,16 @@ class GrowthActivity {
     required this.kodrPts,
     required this.cicoGraduated,
     required this.cicoPts,
+    required this.storeItems,
+    required this.storePts,
+    required this.exchanges,
+    required this.exchangePts,
+    required this.votesCast,
+    required this.votePts,
+    required this.announcements,
+    required this.announcePts,
+    required this.weeklyBonus,
+    required this.weeklyPts,
   });
 
   final double participation; // %
@@ -132,6 +142,16 @@ class GrowthActivity {
   final int kodrPts;
   final int cicoGraduated;
   final int cicoPts;
+  final int storeItems; // 강화물 등록 수
+  final int storePts;
+  final int exchanges; // 교환 수령 처리 수
+  final int exchangePts;
+  final int votesCast; // 수업맛집 투표 참여 수
+  final int votePts;
+  final int announcements;
+  final int announcePts;
+  final int weeklyBonus; // 주간 개근 보너스 달성 수
+  final int weeklyPts;
 
   String get kodrLabel => switch (kodrMode) {
         'early' => '기록 문화 만드는 중 (작성할수록 +)',
@@ -149,5 +169,15 @@ class GrowthActivity {
         kodrPts: (m['kodr_pts'] as num?)?.toInt() ?? 0,
         cicoGraduated: (m['cico_graduated'] as num?)?.toInt() ?? 0,
         cicoPts: (m['cico_pts'] as num?)?.toInt() ?? 0,
+        storeItems: (m['store_items'] as num?)?.toInt() ?? 0,
+        storePts: (m['store_pts'] as num?)?.toInt() ?? 0,
+        exchanges: (m['exchanges'] as num?)?.toInt() ?? 0,
+        exchangePts: (m['exchange_pts'] as num?)?.toInt() ?? 0,
+        votesCast: (m['votes_cast'] as num?)?.toInt() ?? 0,
+        votePts: (m['vote_pts'] as num?)?.toInt() ?? 0,
+        announcements: (m['announcements'] as num?)?.toInt() ?? 0,
+        announcePts: (m['announce_pts'] as num?)?.toInt() ?? 0,
+        weeklyBonus: (m['weekly_bonus'] as num?)?.toInt() ?? 0,
+        weeklyPts: (m['weekly_pts'] as num?)?.toInt() ?? 0,
       );
 }
