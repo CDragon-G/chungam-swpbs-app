@@ -634,21 +634,21 @@ class _MenuGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = <_MenuItem>[
       if (isAdmin)
-        const _MenuItem('👑', '교사 권한 관리', '/teacher/permissions',
-            AppColors.primaryLight),
+        const _MenuItem('assets/icons/menu_permission.png', '교사 권한 관리',
+            '/teacher/permissions', AppColors.primaryLight),
       if (isAdmin)
-        const _MenuItem('👥', '학생 명단 관리', '/teacher/roster',
-            AppColors.teacherNavyLight),
-      const _MenuItem('📋', 'K-ODR 행동지원', '/teacher/kodr',
-          AppColors.studentGreenLight),
-      const _MenuItem('💚', '학생 칭찬하기', '/teacher/students',
-          AppColors.studentGreenLight),
-      const _MenuItem('🏆', '명예의 전당', '/teacher/hall-of-fame',
-          Color(0xFFFEF9E7)),
-      const _MenuItem('🤝', 'CICO 동행점검', '/teacher/cico',
-          AppColors.teacherNavyLight),
-      const _MenuItem('🍽️', '수업맛집', '/teacher/vote',
-          Color(0xFFFFF1F2)),
+        const _MenuItem('assets/icons/menu_roster.png', '학생 명단 관리',
+            '/teacher/roster', AppColors.teacherNavyLight),
+      const _MenuItem('assets/icons/menu_kodr.png', 'K-ODR 행동지원',
+          '/teacher/kodr', AppColors.studentGreenLight),
+      const _MenuItem('assets/icons/menu_praise.png', '학생 칭찬하기',
+          '/teacher/students', AppColors.studentGreenLight),
+      const _MenuItem('assets/icons/menu_fame.png', '명예의 전당',
+          '/teacher/hall-of-fame', Color(0xFFFEF9E7)),
+      const _MenuItem('assets/icons/menu_cico.png', 'CICO 동행점검',
+          '/teacher/cico', AppColors.teacherNavyLight),
+      const _MenuItem('assets/icons/menu_vote.png', '수업맛집',
+          '/teacher/vote', Color(0xFFFFF1F2)),
     ];
     return GridView.count(
       crossAxisCount: 3,
@@ -662,8 +662,8 @@ class _MenuGrid extends StatelessWidget {
 }
 
 class _MenuItem {
-  const _MenuItem(this.emoji, this.label, this.route, this.color);
-  final String emoji;
+  const _MenuItem(this.asset, this.label, this.route, this.color);
+  final String asset;
   final String label;
   final String route;
   final Color color;
@@ -682,14 +682,19 @@ class _MenuTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: 58,
+            height: 58,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: item.color,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(17),
             ),
-            child: Text(item.emoji, style: const TextStyle(fontSize: 26)),
+            child: Image.asset(
+              item.asset,
+              width: 42,
+              height: 42,
+              filterQuality: FilterQuality.medium,
+            ),
           ),
           const SizedBox(height: 6),
           // 큰 글꼴에서도 한 줄 유지 (넘치면 자동 축소)

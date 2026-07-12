@@ -29,7 +29,7 @@ class SchoolSproutCard extends ConsumerWidget {
         border: Border.all(color: const Color(0xFFBBF7D0)),
         child: Row(
           children: [
-            _BreathingSprout(emoji: g.levelEmoji, level: g.level),
+            _BreathingSprout(asset: g.levelAsset, level: g.level, size: 64),
             const SizedBox(width: AppSizes.md),
             Expanded(
               child: Column(
@@ -122,7 +122,7 @@ class SchoolSproutCard extends ConsumerWidget {
             Center(
               child: Column(
                 children: [
-                  _BreathingSprout(emoji: g.levelEmoji, level: g.level, size: 64),
+                  _BreathingSprout(asset: g.levelAsset, level: g.level, size: 110),
                   const SizedBox(height: 6),
                   Text(
                     '${g.schoolName} 새싹',
@@ -149,10 +149,12 @@ class SchoolSproutCard extends ConsumerWidget {
                   return Column(
                     children: [
                       Opacity(
-                        opacity: reached ? 1 : 0.25,
-                        child: Text(GrowthStatus.levelEmojis[i],
-                            style: TextStyle(
-                                fontSize: g.level == i + 1 ? 26 : 18)),
+                        opacity: reached ? 1 : 0.28,
+                        child: Image.asset(
+                          GrowthStatus.assetFor(i + 1),
+                          width: g.level == i + 1 ? 38 : 26,
+                          height: g.level == i + 1 ? 38 : 26,
+                        ),
                       ),
                       Text(
                         'Lv.${i + 1}',
@@ -345,14 +347,15 @@ class _ActivityRow extends StatelessWidget {
   }
 }
 
-/// 숨쉬듯 살랑이는 새싹 — 레벨이 오르면 살짝 통통 튀며 등장.
+/// 숨쉬듯 살랑이는 새싹 일러스트 — 위아래로 부드럽게 떠오르며
+/// 좌우로 아주 살짝 기울고, 레벨이 오르면 통통 튀며 새 모습이 등장.
 class _BreathingSprout extends StatefulWidget {
   const _BreathingSprout({
-    required this.emoji,
+    required this.asset,
     required this.level,
-    this.size = 44,
+    this.size = 64,
   });
-  final String emoji;
+  final String asset;
   final int level;
   final double size;
 
@@ -369,7 +372,7 @@ class _BreathingSproutState extends State<_BreathingSprout>
     super.initState();
     _c = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
   }
 
@@ -382,21 +385,29 @@ class _BreathingSproutState extends State<_BreathingSprout>
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 550),
       switchInCurve: Curves.elasticOut,
       transitionBuilder: (child, anim) =>
           ScaleTransition(scale: anim, child: child),
       child: AnimatedBuilder(
-        key: ValueKey(widget.level),
+        key: ValueKey('${widget.level}-${widget.asset}'),
         animation: _c,
         builder: (context, child) {
           final t = Curves.easeInOut.transform(_c.value);
           return Transform.translate(
-            offset: Offset(0, -2.5 * t),
-            child: Transform.scale(scale: 1.0 + 0.06 * t, child: child),
+            offset: Offset(0, -3.0 * t),
+            child: Transform.rotate(
+              angle: (t - 0.5) * 0.05, // 살랑임 (±1.4도)
+              child: Transform.scale(scale: 1.0 + 0.04 * t, child: child),
+            ),
           );
         },
-        child: Text(widget.emoji, style: TextStyle(fontSize: widget.size)),
+        child: Image.asset(
+          widget.asset,
+          width: widget.size,
+          height: widget.size,
+          filterQuality: FilterQuality.medium,
+        ),
       ),
     );
   }

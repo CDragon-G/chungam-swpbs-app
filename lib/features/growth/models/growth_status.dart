@@ -72,6 +72,10 @@ class GrowthStatus {
   String get levelName => levelNames[level - 1];
   bool get isMaxLevel => level >= levelThresholds.length;
 
+  /// 레벨별 일러스트 에셋 (1~7).
+  static String assetFor(int lv) => 'assets/growth/stage$lv.png';
+  String get levelAsset => assetFor(level);
+
   /// 다음 레벨까지 진행률 0.0~1.0 (최고 레벨이면 1.0)
   double get progressToNext {
     if (isMaxLevel) return 1.0;

@@ -1,7 +1,7 @@
 name: pbs_plus
 description: "자람 - 함께 자라는 우리 학교 (SWPBS)."
 publish_to: 'none'
-version: 0.10.0+44
+version: 0.10.0+45
 
 environment:
   sdk: ^3.5.0
@@ -57,6 +57,8 @@ flutter:
   assets:
     - .env
     - assets/icon/
+    - assets/growth/
+    - assets/icons/
 
 flutter_launcher_icons:
   android: "ic_launcher"
