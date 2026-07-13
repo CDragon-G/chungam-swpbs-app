@@ -74,8 +74,7 @@ class BadgesScreen extends ConsumerWidget {
                     children: [
                       Opacity(
                         opacity: earnedThis ? 1 : 0.35,
-                        child: Text(b.iconEmoji,
-                            style: const TextStyle(fontSize: 48)),
+                        child: _BadgeIcon(badge: b, size: 52),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -126,7 +125,7 @@ class BadgesScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(b.iconEmoji, style: const TextStyle(fontSize: 80)),
+            _BadgeIcon(badge: b, size: 92),
             const SizedBox(height: AppSizes.md),
             Text(
               b.displayName(schoolShort),
@@ -172,6 +171,27 @@ class BadgesScreen extends ConsumerWidget {
             const SizedBox(height: AppSizes.lg),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 뱃지 아이콘 — 일러스트 에셋이 있으면 이미지, 없으면 이모지 폴백.
+class _BadgeIcon extends StatelessWidget {
+  const _BadgeIcon({required this.badge, required this.size});
+  final BadgeDef badge;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      badge.assetPath,
+      width: size,
+      height: size,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, __, ___) => Text(
+        badge.iconEmoji,
+        style: TextStyle(fontSize: size * 0.88),
       ),
     );
   }

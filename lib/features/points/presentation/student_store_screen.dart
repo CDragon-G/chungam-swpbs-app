@@ -8,6 +8,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../growth/growth_celebration.dart';
+import '../../student/providers/badge_provider.dart';
 import '../models/point_exchange.dart';
 import '../models/point_store_item.dart';
 import '../providers/points_provider.dart';
@@ -203,6 +204,8 @@ class StudentStoreScreen extends ConsumerWidget {
       ref.invalidate(myPointsProvider);
       ref.invalidate(myExchangesProvider);
       ref.invalidate(activeStoreItemsProvider);
+      // 수확 뱃지(첫 수확·수확왕) 평가
+      await evaluateAndAwardBadges(ref);
       if (context.mounted) {
         celebrateGrowth(context, ref,
             headline: it.isClassItem

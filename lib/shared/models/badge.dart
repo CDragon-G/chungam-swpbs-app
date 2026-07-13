@@ -15,6 +15,10 @@ class BadgeDef {
   final String conditionType;
   final int conditionValue;
 
+  /// 뱃지 일러스트 에셋 경로 (없으면 UI에서 iconEmoji로 폴백).
+  String get assetPath =>
+      'assets/badges/${conditionType}_$conditionValue.png';
+
   /// '○○인' 토큰을 학교 약칭으로 치환한 표시용 이름.
   /// 예) '○○인' + 충암중학교 → '충암인'. 학교명이 없으면 '우리학교인'.
   String displayName(String? schoolShortName) => name.contains('○○')

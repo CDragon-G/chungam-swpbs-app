@@ -34,7 +34,7 @@ class HallOfFameScreen extends ConsumerWidget {
               ),
             ),
             Text(
-              '이달의 학생 (전교·학년·학급)',
+              '우리 학교 새싹을 가장 많이 키운 친구들',
               style: GoogleFonts.notoSansKr(
                 fontSize: 11,
                 fontWeight: FontWeight.w400,
@@ -77,7 +77,7 @@ class HallOfFameScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSizes.lg),
               children: [
                 Text(
-                  '${now.year}년 ${now.month}월 이달의 학생',
+                  '${now.year}년 ${now.month}월 · 새싹에 양분을 가장 많이 준 주인공들',
                   style: GoogleFonts.notoSansKr(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -85,19 +85,21 @@ class HallOfFameScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // 전교 1위 — 크게
+                // 전교 1위 — 명예 식집사
                 if (school.isNotEmpty) _TopCard(entry: school.first),
                 if (grades.isNotEmpty) ...[
-                  const SectionHeader(title: '🎓 학년별 이달의 학생'),
-                  ...grades.map((e) => _RankRow(entry: e)),
+                  const SectionHeader(title: '🌿 학년 대표 식집사'),
+                  ...grades.map((e) => _RankRow(
+                      entry: e, title: '학년 대표 식집사', emoji: '🌿')),
                 ],
                 if (classes.isNotEmpty) ...[
-                  const SectionHeader(title: '👬 학급별 이달의 학생'),
-                  ...classes.map((e) => _RankRow(entry: e)),
+                  const SectionHeader(title: '💧 우리 반 새싹 지킴이'),
+                  ...classes.map((e) => _RankRow(
+                      entry: e, title: '새싹 지킴이', emoji: '💧')),
                 ],
                 const SizedBox(height: 12),
                 Text(
-                  '종합 점수 = 칭찬 40% + 꾸준한 참여 30% + 점검 점수 30%',
+                  '🌱 양분 점수 = 칭찬 40% + 꾸준한 참여 30% + 점검 점수 30%',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.notoSansKr(
                       fontSize: 11, color: AppColors.textTertiary),
@@ -131,13 +133,23 @@ class _TopCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Text('👑', style: TextStyle(fontSize: 44)),
+          Image.asset('assets/growth/stage7.png',
+              width: 64, height: 64,
+              errorBuilder: (_, __, ___) =>
+                  const Text('👑', style: TextStyle(fontSize: 44))),
           const SizedBox(height: 6),
-          Text('전교 이달의 학생',
-              style: GoogleFonts.notoSansKr(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white70)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text('🏆 이달의 명예 식집사',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white)),
+          ),
           const SizedBox(height: 8),
           Text(
             entry.maskedName,
@@ -148,6 +160,12 @@ class _TopCard extends StatelessWidget {
             entry.classLabel,
             style: GoogleFonts.notoSansKr(
                 fontSize: 14, color: Colors.white70),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '우리 학교 새싹에 가장 많은 양분을 준 주인공! 🌱',
+            style: GoogleFonts.notoSansKr(
+                fontSize: 12, color: Colors.white70),
           ),
           const SizedBox(height: 16),
           Row(
@@ -183,8 +201,14 @@ class _TopCard extends StatelessWidget {
 }
 
 class _RankRow extends StatelessWidget {
-  const _RankRow({required this.entry});
+  const _RankRow({
+    required this.entry,
+    this.title = '식집사',
+    this.emoji = '🌟',
+  });
   final HofEntry entry;
+  final String title;
+  final String emoji;
 
   @override
   Widget build(BuildContext context) {
@@ -208,16 +232,16 @@ class _RankRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Text('🌟', style: GoogleFonts.notoSansKr(fontSize: 18)),
+            Text(emoji, style: GoogleFonts.notoSansKr(fontSize: 18)),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${entry.maskedName} (${entry.classLabel})',
+                    '${entry.maskedName} (${entry.classLabel}) · $title',
                     style: GoogleFonts.notoSansKr(
-                        fontSize: 15, fontWeight: FontWeight.w800),
+                        fontSize: 14.5, fontWeight: FontWeight.w800),
                   ),
                   Text(
                     '칭찬 ${entry.praiseCount}회 · 점검 ${entry.checkinDays}일 · 평균 ${entry.avgScore.round()}점',

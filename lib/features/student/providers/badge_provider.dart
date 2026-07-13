@@ -39,11 +39,18 @@ Future<List<BadgeDef>> evaluateAndAwardBadges(WidgetRef ref) async {
   final streak = calculateStreak(history);
   final todayMax = history.isEmpty ? 0 : history.first.scorePct.round();
   final hasFullWeek = _hasFullWeek(history);
+  // 수확(보상 교환) 횟수 — 취소 제외
+  final exchangeRows = await SupabaseService.client
+      .from('point_exchanges')
+      .select('id')
+      .eq('user_id', user.id)
+      .neq('status', 'cancelled');
+  final exchanges = (exchangeRows as List).length;
 
   final newly = <BadgeDef>[];
   for (final b in badges) {
     if (alreadyOwned.contains(b.id)) continue;
-    final earned = _earned(b, total, streak, todayMax, hasFullWeek);
+    final earned = _earned(b, total, streak, todayMax, hasFullWeek, exchanges);
     if (!earned) continue;
     try {
       await SupabaseService.client.from('user_badges').insert({
@@ -67,8 +74,11 @@ bool _earned(
   int streak,
   int todayMax,
   bool hasFullWeek,
+  int exchanges,
 ) {
   switch (b.conditionType) {
+    case 'exchange_count':
+      return exchanges >= b.conditionValue;
     case 'first_checkin':
       return total >= 1;
     case 'streak_3':
