@@ -86,7 +86,7 @@ class StudentStoreScreen extends ConsumerWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         child: Text(
-                          '아직 등록된 상품이 없어요.\n담임선생님께 상점 등록을 요청해보세요!',
+                          '아직 등록된 강화물이 없어요.\n담임선생님께 교환소 등록을 요청해보세요!',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.notoSansKr(
                             color: AppColors.textTertiary,
@@ -116,7 +116,7 @@ class StudentStoreScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (classItems.isNotEmpty) ...[
-                    const SectionHeader(title: '🧑‍🏫 우리 반 상점'),
+                    const SectionHeader(title: '🧑‍🏫 우리 반 교환소'),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Text(
@@ -131,7 +131,7 @@ class StudentStoreScreen extends ConsumerWidget {
                     cards(classItems),
                   ],
                   if (schoolItems.isNotEmpty) ...[
-                    const SectionHeader(title: '🏫 학교 상점'),
+                    const SectionHeader(title: '🏫 학교 교환소'),
                     cards(schoolItems),
                   ],
                 ],

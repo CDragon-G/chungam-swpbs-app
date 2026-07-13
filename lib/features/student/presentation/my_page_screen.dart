@@ -140,7 +140,7 @@ class MyPageScreen extends ConsumerWidget {
                   ),
                   icon: const Icon(Icons.shopping_bag_rounded, size: 16),
                   label: Text(
-                    '상점',
+                    '교환소',
                     style: GoogleFonts.notoSansKr(
                       fontWeight: FontWeight.w800,
                       fontSize: 12,

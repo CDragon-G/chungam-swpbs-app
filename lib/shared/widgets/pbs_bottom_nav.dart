@@ -18,7 +18,7 @@ class StudentShell extends StatelessWidget {
   static const _items = [
     _NavItem('/student/home', '홈', Icons.cottage_rounded),
     _NavItem('/student/checkin', '점검', Icons.fact_check_rounded),
-    _NavItem('/student/store', '상점', Icons.storefront_rounded),
+    _NavItem('/student/store', '교환소', Icons.storefront_rounded),
     _NavItem('/student/mypage', '마이', Icons.person_rounded),
     _NavItem('/student/compare', '비교', Icons.emoji_events_rounded),
   ];
@@ -41,7 +41,7 @@ class TeacherShell extends StatelessWidget {
     _NavItem('/teacher/home', '홈', Icons.cottage_rounded),
     _NavItem('/teacher/dashboard', '대시보드', Icons.insights_rounded),
     _NavItem('/teacher/rules', '규칙', Icons.menu_book_rounded),
-    _NavItem('/teacher/store', '상점', Icons.storefront_rounded),
+    _NavItem('/teacher/store', '교환소', Icons.storefront_rounded),
     _NavItem('/teacher/announce', '공지', Icons.campaign_rounded),
   ];
 

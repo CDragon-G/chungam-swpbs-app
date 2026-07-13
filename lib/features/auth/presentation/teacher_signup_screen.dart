@@ -365,7 +365,7 @@ class _State extends ConsumerState<TeacherSignupScreen> {
                 selected: _mode == _Mode.newSchool,
                 emoji: '👑',
                 title: '새 학교 등록',
-                subtitle: '자동으로 관리자 권한 부여\n규칙·상점·공지 편집 가능',
+                subtitle: '자동으로 관리자 권한 부여\n규칙·교환소·공지 편집 가능',
                 onTap: () => setState(() => _mode = _Mode.newSchool),
               ),
               const SizedBox(height: 12),

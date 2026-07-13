@@ -174,7 +174,7 @@ class CheckinResultScreen extends ConsumerWidget {
                     Expanded(
                       flex: 2,
                       child: PbsPrimaryButton(
-                        label: '🛒 상점에서 사용',
+                        label: '🛒 교환소에서 사용',
                         color: AppColors.studentGreen,
                         onPressed: () => context.go('/student/store'),
                       ),
@@ -322,7 +322,7 @@ class _PointsEarnedBannerState extends State<_PointsEarnedBanner>
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      '내 잔액 ${NumberFormat('#,###').format(widget.totalBalance)}P · 상점에서 사용 가능',
+                      '내 잔액 ${NumberFormat('#,###').format(widget.totalBalance)}P · 교환소에서 사용 가능',
                       style: GoogleFonts.notoSansKr(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

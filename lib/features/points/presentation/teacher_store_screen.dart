@@ -47,7 +47,7 @@ class _State extends ConsumerState<TeacherStoreScreen>
         backgroundColor: AppColors.background,
         elevation: 0,
         title: Text(
-          '포인트 상점',
+          '포인트 교환소',
           style: GoogleFonts.notoSansKr(
             fontSize: 18,
             fontWeight: FontWeight.w800,
@@ -57,7 +57,7 @@ class _State extends ConsumerState<TeacherStoreScreen>
         actions: [
           if (canEdit)
             IconButton(
-              tooltip: '상품 추가',
+              tooltip: '강화물 추가',
               icon: const Icon(Icons.add_rounded),
               onPressed: () => _showItemSheet(context),
             ),
@@ -69,7 +69,7 @@ class _State extends ConsumerState<TeacherStoreScreen>
           unselectedLabelColor: AppColors.textSecondary,
           labelStyle: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800),
           tabs: const [
-            Tab(text: '상품 관리'),
+            Tab(text: '강화물 관리'),
             Tab(text: '교환 요청'),
           ],
         ),
@@ -117,7 +117,7 @@ class _ItemsTab extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(AppSizes.xl),
                 child: Text(
-                  '아직 등록된 상품이 없어요.\n우측 상단 + 버튼으로 추가해주세요.',
+                  '아직 등록된 강화물이 없어요.\n우측 상단 + 버튼으로 추가해주세요.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.notoSansKr(
                     color: AppColors.textTertiary,
@@ -184,7 +184,7 @@ class _ItemRow extends ConsumerWidget {
                 ),
                 Text(
                   '${item.scopeLabel} · ${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.notoSansKr(
                     fontSize: 11,
@@ -242,9 +242,9 @@ class _ItemRow extends ConsumerWidget {
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('상품 삭제'),
+                  title: const Text('강화물 삭제'),
                   content: Text(
-                      '${item.name} 상품을 삭제하시겠어요?\n이미 교환된 기록은 그대로 유지됩니다.'),
+                      '${item.name} 강화물을 삭제하시겠어요?\n이미 교환된 기록은 그대로 유지됩니다.'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
@@ -445,7 +445,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            widget.existing == null ? '새 상품 추가' : '상품 편집',
+            widget.existing == null ? '새 강화물 추가' : '강화물 편집',
             style: GoogleFonts.notoSansKr(
               fontSize: 18,
               fontWeight: FontWeight.w900,
@@ -525,7 +525,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
             )
           else
             Text(
-              '우리 학급 학생에게만 보여요. (전교 공통 상품은 관리자 선생님이 등록)',
+              '우리 학급 학생에게만 보여요. (전교 공통 강화물은 관리자 선생님이 등록)',
               style: GoogleFonts.notoSansKr(
                 fontSize: 12,
                 color: AppColors.textTertiary,
@@ -573,7 +573,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
 
           PbsTextField(
             controller: _name,
-            label: '상품명',
+            label: '강화물 이름',
             hint: '예: 빈츠 한 봉지',
           ),
           const SizedBox(height: AppSizes.md),

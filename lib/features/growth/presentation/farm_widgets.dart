@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -285,7 +288,11 @@ class GrowthProgressBar extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    g.isMaxLevel ? 'MAX' : '$pct%',
+                    g.isMaxLevel
+                        ? 'MAX'
+                        : g.isGateLocked
+                            ? '양분 가득!'
+                            : '$pct%',
                     style: GoogleFonts.notoSansKr(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
@@ -309,7 +316,9 @@ class GrowthProgressBar extends StatelessWidget {
               Text(
                 g.isMaxLevel
                     ? '🎉 열매를 맺었어요! 모두의 결실이에요'
-                    : '레벨업까지 ${100 - pct}% 남았어요!',
+                    : g.isGateLocked
+                        ? '🔑 열쇠 미션만 끝나면 바로 레벨업!'
+                        : '레벨업까지 ${100 - pct}% 남았어요!',
                 style: GoogleFonts.notoSansKr(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -376,6 +385,7 @@ class FarmNoticeBanner extends StatelessWidget {
                 text,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: GoogleFonts.notoSansKr(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
@@ -388,6 +398,126 @@ class FarmNoticeBanner extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 🌱 식물 말풍선 — 식물이 말을 건네는 연출.
+/// [pinned]가 있으면 항상 그 메시지(예: 관문 잠김 안내)를 보여주고,
+/// 없으면 [messages] 중 하나를 랜덤으로 골라 주기적으로 바꿔가며 응원한다.
+class PlantSpeechBubble extends StatefulWidget {
+  const PlantSpeechBubble({
+    super.key,
+    this.pinned,
+    this.messages = const [],
+  });
+  final String? pinned;
+  final List<String> messages;
+
+  @override
+  State<PlantSpeechBubble> createState() => _PlantSpeechBubbleState();
+}
+
+class _PlantSpeechBubbleState extends State<PlantSpeechBubble> {
+  final _rand = math.Random();
+  int _idx = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.messages.isNotEmpty) {
+      _idx = _rand.nextInt(widget.messages.length);
+    }
+    // 고정 메시지가 없을 때만 9초마다 다른 응원 멘트로 교체
+    if (widget.pinned == null && widget.messages.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 9), (_) {
+        if (!mounted) return;
+        setState(() {
+          _idx = (_idx + 1 + _rand.nextInt(widget.messages.length - 1)) %
+              widget.messages.length;
+        });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPinned = widget.pinned != null;
+    final text = widget.pinned ??
+        (widget.messages.isEmpty ? '' : widget.messages[_idx]);
+    if (text.isEmpty) return const SizedBox.shrink();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 450),
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
+            child: ScaleTransition(scale: anim, child: child),
+          ),
+          child: Container(
+            key: ValueKey(text),
+            constraints: const BoxConstraints(maxWidth: 252),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.96),
+              borderRadius: BorderRadius.circular(14),
+              border: isPinned
+                  ? Border.all(color: const Color(0xFFF5D08C), width: 1.4)
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.notoSansKr(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+                color: isPinned
+                    ? const Color(0xFF9A6A0B)
+                    : AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+        // 말풍선 꼬리 (식물 쪽으로)
+        Transform.translate(
+          offset: const Offset(0, -5),
+          child: Transform.rotate(
+            angle: math.pi / 4,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.96),
+                border: isPinned
+                    ? const Border(
+                        right: BorderSide(
+                            color: Color(0xFFF5D08C), width: 1.4),
+                        bottom: BorderSide(
+                            color: Color(0xFFF5D08C), width: 1.4),
+                      )
+                    : null,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

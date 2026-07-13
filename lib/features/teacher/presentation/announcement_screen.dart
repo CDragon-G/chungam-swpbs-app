@@ -91,6 +91,16 @@ class _State extends ConsumerState<AnnouncementScreen> {
                 ),
                 const SizedBox(height: AppSizes.md),
                 PbsTextField(controller: _title, label: '제목'),
+                const SizedBox(height: 5),
+                Text(
+                  '👀 제목은 학생들 홈 화면 배너에 가장 먼저 보여요 — 한눈에 들어오게 써주세요!',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textTertiary,
+                    height: 1.4,
+                  ),
+                ),
                 const SizedBox(height: AppSizes.md),
                 Text(
                   '내용',

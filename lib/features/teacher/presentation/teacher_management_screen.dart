@@ -100,7 +100,7 @@ class TeacherManagementScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '규칙·상점·공지 편집 가능. SWPBS 리더십팀에 부여하세요.\n새 학년도에 인사 변동 시 권한 이전 가능합니다.',
+                      '규칙·교환소·공지 편집 가능. SWPBS 리더십팀에 부여하세요.\n새 학년도에 인사 변동 시 권한 이전 가능합니다.',
                       style: GoogleFonts.notoSansKr(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -200,7 +200,7 @@ class _TeacherRow extends ConsumerWidget {
                     builder: (ctx) => AlertDialog(
                       title: const Text('관리자 권한 해제'),
                       content: const Text(
-                          '본인의 관리자 권한을 해제하면 더 이상 규칙·상점·공지를 편집할 수 없어요.\n진행할까요?'),
+                          '본인의 관리자 권한을 해제하면 더 이상 규칙·교환소·공지를 편집할 수 없어요.\n진행할까요?'),
                       actions: [
                         TextButton(
                             onPressed: () => Navigator.pop(ctx, false),

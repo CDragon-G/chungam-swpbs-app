@@ -257,7 +257,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   ),
                   _ActivityRow(
                     icon: '🎁',
-                    label: '강화물(상점 상품) ${g.activity.storeItems}개',
+                    label: '교환소 강화물 ${g.activity.storeItems}개',
                     value: '',
                     pts: g.activity.storePts,
                     max: 10,

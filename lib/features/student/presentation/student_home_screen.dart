@@ -211,9 +211,9 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             ),
           ),
 
-          // ── 중앙: 식물 + 진행바 ──
+          // ── 중앙: 말풍선 + 식물 + 진행바 ──
           Align(
-            alignment: const Alignment(0, 0.50),
+            alignment: const Alignment(0, 0.44),
             child: GestureDetector(
               onTap: growth == null
                   ? null
@@ -221,6 +221,19 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  PlantSpeechBubble(
+                    pinned: (growth != null && growth.isGateLocked)
+                        ? '양분은 가득 찼어! 🌕\n🔑 "${growth.gateKeyLabel}"\n미션이 끝나면 바로 레벨업이야!'
+                        : null,
+                    messages: const [
+                      '오늘도 와줘서 고마워!\n네 덕분에 쑥쑥 크고 있어 🌱',
+                      '규칙을 지키는 너, 진짜 멋져!',
+                      '칭찬받으면 나한테도 양분이 와!\n완전 꿀맛이야 💚',
+                      '내일도 물 주러 와줘~ 기다릴게!',
+                      '우리 반이 수업맛집 되면\n나 꽃 피울지도 몰라 🌸',
+                      '조금씩 자라는 게\n제일 튼튼하게 크는 거래 🌿',
+                    ],
+                  ),
                   BreathingSprout(
                     asset: growth?.levelAsset ?? GrowthStatus.assetFor(1),
                     level: growth?.level ?? 1,
