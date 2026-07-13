@@ -7,6 +7,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../models/growth_status.dart';
 import '../providers/growth_provider.dart';
+import 'farm_widgets.dart';
 
 /// 🌱 학교 공동 새싹 카드 — 교사·학생 홈 공용 히어로.
 /// SWPBS 활동이 양분이 되어 씨앗 → 열매나무까지 함께 키운다.
@@ -23,13 +24,13 @@ class SchoolSproutCard extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.md),
       child: PbsCard(
-        onTap: () => _showDetail(context, ref, g),
+        onTap: () => showGrowthSheet(context, g),
         padding: const EdgeInsets.all(AppSizes.lg),
         color: const Color(0xFFF0FDF4),
         border: Border.all(color: const Color(0xFFBBF7D0)),
         child: Row(
           children: [
-            _BreathingSprout(asset: g.levelAsset, level: g.level, size: 64),
+            BreathingSprout(asset: g.levelAsset, level: g.level, size: 64),
             const SizedBox(width: AppSizes.md),
             Expanded(
               child: Column(
@@ -103,8 +104,12 @@ class SchoolSproutCard extends ConsumerWidget {
     );
   }
 
-  void _showDetail(BuildContext context, WidgetRef ref, GrowthStatus g) {
-    showModalBottomSheet(
+}
+
+/// 성장 상세 시트 — 로드맵·미션 체크리스트·활동 양분.
+/// 새싹 카드와 농장 홈(식물 탭)에서 공용으로 사용.
+void showGrowthSheet(BuildContext context, GrowthStatus g) {
+  showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
@@ -122,7 +127,7 @@ class SchoolSproutCard extends ConsumerWidget {
             Center(
               child: Column(
                 children: [
-                  _BreathingSprout(asset: g.levelAsset, level: g.level, size: 110),
+                  BreathingSprout(asset: g.levelAsset, level: g.level, size: 110),
                   const SizedBox(height: 6),
                   Text(
                     '${g.schoolName} 새싹',
@@ -302,7 +307,6 @@ class SchoolSproutCard extends ConsumerWidget {
         ),
       ),
     );
-  }
 }
 
 class _ActivityRow extends StatelessWidget {
@@ -342,72 +346,6 @@ class _ActivityRow extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// 숨쉬듯 살랑이는 새싹 일러스트 — 위아래로 부드럽게 떠오르며
-/// 좌우로 아주 살짝 기울고, 레벨이 오르면 통통 튀며 새 모습이 등장.
-class _BreathingSprout extends StatefulWidget {
-  const _BreathingSprout({
-    required this.asset,
-    required this.level,
-    this.size = 64,
-  });
-  final String asset;
-  final int level;
-  final double size;
-
-  @override
-  State<_BreathingSprout> createState() => _BreathingSproutState();
-}
-
-class _BreathingSproutState extends State<_BreathingSprout>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 550),
-      switchInCurve: Curves.elasticOut,
-      transitionBuilder: (child, anim) =>
-          ScaleTransition(scale: anim, child: child),
-      child: AnimatedBuilder(
-        key: ValueKey('${widget.level}-${widget.asset}'),
-        animation: _c,
-        builder: (context, child) {
-          final t = Curves.easeInOut.transform(_c.value);
-          return Transform.translate(
-            offset: Offset(0, -3.0 * t),
-            child: Transform.rotate(
-              angle: (t - 0.5) * 0.05, // 살랑임 (±1.4도)
-              child: Transform.scale(scale: 1.0 + 0.04 * t, child: child),
-            ),
-          );
-        },
-        child: Image.asset(
-          widget.asset,
-          width: widget.size,
-          height: widget.size,
-          filterQuality: FilterQuality.medium,
-        ),
       ),
     );
   }

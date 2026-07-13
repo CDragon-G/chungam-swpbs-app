@@ -11,11 +11,16 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../growth/models/growth_status.dart';
+import '../../growth/presentation/farm_widgets.dart';
 import '../../growth/presentation/school_sprout_card.dart';
+import '../../growth/providers/growth_provider.dart';
 import '../../onboarding/presentation/teacher_onboarding.dart';
 import '../../school/providers/school_provider.dart';
 import '../providers/dashboard_provider.dart';
 
+/// 🌾 교사 홈 — 올팜식 농장 화면.
+/// 중앙에 학교 공동 식물이 자라고, 좌측은 실행 메뉴, 우측은 정보 메뉴(시트).
 class TeacherHomeScreen extends ConsumerStatefulWidget {
   const TeacherHomeScreen({super.key});
 
@@ -36,418 +41,536 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider).value;
-    final school = ref.watch(schoolProvider);
-    final overview = ref.watch(schoolOverviewProvider);
-    final announcements = ref.watch(announcementsProvider);
+    final isAdmin = profile?.isAdminTeacher ?? false;
+    final growth = ref.watch(schoolGrowthProvider).value;
+    final announcements = ref.watch(announcementsProvider).value;
+    final latestNotice =
+        (announcements != null && announcements.isNotEmpty)
+            ? announcements.first['title'] as String
+            : null;
 
     return RefreshIndicator(
       onRefresh: () async {
+        ref.invalidate(schoolGrowthProvider);
         ref.invalidate(schoolOverviewProvider);
-        ref.invalidate(schoolStudentsProvider);
         ref.invalidate(announcementsProvider);
       },
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSizes.lg, AppSizes.lg, AppSizes.lg, AppSizes.xxxl,
-        ),
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '안녕하세요, ${profile?.nickname ?? ''} 선생님',
-                      style: GoogleFonts.notoSansKr(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    if (profile != null && profile.isTeacher) ...[
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: profile.isAdminTeacher
-                              ? AppColors.primary
-                              : AppColors.borderLight,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          profile.isAdminTeacher
-                              ? '👑 관리자'
-                              : '👤 일반 교사',
-                          style: GoogleFonts.notoSansKr(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: profile.isAdminTeacher
-                                ? Colors.white
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: '계정',
-                icon: const Icon(Icons.more_vert_rounded, size: 20),
-                onPressed: () => _showAccountMenu(context, ref),
-              ),
-            ],
+          // 스크롤 없는 홈이지만 당겨서 새로고침은 지원
+          ListView(physics: const AlwaysScrollableScrollPhysics()),
+          // ── 농장 배경 ──
+          Positioned.fill(
+            child: Image.asset(
+              'assets/farm/farm_bg.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.bottomCenter,
+              filterQuality: FilterQuality.medium,
+            ),
           ),
-          // 🌱 학교 공동 새싹 — 모두가 함께 키우는 히어로 카드
-          const SizedBox(height: AppSizes.md),
-          const SchoolSproutCard(),
 
-          // 최근 공지
-          SectionHeader(
-            title: '📢 최근 공지',
-            action: TextButton.icon(
-              onPressed: () => context.go('/teacher/announce'),
-              icon: const Icon(Icons.edit_rounded, size: 14),
-              label: Text(
-                '공지 쓰기',
-                style: GoogleFonts.notoSansKr(fontSize: 12),
+          // ── 상단: 학교 팻말 ──
+          Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: SchoolSign(
+                name: growth?.schoolName ?? profile?.nickname ?? '자람 학교',
+                levelLabel: growth == null
+                    ? null
+                    : 'Lv.${growth.level} ${growth.levelName}',
+                onTap: growth == null
+                    ? null
+                    : () => showGrowthSheet(context, growth),
               ),
             ),
           ),
-          announcements.when(
-            loading: () => const PbsCard(child: SizedBox(height: 60)),
-            error: (e, _) => PbsCard(child: Text('오류: $e')),
-            data: (anns) {
-              if (anns.isEmpty) {
-                return PbsCard(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      '아직 등록된 공지가 없어요.',
-                      style: GoogleFonts.notoSansKr(
-                        fontSize: 13,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ),
-                );
-              }
-              return Column(
-                children: anns.take(3).map((a) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: PbsCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            a['title'] as String,
-                            style: GoogleFonts.notoSansKr(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            a['body'] as String,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.notoSansKr(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
 
-          // 메뉴 그리드 (크몽 스타일: 아이콘 + 이름)
-          const SizedBox(height: AppSizes.md),
-          PbsCard(
-            padding: const EdgeInsets.symmetric(
-                vertical: AppSizes.lg, horizontal: AppSizes.sm),
-            child: _MenuGrid(isAdmin: profile?.isAdminTeacher ?? false),
+          // ── 우상단: 계정 ──
+          Positioned(
+            top: 6,
+            right: 8,
+            child: _RoundIconButton(
+              icon: Icons.more_vert_rounded,
+              onTap: () => _showAccountMenu(context, ref),
+            ),
           ),
-
-          const SizedBox(height: AppSizes.md),
-          // School info card
-          school.when(
-            loading: () => const PbsCard(child: SizedBox(height: 100)),
-            error: (e, _) => PbsCard(child: Text('오류: $e')),
-            data: (sc) {
-              if (sc == null) return const SizedBox.shrink();
-              return PbsCard(
-                color: AppColors.teacherNavy,
-                border: Border.all(color: AppColors.teacherNavy),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sc.name,
-                      style: GoogleFonts.notoSansKr(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      '${sc.region} · ${sc.level}',
-                      style: GoogleFonts.notoSansKr(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: AppSizes.md),
-                    Container(
-                      padding: const EdgeInsets.all(AppSizes.md),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      ),
-                      child: Row(
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '학교 코드',
-                                style: GoogleFonts.notoSansKr(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                              Text(
-                                sc.schoolCode,
-                                style: GoogleFonts.robotoMono(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: 3,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            tooltip: '복사',
-                            color: Colors.white,
-                            icon: const Icon(Icons.copy_rounded),
-                            onPressed: () async {
-                              await Clipboard.setData(
-                                  ClipboardData(text: sc.schoolCode));
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('학교 코드를 복사했어요')),
-                                );
-                              }
-                            },
-                          ),
-                          IconButton(
-                            tooltip: 'QR 코드',
-                            color: Colors.white,
-                            icon: const Icon(Icons.qr_code_rounded),
-                            onPressed: () => _showQr(context, sc.schoolCode, sc.name),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // 교사 코드: 관리자에게만 표시 (동료 교사 가입용)
-                    if (profile != null &&
-                        profile.isAdminTeacher &&
-                        sc.teacherCode != null) ...[
-                      const SizedBox(height: AppSizes.sm),
-                      Container(
-                        padding: const EdgeInsets.all(AppSizes.md),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.25),
-                          borderRadius:
-                              BorderRadius.circular(AppSizes.radiusMd),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.lock_rounded,
-                                        size: 12, color: Colors.white70),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '교사 코드 (동료 교사 가입용)',
-                                      style: GoogleFonts.notoSansKr(
-                                        fontSize: 11,
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  sc.teacherCode!,
-                                  style: GoogleFonts.robotoMono(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    letterSpacing: 2,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              tooltip: '교사 코드 복사',
-                              color: Colors.white,
-                              icon: const Icon(Icons.copy_rounded),
-                              onPressed: () async {
-                                await Clipboard.setData(
-                                    ClipboardData(text: sc.teacherCode!));
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text('교사 코드를 복사했어요')),
-                                  );
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '⚠️ 학생에게는 공유하지 마세요. 동료 교사에게만 개별 전달하세요.',
-                        style: GoogleFonts.notoSansKr(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ],
+          // 좌상단: 관리자 배지
+          if (isAdmin)
+            Positioned(
+              top: 12,
+              left: 10,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-              );
-            },
-          ),
-          const SectionHeader(title: '📊 오늘 현황'),
-          overview.when(
-            loading: () => const PbsCard(child: SizedBox(height: 100)),
-            error: (e, _) => PbsCard(child: Text('오류: $e')),
-            data: (o) => PbsCard(
-              child: Row(
+                child: Text('👑 관리자',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+              ),
+            ),
+
+          // ── 좌측: 실행 메뉴 ──
+          Positioned(
+            left: 8,
+            top: 116,
+            bottom: 118,
+            child: SingleChildScrollView(
+              child: Column(
                 children: [
-                  _StatCell(
-                    label: '참여율',
-                    value: '${o.todayParticipationPct.round()}%',
-                    color: AppColors.scoreColor(o.todayParticipationPct),
+                  if (isAdmin)
+                    FarmMenuButton(
+                      asset: 'assets/icons/menu_permission.png',
+                      label: '교사 권한',
+                      onTap: () => context.go('/teacher/permissions'),
+                    ),
+                  if (isAdmin)
+                    FarmMenuButton(
+                      asset: 'assets/icons/menu_roster.png',
+                      label: '학생 명단',
+                      onTap: () => context.go('/teacher/roster'),
+                    ),
+                  FarmMenuButton(
+                    asset: 'assets/icons/menu_praise.png',
+                    label: '칭찬하기',
+                    onTap: () => context.go('/teacher/students'),
                   ),
-                  _Divider(),
-                  _StatCell(
-                    label: '참여 학생',
-                    value: '${o.todayParticipants} / ${o.totalStudents}',
-                    color: AppColors.teacherNavy,
+                  FarmMenuButton(
+                    asset: 'assets/icons/menu_kodr.png',
+                    label: 'K-ODR',
+                    onTap: () => context.go('/teacher/kodr'),
                   ),
-                  _Divider(),
-                  _StatCell(
-                    label: '주간 평균',
-                    value: '${o.weeklyAvg.round()}%',
-                    color: AppColors.primary,
+                  FarmMenuButton(
+                    asset: 'assets/icons/menu_cico.png',
+                    label: 'CICO',
+                    onTap: () => context.go('/teacher/cico'),
+                  ),
+                  FarmMenuButton(
+                    asset: 'assets/icons/menu_vote.png',
+                    label: '수업맛집',
+                    onTap: () => context.go('/teacher/vote'),
                   ),
                 ],
               ),
             ),
           ),
-          // Class participation quick bars
-          overview.when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (o) {
-              if (o.classParticipation.isEmpty) return const SizedBox.shrink();
-              final entries = o.classParticipation.entries.toList()
-                ..sort((a, b) => a.key.compareTo(b.key));
-              return Column(
+
+          // ── 우측: 정보 메뉴 (시트) ──
+          Positioned(
+            right: 8,
+            top: 116,
+            child: Column(
+              children: [
+                FarmMenuButton(
+                  asset: 'assets/icons/info_school.png',
+                  label: '학교 코드',
+                  onTap: () => _showSchoolSheet(context),
+                ),
+                FarmMenuButton(
+                  asset: 'assets/icons/info_status.png',
+                  label: '오늘 현황',
+                  onTap: () => _showTodaySheet(context),
+                ),
+                FarmMenuButton(
+                  asset: 'assets/icons/info_classes.png',
+                  label: '반별 참여',
+                  onTap: () => _showClassesSheet(context),
+                ),
+                FarmMenuButton(
+                  asset: 'assets/icons/menu_fame.png',
+                  label: '명예의 전당',
+                  onTap: () => context.go('/teacher/hall-of-fame'),
+                ),
+              ],
+            ),
+          ),
+
+          // ── 중앙: 식물 + 진행바 ──
+          Align(
+            alignment: const Alignment(0, 0.52),
+            child: GestureDetector(
+              onTap: growth == null
+                  ? null
+                  : () => showGrowthSheet(context, growth),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SectionHeader(title: '반별 참여율'),
-                  PbsCard(
-                    child: Column(
-                      children: entries.map((e) {
-                        final parts = e.key.split('-');
-                        final label = '${parts[0]}학년 ${parts[1]}반';
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 84,
-                                child: Text(
-                                  label,
-                                  style: GoogleFonts.notoSansKr(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      height: 14,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.borderLight,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                      ),
-                                    ),
-                                    FractionallySizedBox(
-                                      widthFactor: (e.value / 100).clamp(0, 1),
-                                      child: Container(
-                                        height: 14,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.scoreColor(e.value),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${e.value.round()}%',
-                                style: GoogleFonts.notoSansKr(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                  BreathingSprout(
+                    asset: growth?.levelAsset ?? GrowthStatus.assetFor(1),
+                    level: growth?.level ?? 1,
+                    size: 172,
                   ),
+                  const SizedBox(height: 10),
+                  if (growth != null) GrowthProgressBar(growth: growth),
                 ],
-              );
-            },
+              ),
+            ),
+          ),
+
+          // ── 하단: 공지 배너 ──
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 10,
+            child: FarmNoticeBanner(
+              text: latestNotice ?? '아직 공지가 없어요 — 첫 공지를 남겨보세요!',
+              onTap: () => context.go('/teacher/announce'),
+            ),
           ),
         ],
       ),
     );
   }
 
+  // ═══════════ 정보 시트들 ═══════════
+
+  /// 🏫 학교 코드 시트 (기존 홈의 남색 카드 이동).
+  void _showSchoolSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => Consumer(
+        builder: (ctx, ref2, _) {
+          final school = ref2.watch(schoolProvider);
+          final profile = ref2.watch(profileProvider).value;
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSizes.xl),
+              child: school.when(
+                loading: () => const SizedBox(
+                    height: 120,
+                    child: Center(child: CircularProgressIndicator())),
+                error: (e, _) => Text(translateError(e)),
+                data: (sc) {
+                  if (sc == null) return const Text('학교 정보가 없어요.');
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(sc.name,
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 20, fontWeight: FontWeight.w900)),
+                      Text('${sc.region} · ${sc.level}',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 12,
+                              color: AppColors.textSecondary)),
+                      const SizedBox(height: AppSizes.md),
+                      Container(
+                        padding: const EdgeInsets.all(AppSizes.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.teacherNavyLight,
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusMd),
+                        ),
+                        child: Row(
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('학교 코드 (학생 가입용)',
+                                    style: GoogleFonts.notoSansKr(
+                                        fontSize: 11,
+                                        color: AppColors.textSecondary)),
+                                Text(sc.schoolCode,
+                                    style: GoogleFonts.robotoMono(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.teacherNavy,
+                                        letterSpacing: 3)),
+                              ],
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              tooltip: '복사',
+                              icon: const Icon(Icons.copy_rounded),
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                    ClipboardData(text: sc.schoolCode));
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('학교 코드를 복사했어요')),
+                                  );
+                                }
+                              },
+                            ),
+                            IconButton(
+                              tooltip: 'QR 코드',
+                              icon: const Icon(Icons.qr_code_rounded),
+                              onPressed: () =>
+                                  _showQr(ctx, sc.schoolCode, sc.name),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if ((profile?.isAdminTeacher ?? false) &&
+                          sc.teacherCode != null) ...[
+                        const SizedBox(height: AppSizes.sm),
+                        Container(
+                          padding: const EdgeInsets.all(AppSizes.md),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight,
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusMd),
+                            border: Border.all(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Row(children: [
+                                    const Icon(Icons.lock_rounded,
+                                        size: 12,
+                                        color: AppColors.textSecondary),
+                                    const SizedBox(width: 4),
+                                    Text('교사 코드 (동료 교사 가입용)',
+                                        style: GoogleFonts.notoSansKr(
+                                            fontSize: 11,
+                                            color:
+                                                AppColors.textSecondary)),
+                                  ]),
+                                  Text(sc.teacherCode!,
+                                      style: GoogleFonts.robotoMono(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppColors.primary,
+                                          letterSpacing: 2)),
+                                ],
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                tooltip: '교사 코드 복사',
+                                icon: const Icon(Icons.copy_rounded),
+                                onPressed: () async {
+                                  await Clipboard.setData(
+                                      ClipboardData(text: sc.teacherCode!));
+                                  if (ctx.mounted) {
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      const SnackBar(
+                                          content:
+                                              Text('교사 코드를 복사했어요')),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '⚠️ 교사 코드는 학생에게 공유하지 마세요. 동료 교사에게만 개별 전달하세요.',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 11, color: AppColors.textTertiary),
+                        ),
+                      ],
+                      const SizedBox(height: AppSizes.md),
+                    ],
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 📊 오늘 현황 시트.
+  void _showTodaySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Consumer(
+        builder: (ctx, ref2, __) {
+          final overview = ref2.watch(schoolOverviewProvider);
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSizes.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('📊 오늘 현황',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 18, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: AppSizes.md),
+                  overview.when(
+                    loading: () => const SizedBox(
+                        height: 80,
+                        child: Center(child: CircularProgressIndicator())),
+                    error: (e, _) => Text(translateError(e)),
+                    data: (o) => PbsCard(
+                      child: Row(
+                        children: [
+                          _StatCell(
+                            label: '참여율',
+                            value: '${o.todayParticipationPct.round()}%',
+                            color: AppColors.scoreColor(
+                                o.todayParticipationPct),
+                          ),
+                          _Divider(),
+                          _StatCell(
+                            label: '참여 학생',
+                            value:
+                                '${o.todayParticipants} / ${o.totalStudents}',
+                            color: AppColors.teacherNavy,
+                          ),
+                          _Divider(),
+                          _StatCell(
+                            label: '주간 평균',
+                            value: '${o.weeklyAvg.round()}%',
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                  Text(
+                    '더 자세한 분석은 하단 [대시보드] 탭에서 볼 수 있어요.',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12, color: AppColors.textTertiary),
+                  ),
+                  const SizedBox(height: AppSizes.md),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 📈 반별 참여율 시트.
+  void _showClassesSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Consumer(
+        builder: (ctx, ref2, __) {
+          final overview = ref2.watch(schoolOverviewProvider);
+          return SafeArea(
+            child: DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.6,
+              maxChildSize: 0.9,
+              builder: (c, scroll) => ListView(
+                controller: scroll,
+                padding: const EdgeInsets.all(AppSizes.xl),
+                children: [
+                  Text('📈 반별 참여율 (오늘)',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 18, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: AppSizes.md),
+                  overview.when(
+                    loading: () => const SizedBox(
+                        height: 80,
+                        child: Center(child: CircularProgressIndicator())),
+                    error: (e, _) => Text(translateError(e)),
+                    data: (o) {
+                      if (o.classParticipation.isEmpty) {
+                        return Text('아직 참여 데이터가 없어요.',
+                            style: GoogleFonts.notoSansKr(
+                                color: AppColors.textTertiary));
+                      }
+                      final entries = o.classParticipation.entries.toList()
+                        ..sort((a, b) => a.key.compareTo(b.key));
+                      return PbsCard(
+                        child: Column(
+                          children: entries.map((e) {
+                            final parts = e.key.split('-');
+                            final label = '${parts[0]}학년 ${parts[1]}반';
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 84,
+                                    child: Text(label,
+                                        style: GoogleFonts.notoSansKr(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700)),
+                                  ),
+                                  Expanded(
+                                    child: Stack(
+                                      children: [
+                                        Container(
+                                          height: 14,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.borderLight,
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                          ),
+                                        ),
+                                        FractionallySizedBox(
+                                          widthFactor:
+                                              (e.value / 100).clamp(0, 1),
+                                          child: Container(
+                                            height: 14,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.scoreColor(
+                                                  e.value),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      999),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text('${e.value.round()}%',
+                                      style: GoogleFonts.notoSansKr(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800)),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ═══════════ 계정 메뉴 (기존 유지) ═══════════
+
   void _showAccountMenu(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLg)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLg)),
       ),
       builder: (sheetCtx) => SafeArea(
         child: Column(
@@ -542,7 +665,6 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
 
     try {
       await ref.read(authRepositoryProvider).deleteAccount();
-      // 로딩을 먼저 닫는다 (상태 갱신으로 mounted가 false 되기 전에).
       if (context.mounted) Navigator.pop(context);
       ref.invalidate(profileProvider);
       if (context.mounted) {
@@ -625,95 +747,31 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
   }
 }
 
-/// 홈 메뉴 그리드 (크몽 스타일: 아이콘 + 이름만, 설명은 각 화면에서).
-class _MenuGrid extends StatelessWidget {
-  const _MenuGrid({required this.isAdmin});
-  final bool isAdmin;
+/// 우상단 등 흰 원형 아이콘 버튼.
+class _RoundIconButton extends StatelessWidget {
+  const _RoundIconButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final items = <_MenuItem>[
-      if (isAdmin)
-        const _MenuItem('assets/icons/menu_permission.png', '교사 권한 관리',
-            '/teacher/permissions', AppColors.primaryLight),
-      if (isAdmin)
-        const _MenuItem('assets/icons/menu_roster.png', '학생 명단 관리',
-            '/teacher/roster', AppColors.teacherNavyLight),
-      const _MenuItem('assets/icons/menu_kodr.png', 'K-ODR 행동지원',
-          '/teacher/kodr', AppColors.studentGreenLight),
-      const _MenuItem('assets/icons/menu_praise.png', '학생 칭찬하기',
-          '/teacher/students', AppColors.studentGreenLight),
-      const _MenuItem('assets/icons/menu_fame.png', '명예의 전당',
-          '/teacher/hall-of-fame', Color(0xFFFEF9E7)),
-      const _MenuItem('assets/icons/menu_cico.png', 'CICO 동행점검',
-          '/teacher/cico', AppColors.teacherNavyLight),
-      const _MenuItem('assets/icons/menu_vote.png', '수업맛집',
-          '/teacher/vote', Color(0xFFFFF1F2)),
-    ];
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: AppSizes.md,
-      childAspectRatio: 1.05,
-      children: items.map((m) => _MenuTile(item: m)).toList(),
-    );
-  }
-}
-
-class _MenuItem {
-  const _MenuItem(this.asset, this.label, this.route, this.color);
-  final String asset;
-  final String label;
-  final String route;
-  final Color color;
-}
-
-class _MenuTile extends StatelessWidget {
-  const _MenuTile({required this.item});
-  final _MenuItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => context.go(item.route),
-      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: item.color,
-              borderRadius: BorderRadius.circular(17),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.92),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
             ),
-            child: Image.asset(
-              item.asset,
-              width: 42,
-              height: 42,
-              filterQuality: FilterQuality.medium,
-            ),
-          ),
-          const SizedBox(height: 6),
-          // 큰 글꼴에서도 한 줄 유지 (넘치면 자동 축소)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                item.label,
-                maxLines: 1,
-                style: GoogleFonts.notoSansKr(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
+        child: Icon(icon, size: 20, color: AppColors.textPrimary),
       ),
     );
   }
@@ -777,7 +835,8 @@ class _MarketingConsentTileState extends ConsumerState<_MarketingConsentTile> {
 }
 
 class _StatCell extends StatelessWidget {
-  const _StatCell({required this.label, required this.value, required this.color});
+  const _StatCell(
+      {required this.label, required this.value, required this.color});
   final String label;
   final String value;
   final Color color;
