@@ -32,7 +32,7 @@ class AppColors {
   static const Color danger = Color(0xFFEF4444);
 
   // Neutral
-  static const Color background = Color(0xFFF8FAFC);
+  static const Color background = Color(0xFFF7F4E9); // 따뜻한 크림 (자람 농장 톤)
   static const Color surface = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFE2E8F0);
   static const Color borderLight = Color(0xFFF1F5F9);

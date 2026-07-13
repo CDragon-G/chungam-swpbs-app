@@ -16,11 +16,11 @@ class StudentShell extends StatelessWidget {
   final Widget child;
 
   static const _items = [
-    _NavItem('/student/home', '홈', Icons.home_rounded),
-    _NavItem('/student/checkin', '점검', Icons.check_circle_outline_rounded),
-    _NavItem('/student/store', '상점', Icons.shopping_bag_rounded),
+    _NavItem('/student/home', '홈', Icons.cottage_rounded),
+    _NavItem('/student/checkin', '점검', Icons.fact_check_rounded),
+    _NavItem('/student/store', '상점', Icons.storefront_rounded),
     _NavItem('/student/mypage', '마이', Icons.person_rounded),
-    _NavItem('/student/compare', '비교', Icons.bar_chart_rounded),
+    _NavItem('/student/compare', '비교', Icons.emoji_events_rounded),
   ];
 
   @override
@@ -38,10 +38,10 @@ class TeacherShell extends StatelessWidget {
   final Widget child;
 
   static const _items = [
-    _NavItem('/teacher/home', '홈', Icons.home_rounded),
-    _NavItem('/teacher/dashboard', '대시보드', Icons.dashboard_rounded),
-    _NavItem('/teacher/rules', '규칙', Icons.rule_rounded),
-    _NavItem('/teacher/store', '상점', Icons.shopping_bag_rounded),
+    _NavItem('/teacher/home', '홈', Icons.cottage_rounded),
+    _NavItem('/teacher/dashboard', '대시보드', Icons.insights_rounded),
+    _NavItem('/teacher/rules', '규칙', Icons.menu_book_rounded),
+    _NavItem('/teacher/store', '상점', Icons.storefront_rounded),
     _NavItem('/teacher/announce', '공지', Icons.campaign_rounded),
   ];
 
@@ -77,8 +77,8 @@ class _Shell extends StatelessWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: idx < 0 ? 0 : idx,
         onDestinationSelected: (i) => context.go(items[i].path),
-        backgroundColor: AppColors.surface,
-        indicatorColor: color.withValues(alpha: 0.12),
+        backgroundColor: const Color(0xFFFDFBF2),
+        indicatorColor: const Color(0xFFDDEFC8),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(

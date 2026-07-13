@@ -170,7 +170,7 @@ class FarmMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: GestureDetector(
         onTap: onTap,
         child: Column(
@@ -180,9 +180,9 @@ class FarmMenuButton extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 54,
-                  height: 54,
-                  padding: const EdgeInsets.all(6),
+                  width: 46,
+                  height: 46,
+                  padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.95),
                     shape: BoxShape.circle,
@@ -220,9 +220,9 @@ class FarmMenuButton extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.88),
                 borderRadius: BorderRadius.circular(999),
@@ -230,7 +230,7 @@ class FarmMenuButton extends StatelessWidget {
               child: Text(
                 label,
                 style: GoogleFonts.notoSansKr(
-                  fontSize: 10,
+                  fontSize: 9.5,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
@@ -243,7 +243,8 @@ class FarmMenuButton extends StatelessWidget {
   }
 }
 
-/// 식물 아래 성장 진행바 — "레벨업까지 n점!" (관문이면 🔑 안내).
+/// 식물 아래 성장 진행바 — 레벨 이름 + 진행률(%)을 명확하게.
+/// 관문에 걸렸으면 🔑 안내는 아래 별도 칩으로 분리 (올팜식 레이아웃).
 class GrowthProgressBar extends StatelessWidget {
   const GrowthProgressBar({super.key, required this.growth});
   final GrowthStatus growth;
@@ -251,55 +252,94 @@ class GrowthProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = growth;
-    final label = g.isMaxLevel
-        ? '🎉 열매를 맺었어요!'
-        : g.isGateLocked
-            ? '🔑 ${g.gateKeyLabel}'
-            : '레벨업까지 ${g.pointsToNext}점!';
-    return Container(
-      width: 210,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+    final pct = (g.progressToNext * 100).round();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 236,
+          padding: const EdgeInsets.fromLTRB(14, 9, 14, 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: g.progressToNext,
-              minHeight: 10,
-              backgroundColor: const Color(0xFFE5E7EB),
-              valueColor:
-                  const AlwaysStoppedAnimation(AppColors.studentGreen),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Lv.${g.level} ${g.levelName}',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF3D6B21),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    g.isMaxLevel ? 'MAX' : '$pct%',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.studentGreen,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: g.progressToNext,
+                  minHeight: 12,
+                  backgroundColor: const Color(0xFFE9E5D8),
+                  valueColor:
+                      const AlwaysStoppedAnimation(AppColors.studentGreen),
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                g.isMaxLevel
+                    ? '🎉 열매를 맺었어요! 모두의 결실이에요'
+                    : '레벨업까지 ${100 - pct}% 남았어요!',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // 관문 열쇠 — 별도 칩 (진행바 박스와 분리해 어색함 제거)
+        if (g.isGateLocked)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7E6).withValues(alpha: 0.96),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFFF5D08C)),
             ),
-          ),
-          const SizedBox(height: 3),
-          FittedBox(
-            fit: BoxFit.scaleDown,
             child: Text(
-              label,
-              maxLines: 1,
+              '🔑 다음 열쇠: ${g.gateKeyLabel}',
               style: GoogleFonts.notoSansKr(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w900,
-                color: g.isGateLocked
-                    ? const Color(0xFFB45309)
-                    : AppColors.studentGreen,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF9A6A0B),
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

@@ -76,9 +76,6 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               padding: const EdgeInsets.only(top: 2),
               child: SchoolSign(
                 name: growth?.schoolName ?? profile?.nickname ?? '자람 학교',
-                levelLabel: growth == null
-                    ? null
-                    : 'Lv.${growth.level} ${growth.levelName}',
                 onTap: growth == null
                     ? null
                     : () => showGrowthSheet(context, growth),
@@ -86,13 +83,31 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
             ),
           ),
 
-          // ── 우상단: 계정 ──
+          // ── 팻말 아래: 최근 공지 배너 ──
           Positioned(
-            top: 6,
-            right: 8,
-            child: _RoundIconButton(
-              icon: Icons.more_vert_rounded,
+            top: 102,
+            left: 62,
+            right: 62,
+            child: FarmNoticeBanner(
+              text: latestNotice ?? '첫 공지를 남겨보세요!',
+              onTap: () => context.go('/teacher/announce'),
+            ),
+          ),
+
+          // ── 우상단: 설정(계정) — 투명 톱니 ──
+          Positioned(
+            top: 8,
+            right: 10,
+            child: GestureDetector(
               onTap: () => _showAccountMenu(context, ref),
+              child: const Icon(
+                Icons.settings_rounded,
+                size: 27,
+                color: Colors.white,
+                shadows: [
+                  Shadow(color: Colors.black45, blurRadius: 6),
+                ],
+              ),
             ),
           ),
           // 좌상단: 관리자 배지
@@ -115,13 +130,11 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               ),
             ),
 
-          // ── 좌측: 실행 메뉴 ──
+          // ── 좌측: 실행 메뉴 (스크롤 없이 모두 표시) ──
           Positioned(
-            left: 8,
-            top: 116,
-            bottom: 118,
-            child: SingleChildScrollView(
-              child: Column(
+            left: 6,
+            top: 148,
+            child: Column(
                 children: [
                   if (isAdmin)
                     FarmMenuButton(
@@ -156,14 +169,13 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                     onTap: () => context.go('/teacher/vote'),
                   ),
                 ],
-              ),
             ),
           ),
 
           // ── 우측: 정보 메뉴 (시트) ──
           Positioned(
-            right: 8,
-            top: 116,
+            right: 6,
+            top: 148,
             child: Column(
               children: [
                 FarmMenuButton(
@@ -192,7 +204,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
 
           // ── 중앙: 식물 + 진행바 ──
           Align(
-            alignment: const Alignment(0, 0.52),
+            alignment: const Alignment(0, 0.55),
             child: GestureDetector(
               onTap: growth == null
                   ? null
@@ -209,17 +221,6 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                   if (growth != null) GrowthProgressBar(growth: growth),
                 ],
               ),
-            ),
-          ),
-
-          // ── 하단: 공지 배너 ──
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 10,
-            child: FarmNoticeBanner(
-              text: latestNotice ?? '아직 공지가 없어요 — 첫 공지를 남겨보세요!',
-              onTap: () => context.go('/teacher/announce'),
             ),
           ),
         ],
@@ -742,36 +743,6 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
             const SizedBox(height: AppSizes.lg),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// 우상단 등 흰 원형 아이콘 버튼.
-class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.92),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: 20, color: AppColors.textPrimary),
       ),
     );
   }

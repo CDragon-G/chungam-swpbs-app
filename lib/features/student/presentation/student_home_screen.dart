@@ -80,15 +80,24 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
               padding: const EdgeInsets.only(top: 2),
               child: SchoolSign(
                 name: growth?.schoolName ?? '자람 학교',
-                levelLabel: growth == null
-                    ? null
-                    : 'Lv.${growth.level} ${growth.levelName}',
                 onTap: growth == null
                     ? null
                     : () => showGrowthSheet(context, growth),
               ),
             ),
           ),
+
+          // ── 팻말 아래: 최근 공지 배너 ──
+          if (latestNotice != null)
+            Positioned(
+              top: 102,
+              left: 62,
+              right: 62,
+              child: FarmNoticeBanner(
+                text: latestNotice,
+                onTap: () => _showNoticeSheet(context),
+              ),
+            ),
 
           // ── 좌상단: 인사 + 스트릭 ──
           Positioned(
@@ -143,60 +152,46 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                 await ref.read(authRepositoryProvider).signOut();
                 if (context.mounted) context.go('/welcome');
               },
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.logout_rounded,
-                    size: 19, color: AppColors.textPrimary),
+              child: const Icon(
+                Icons.logout_rounded,
+                size: 25,
+                color: Colors.white,
+                shadows: [Shadow(color: Colors.black45, blurRadius: 6)],
               ),
             ),
           ),
 
           // ── 좌측: 실행 메뉴 ──
           Positioned(
-            left: 8,
-            top: 128,
-            bottom: 170,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
+            left: 6,
+            top: 148,
+            child: Column(
+              children: [
+                FarmMenuButton(
+                  asset: 'assets/icons/info_status.png',
+                  label: '오늘 점검',
+                  badge: todayDone ? null : '!',
+                  onTap: () => context.go('/student/checkin'),
+                ),
+                FarmMenuButton(
+                  asset: 'assets/icons/menu_fame.png',
+                  label: '명예의 전당',
+                  onTap: () => context.go('/student/hall-of-fame'),
+                ),
+                if (hasCico)
                   FarmMenuButton(
-                    asset: 'assets/icons/info_status.png',
-                    label: '오늘 점검',
-                    badge: todayDone ? null : '!',
-                    onTap: () => context.go('/student/checkin'),
+                    asset: 'assets/icons/menu_cico.png',
+                    label: 'CICO',
+                    onTap: () => context.go('/student/cico'),
                   ),
-                  FarmMenuButton(
-                    asset: 'assets/icons/menu_fame.png',
-                    label: '명예의 전당',
-                    onTap: () => context.go('/student/hall-of-fame'),
-                  ),
-                  if (hasCico)
-                    FarmMenuButton(
-                      asset: 'assets/icons/menu_cico.png',
-                      label: 'CICO',
-                      onTap: () => context.go('/student/cico'),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
 
           // ── 우측: 정보 메뉴 ──
           Positioned(
-            right: 8,
-            top: 128,
+            right: 6,
+            top: 148,
             child: Column(
               children: [
                 FarmMenuButton(
@@ -218,7 +213,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
 
           // ── 중앙: 식물 + 진행바 ──
           Align(
-            alignment: const Alignment(0, 0.48),
+            alignment: const Alignment(0, 0.50),
             child: GestureDetector(
               onTap: growth == null
                   ? null
@@ -238,7 +233,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             ),
           ),
 
-          // ── 하단: 공지 배너 + 오늘 점검 CTA ──
+          // ── 하단: 오늘 점검 CTA ──
           Positioned(
             left: 12,
             right: 12,
@@ -246,13 +241,6 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (latestNotice != null) ...[
-                  FarmNoticeBanner(
-                    text: latestNotice,
-                    onTap: () => _showNoticeSheet(context),
-                  ),
-                  const SizedBox(height: 8),
-                ],
                 SizedBox(
                   height: 52,
                   child: ElevatedButton(

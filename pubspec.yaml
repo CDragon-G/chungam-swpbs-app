@@ -59,6 +59,7 @@ flutter:
     - assets/icon/
     - assets/growth/
     - assets/farm/
+    - assets/badges/
     - assets/icons/
 
 flutter_launcher_icons:

@@ -239,9 +239,18 @@ class _RankRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${entry.maskedName} (${entry.classLabel}) · $title',
+                    '${entry.maskedName} (${entry.classOnlyLabel})',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.notoSansKr(
-                        fontSize: 14.5, fontWeight: FontWeight.w800),
+                        fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    title,
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary),
                   ),
                   Text(
                     '칭찬 ${entry.praiseCount}회 · 점검 ${entry.checkinDays}일 · 평균 ${entry.avgScore.round()}점',

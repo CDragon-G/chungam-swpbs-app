@@ -228,14 +228,17 @@ class _ItemRow extends ConsumerWidget {
               ref.invalidate(activeStoreItemsProvider);
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 20),
-            onPressed: () => _showEditSheet(context, item),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded,
-                size: 20, color: AppColors.danger),
-            onPressed: () async {
+          // 편집·삭제를 하나의 메뉴로 통합 (규칙 탭과 동일 방식) → 공간 확보
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded,
+                size: 20, color: AppColors.textSecondary),
+            padding: EdgeInsets.zero,
+            onSelected: (v) async {
+              if (v == 'edit') {
+                _showEditSheet(context, item);
+                return;
+              }
+              // 삭제
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
@@ -262,6 +265,25 @@ class _ItemRow extends ConsumerWidget {
                 ref.invalidate(activeStoreItemsProvider);
               }
             },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(children: [
+                  Icon(Icons.edit_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('편집'),
+                ]),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(children: [
+                  Icon(Icons.delete_outline_rounded,
+                      size: 18, color: AppColors.danger),
+                  SizedBox(width: 8),
+                  Text('삭제', style: TextStyle(color: AppColors.danger)),
+                ]),
+              ),
+            ],
           ),
           ],
         ],

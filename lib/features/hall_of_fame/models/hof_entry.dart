@@ -59,4 +59,7 @@ class HofEntry {
 
   /// 학년·반·번호 표기 (1-1-10)
   String get classLabel => '$grade-$classNum-$studentNum';
+
+  /// 학년·반까지만 (1-1) — 랭킹 행처럼 좁은 곳용.
+  String get classOnlyLabel => '$grade-$classNum';
 }
