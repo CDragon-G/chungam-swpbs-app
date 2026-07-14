@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -150,7 +152,7 @@ class _ItemRow extends ConsumerWidget {
     // 관리자는 전부, 일반 교사는 자기가 등록한 상품만 관리
     final canManage = (profile?.isAdminTeacher ?? false) ||
         (item.createdBy != null && item.createdBy == profile?.userId);
-    return PbsCard(
+    final card = PbsCard(
       child: Row(
         children: [
           Container(
@@ -183,8 +185,8 @@ class _ItemRow extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '${item.scopeLabel} · ${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
-                  maxLines: 2,
+                  '${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.notoSansKr(
                     fontSize: 11,
@@ -288,6 +290,49 @@ class _ItemRow extends ConsumerWidget {
           ],
         ],
       ),
+    );
+    // 🎀 좌상단 사선 리본 — 전교/학급 범위를 선물 포장 리본처럼 표시
+    return Stack(
+      children: [
+        card,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 12,
+                    left: -30,
+                    child: Transform.rotate(
+                      angle: -math.pi / 4,
+                      child: Container(
+                        width: 100,
+                        alignment: Alignment.center,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 2.5),
+                        color: item.isClassItem
+                            ? AppColors.studentGreen
+                            : AppColors.teacherNavy,
+                        child: Text(
+                          item.isClassItem
+                              ? '${item.grade}-${item.classNum}'
+                              : '전교',
+                          style: GoogleFonts.notoSansKr(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
