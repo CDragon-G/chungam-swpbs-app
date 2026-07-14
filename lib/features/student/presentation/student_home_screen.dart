@@ -211,9 +211,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             ),
           ),
 
-          // ── 중앙: 말풍선 + 식물 + 진행바 ──
-          Align(
-            alignment: const Alignment(0, 0.44),
+          // ── 하단 고정: 말풍선 + 식물 + 진행바 (CTA 바로 위) ──
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 76,
             child: GestureDetector(
               onTap: growth == null
                   ? null
