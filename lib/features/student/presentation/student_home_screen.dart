@@ -17,6 +17,7 @@ import '../../growth/providers/growth_provider.dart';
 import '../../school/providers/school_provider.dart';
 import '../../vote/presentation/vote_hint_card.dart';
 import '../../vote/providers/vote_provider.dart';
+import '../../quiz/quiz_popup.dart';
 import '../providers/student_stats_provider.dart';
 
 /// 🌾 학생 홈 — 올팜식 농장 화면.
@@ -33,8 +34,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
   void initState() {
     super.initState();
     // 학생 첫 진입 시 일일 리마인더 기본 ON (한 번도 설정 안 했을 때만)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       ReminderPrefs.ensureDefaultOnForStudent();
+      // 깜짝 초성 퀴즈 (30% 확률, 하루 1회)
+      await Future.delayed(const Duration(milliseconds: 1600));
+      if (mounted) maybeShowQuizPopup(context, ref, isTeacher: false);
     });
   }
 

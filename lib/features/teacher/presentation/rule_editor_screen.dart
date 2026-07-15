@@ -513,7 +513,21 @@ class _AddRuleSheetState extends ConsumerState<_AddRuleSheet> {
   late String _space;
   late String _category;
   late final TextEditingController _text;
+  late final TextEditingController _customSpace;
+  bool _useCustomSpace = false;
   bool _saving = false;
+
+  /// 기본 공간 + 이 학교가 이미 만들어 쓰는 커스텀 공간 (예: 쉼터, 도서관)
+  List<String> get _allSpaces {
+    final rules = ref.read(allSchoolRulesProvider).value ?? [];
+    final custom = rules
+        .map((r) => r.space)
+        .where((s) => !AppStrings.spaces.contains(s))
+        .toSet()
+        .toList()
+      ..sort();
+    return [...AppStrings.spaces, ...custom];
+  }
 
   @override
   void initState() {
@@ -524,11 +538,13 @@ class _AddRuleSheetState extends ConsumerState<_AddRuleSheet> {
             ? AppStrings.lessonCategories.first
             : AppStrings.mrsCategories.first);
     _text = TextEditingController(text: widget.existing?.ruleText ?? '');
+    _customSpace = TextEditingController();
   }
 
   @override
   void dispose() {
     _text.dispose();
+    _customSpace.dispose();
     super.dispose();
   }
 
@@ -537,6 +553,16 @@ class _AddRuleSheetState extends ConsumerState<_AddRuleSheet> {
 
   Future<void> _save() async {
     if (_text.text.trim().isEmpty) return;
+    if (_useCustomSpace) {
+      final name = _customSpace.text.trim();
+      if (name.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('새 공간 이름을 입력해주세요.')),
+        );
+        return;
+      }
+      _space = name;
+    }
     setState(() => _saving = true);
     try {
       final repo = ref.read(schoolRepositoryProvider);
@@ -593,30 +619,62 @@ class _AddRuleSheetState extends ConsumerState<_AddRuleSheet> {
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
-            children: AppStrings.spaces.map((sp) {
-              final selected = _space == sp;
-              return ChoiceChip(
-                label: Text(sp),
-                selected: selected,
-                onSelected: (_) {
-                  setState(() {
-                    _space = sp;
-                    _category = _categoriesForSpace.first;
-                  });
-                },
-                selectedColor: AppColors.spaceColor(sp),
+            runSpacing: 4,
+            children: [
+              ..._allSpaces.map((sp) {
+                final selected = !_useCustomSpace && _space == sp;
+                return ChoiceChip(
+                  label: Text(sp),
+                  selected: selected,
+                  onSelected: (_) {
+                    setState(() {
+                      _useCustomSpace = false;
+                      _space = sp;
+                      _category = _categoriesForSpace.first;
+                    });
+                  },
+                  selectedColor: AppColors.spaceColor(sp),
+                  labelStyle: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: selected ? Colors.white : AppColors.textPrimary,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                    side: BorderSide(color: AppColors.borderLight),
+                  ),
+                );
+              }),
+              // 학교별 커스텀 공간 — 예: 쉼터, 도서관, 운동장
+              ChoiceChip(
+                label: const Text('➕ 새 공간'),
+                selected: _useCustomSpace,
+                onSelected: (_) => setState(() {
+                  _useCustomSpace = true;
+                  _category = AppStrings.mrsCategories.first;
+                }),
+                selectedColor: AppColors.primary,
                 labelStyle: GoogleFonts.notoSansKr(
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
-                  color: selected ? Colors.white : AppColors.textPrimary,
+                  color:
+                      _useCustomSpace ? Colors.white : AppColors.textPrimary,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),
                   side: BorderSide(color: AppColors.borderLight),
                 ),
-              );
-            }).toList(),
+              ),
+            ],
           ),
+          if (_useCustomSpace) ...[
+            const SizedBox(height: 8),
+            PbsTextField(
+              controller: _customSpace,
+              label: '새 공간 이름',
+              hint: '예: 쉼터, 도서관, 운동장',
+            ),
+          ],
           const SizedBox(height: AppSizes.md),
           Text(
             '카테고리',

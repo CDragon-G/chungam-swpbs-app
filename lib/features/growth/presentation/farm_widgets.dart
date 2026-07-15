@@ -105,50 +105,49 @@ class SchoolSign extends StatelessWidget {
               fit: BoxFit.contain,
               filterQuality: FilterQuality.medium,
             ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 팻말 널빤지 중앙에 오도록 살짝 위 배치
-                const SizedBox(height: 6),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 36),
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      style: GoogleFonts.notoSansKr(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w900,
-                        color: const Color(0xFF5B3A1E),
-                        shadows: const [
-                          Shadow(
-                              color: Color(0x55FFFFFF), offset: Offset(0, 1)),
-                        ],
-                      ),
+            // 판자 면(이미지의 세로 8~74% 구간) 중앙에 오도록 위로 보정
+            Align(
+              alignment: const Alignment(0, -0.25),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 36),
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF5B3A1E),
+                      shadows: const [
+                        Shadow(
+                            color: Color(0x55FFFFFF), offset: Offset(0, 1)),
+                      ],
                     ),
                   ),
                 ),
-                if (levelLabel != null)
-                  Container(
-                    margin: const EdgeInsets.only(top: 2),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: const Color(0xCC5B8C2A),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      levelLabel!,
-                      style: GoogleFonts.notoSansKr(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+              ),
+            ),
+            if (levelLabel != null)
+              Align(
+                alignment: const Alignment(0, 0.18),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xCC5B8C2A),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    levelLabel!,
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
                   ),
-              ],
-            ),
+                ),
+              ),
           ],
         ),
       ),

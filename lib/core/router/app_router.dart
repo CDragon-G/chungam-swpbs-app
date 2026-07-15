@@ -19,6 +19,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/checkin/presentation/checkin_result_screen.dart';
 import '../../features/checkin/presentation/checkin_screen.dart';
 import '../../features/points/presentation/student_store_screen.dart';
+import '../../features/lounge/presentation/teacher_lounge_screen.dart';
 import '../../features/points/presentation/teacher_store_screen.dart';
 import '../../features/student/presentation/badges_screen.dart';
 import '../../features/student/presentation/compare_screen.dart';
@@ -130,6 +131,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/teacher/hall-of-fame', builder: (_, __) => const HallOfFameScreen()),
           GoRoute(path: '/teacher/kodr', builder: (_, __) => const KodrScreen()),
           GoRoute(path: '/teacher/cico', builder: (_, __) => const CicoHomeScreen()),
+          GoRoute(path: '/teacher/lounge', builder: (_, __) => const TeacherLoungeScreen()),
         ],
       ),
     ],

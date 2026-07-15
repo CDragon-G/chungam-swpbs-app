@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
+import '../../quiz/quiz_popup.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../growth/models/growth_status.dart';
@@ -33,8 +34,11 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
   void initState() {
     super.initState();
     // 교사 접속 시 SWPBS 안내 캐로셀 (처음 + 7일마다 다시)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) TeacherOnboarding.showIfDue(context);
+      // 깜짝 초성 퀴즈 (30% 확률, 하루 1회)
+      await Future.delayed(const Duration(milliseconds: 1600));
+      if (mounted) maybeShowQuizPopup(context, ref, isTeacher: true);
     });
   }
 
@@ -197,6 +201,11 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                   asset: 'assets/icons/menu_fame.png',
                   label: '명예의 전당',
                   onTap: () => context.go('/teacher/hall-of-fame'),
+                ),
+                FarmMenuButton(
+                  asset: 'assets/icons/info_missions.png',
+                  label: '교사 라운지',
+                  onTap: () => context.go('/teacher/lounge'),
                 ),
               ],
             ),
