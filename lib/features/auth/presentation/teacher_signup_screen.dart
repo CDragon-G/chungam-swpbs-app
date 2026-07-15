@@ -12,6 +12,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../core/utils/school_code_generator.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../../shared/widgets/website_link_button.dart';
 import '../../../shared/widgets/wizard.dart';
 import '../../../shared/widgets/wizard_stack.dart';
 import '../../school/models/school.dart';
@@ -538,6 +539,8 @@ class _State extends ConsumerState<TeacherSignupScreen> {
                 ],
               ],
             ),
+            const SizedBox(height: 12),
+            const WebsiteLinkButton(),
           ],
         ),
       );
@@ -636,6 +639,8 @@ class _State extends ConsumerState<TeacherSignupScreen> {
                 ),
               ),
             ],
+            const SizedBox(height: 10),
+            const WebsiteLinkButton(),
           ],
         ),
       );

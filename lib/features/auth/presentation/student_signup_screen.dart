@@ -11,6 +11,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../core/utils/school_code_generator.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../../shared/widgets/website_link_button.dart';
 import '../../../shared/widgets/wizard.dart';
 import '../../../shared/widgets/wizard_stack.dart';
 import '../../school/models/school.dart';
@@ -573,6 +574,11 @@ class _State extends ConsumerState<StudentSignupScreen> {
                 ),
               ),
             ],
+            const SizedBox(height: 10),
+            const WebsiteLinkButton(
+              label: '우리 학교가 아직 자람에 없나요? 자람 알아보기',
+              path: '',
+            ),
           ],
         ),
       );
