@@ -225,7 +225,7 @@ class _TeacherLoungeScreenState extends ConsumerState<TeacherLoungeScreen>
                   style: GoogleFonts.notoSansKr(
                       fontSize: 17, fontWeight: FontWeight.w900)),
               const SizedBox(height: 4),
-              Text('예: 스타벅스 기프티콘, 조기 퇴근 우선권, 주차 명당 1주',
+              Text('예: 커피 기프티콘, 조기 퇴근 우선권, 주차 명당 1주',
                   style: GoogleFonts.notoSansKr(
                       fontSize: 12, color: AppColors.textTertiary)),
               const SizedBox(height: 12),
@@ -594,19 +594,47 @@ class _ClassesTab extends ConsumerWidget {
               child: Center(child: Text('$e'))),
         ]),
         data: (classes) => classes.isEmpty
-            ? ListView(children: [
-                Padding(
-                  padding: const EdgeInsets.all(48),
-                  child: Center(
-                    child: Text(
-                      '아직 열린 클래스가 없어요.\n나의 취미·재능을 동료와 나눠보세요!\n(예: 배드민턴 레슨, 커피 클래스) 🎓',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.notoSansKr(
-                          color: AppColors.textTertiary, height: 1.6),
-                    ),
+            ? ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                children: [
+                  Text(
+                    '아직 열린 클래스가 없어요.\n예를 들면 이런 클래스를 열 수 있어요! 🎓',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.notoSansKr(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                        height: 1.6),
                   ),
-                ),
-              ])
+                  const SizedBox(height: 14),
+                  const _ExampleClassCard(
+                    emoji: '🏸',
+                    title: '배드민턴 15분 레슨',
+                    desc: '체육 선생님과 기초 스트로크부터! 라켓은 체육관에 있어요.',
+                    meta: '10P · 최소 3명 · 15분 · 체육관',
+                  ),
+                  const _ExampleClassCard(
+                    emoji: '☕',
+                    title: '핸드드립 커피 클래스',
+                    desc: '원두 고르기부터 첫 드립까지, 30분이면 충분해요.',
+                    meta: '10P · 최소 3명 · 30분 · 교무실 옆 휴게실',
+                  ),
+                  const _ExampleClassCard(
+                    emoji: '🧶',
+                    title: '뜨개질 입문 — 목도리 코잡기',
+                    desc: '올겨울 목도리는 내 손으로. 실과 바늘은 재료비로!',
+                    meta: '10P · 최소 3명 · 40분',
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    '이미 하고 있는 동호회·모임을 올려도 좋아요.\n아래 + 버튼으로 첫 클래스를 열어보세요!',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12,
+                        color: AppColors.textTertiary,
+                        height: 1.6),
+                  ),
+                ],
+              )
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
                 itemCount: classes.length,
@@ -919,6 +947,84 @@ class _HistoryTab extends ConsumerWidget {
                       color: AppColors.textTertiary,
                       height: 1.5)),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// 🎓 예시(시드) 클래스 카드 — 빈 목록의 진입장벽을 낮추는 미리보기.
+/// 실제 클래스가 아니며, 어떤 클래스를 열 수 있는지 감을 잡게 해준다.
+class _ExampleClassCard extends StatelessWidget {
+  const _ExampleClassCard({
+    required this.emoji,
+    required this.title,
+    required this.desc,
+    required this.meta,
+  });
+  final String emoji;
+  final String title;
+  final String desc;
+  final String meta;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.sm),
+      padding: const EdgeInsets.all(AppSizes.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(
+            color: AppColors.borderLight, style: BorderStyle.solid),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 26)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textSecondary)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.borderLight,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('예시',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textTertiary)),
+                    ),
+                  ],
+                ),
+                Text(desc,
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12, color: AppColors.textTertiary)),
+                Text(meta,
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textTertiary)),
+              ],
+            ),
+          ),
         ],
       ),
     );
