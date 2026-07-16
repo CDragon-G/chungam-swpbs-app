@@ -86,7 +86,7 @@ class _State extends ConsumerState<KodrScreen>
             ),
             _legalSection(
               '🤝  지원으로 이어집니다',
-              '반복되는 어려움이 확인되면(월 3건 이상) 멘토 교사와 함께하는 '
+              '반복되는 어려움이 확인되면(학교 기준, 기본 월 3건) 멘토 교사와 함께하는 '
                   '동행 지원(CICO)을 제안합니다. 기록은 비난이 아니라 '
                   '맞춤형 도움의 출발점입니다.',
             ),
@@ -229,7 +229,7 @@ class _SummaryTab extends ConsumerWidget {
               const _SupportBanner(),
               const SizedBox(height: AppSizes.md),
               if (cico.isNotEmpty) ...[
-                Text('🤝 함께 지원이 필요한 학생 (이달 3건 이상)',
+                Text('🤝 함께 지원이 필요한 학생 (이달 기준 도달)',
                     style: GoogleFonts.notoSansKr(
                         fontWeight: FontWeight.w800, fontSize: 14)),
                 const SizedBox(height: 4),

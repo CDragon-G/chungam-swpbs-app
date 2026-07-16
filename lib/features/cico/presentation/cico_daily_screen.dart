@@ -282,6 +282,23 @@ class _State extends ConsumerState<CicoDailyScreen> {
 
                     // ── 규칙별 점수 ──
                     _sectionTitle('📋 오늘의 행동 점검 (0 · 1 · 2)'),
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.studentGreenLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '🗣️ 학생과 나란히 앉아, 이 화면을 함께 보며 대화하듯 점검해요.\n항목을 소리 내어 읽어주고, 학생이 스스로 점수를 말하게 해주세요.',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 11.5,
+                            height: 1.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.success),
+                      ),
+                    ),
                     Text('0 = 도움이 필요해요 · 1 = 보통 · 2 = 잘했어요',
                         style: GoogleFonts.notoSansKr(
                             fontSize: 11, color: AppColors.textTertiary)),

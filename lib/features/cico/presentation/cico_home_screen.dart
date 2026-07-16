@@ -14,6 +14,8 @@ import '../models/cico.dart';
 import '../providers/cico_provider.dart';
 import 'cico_daily_screen.dart';
 import 'cico_onboarding.dart';
+import '../../../core/supabase/supabase_client.dart';
+import '../../../shared/providers/profile_provider.dart';
 import 'cico_start_dialog.dart';
 
 /// 교사: CICO 동행 점검 홈 — 진행 중 학생 목록 + 새 학생 등록.
@@ -88,6 +90,7 @@ class _CicoHomeScreenState extends ConsumerState<CicoHomeScreen> {
             children: [
               _banner(),
               const SizedBox(height: AppSizes.md),
+              const _CandidatesCard(),
               if (list.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 60),
@@ -220,6 +223,187 @@ class _EnrollmentCard extends ConsumerWidget {
             const SizedBox(width: 4),
             const Icon(Icons.chevron_right_rounded,
                 size: 18, color: AppColors.textTertiary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// CICO 시작 권장 후보 카드 — 이달 K-ODR이 학교 기준 이상인 학생.
+/// 담임 반 학생은 '우리 반' 배지로 강조, 바로 CICO 시작 가능.
+/// 관리자는 기준(월 N건)을 조정할 수 있다.
+class _CandidatesCard extends ConsumerWidget {
+  const _CandidatesCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final candidates = ref.watch(cicoCandidatesProvider).value ?? [];
+    final profile = ref.watch(profileProvider).value;
+    final isAdmin = profile?.isAdminTeacher ?? false;
+    if (candidates.isEmpty && !isAdmin) return const SizedBox.shrink();
+    final threshold =
+        candidates.isNotEmpty ? candidates.first['threshold'] as int : 3;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.md),
+      padding: const EdgeInsets.all(AppSizes.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7E6),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(color: const Color(0xFFF5D08C)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '🔔 CICO 시작을 권장해요 (이달 K-ODR $threshold건 이상)',
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF9A6A0B)),
+                ),
+              ),
+              if (isAdmin)
+                GestureDetector(
+                  onTap: () => _editThreshold(context, ref, threshold),
+                  child: const Icon(Icons.tune_rounded,
+                      size: 18, color: Color(0xFF9A6A0B)),
+                ),
+            ],
+          ),
+          if (candidates.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('현재 기준을 넘은 학생이 없어요. 좋은 신호예요! 🌱',
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 12, color: AppColors.textSecondary)),
+            )
+          else
+            ...candidates.map((c) {
+              final isMyClass = profile != null &&
+                  c['grade'] == profile.grade &&
+                  c['class_num'] == profile.classNum;
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${c['nickname']} (${c['grade']}-${c['class_num']}-${c['student_num']}) · ${c['kodr_count']}건',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    if (isMyClass)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.studentGreenLight,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('우리 반',
+                            style: GoogleFonts.notoSansKr(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.studentGreen)),
+                      ),
+                    SizedBox(
+                      height: 30,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.studentGreen,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: () async {
+                          await showCicoStartDialog(
+                            context,
+                            ref,
+                            studentUserId: c['student_id'] as String,
+                            studentName: c['nickname'] as String,
+                          );
+                          ref.invalidate(cicoCandidatesProvider);
+                          ref.invalidate(cicoEnrollmentsProvider);
+                        },
+                        child: Text('시작',
+                            style: GoogleFonts.notoSansKr(
+                                fontSize: 12, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  /// (관리자) 학교 기준 조정 — 연구상 월 2~5건이 Tier 2 검토 권장 범위.
+  void _editThreshold(BuildContext context, WidgetRef ref, int current) {
+    int value = current;
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text('CICO 권장 기준 설정',
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 16, fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '이달 K-ODR이 몇 건 이상이면 CICO를 권장할까요?\n'
+                '연구에서는 월 2~5건을 Tier 2 검토 기준으로 권장해요.\n'
+                '(2건 = 민감하게 · 3건 = 균형(기본) · 5건 = 보수적으로)',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 12.5,
+                    color: AppColors.textSecondary,
+                    height: 1.5),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed:
+                        value > 1 ? () => setD(() => value--) : null,
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  Text('$value건',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 22, fontWeight: FontWeight.w900)),
+                  IconButton(
+                    onPressed:
+                        value < 10 ? () => setD(() => value++) : null,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('취소')),
+            FilledButton(
+              onPressed: () async {
+                await SupabaseService.client
+                    .rpc('set_kodr_cico_threshold', params: {'p_value': value});
+                ref.invalidate(cicoCandidatesProvider);
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('저장'),
+            ),
           ],
         ),
       ),

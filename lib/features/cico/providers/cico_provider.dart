@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/supabase/supabase_client.dart';
+
 import '../../../shared/providers/profile_provider.dart';
 import '../data/cico_repository.dart';
 import '../models/cico.dart';
@@ -25,4 +27,13 @@ final myCicoProvider = FutureProvider<CicoEnrollment?>((ref) async {
 final cicoHistoryProvider = FutureProvider.autoDispose
     .family<List<CicoDaily>, String>((ref, enrollmentId) async {
   return ref.read(cicoRepositoryProvider).history(enrollmentId);
+});
+
+
+/// CICO 시작 권장 후보 — 이달 K-ODR이 학교 기준 이상 & CICO 미진행.
+/// (threshold는 각 행에 함께 담겨 옴)
+final cicoCandidatesProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final rows = await SupabaseService.client.rpc('cico_candidates');
+  return List<Map<String, dynamic>>.from(rows as List);
 });

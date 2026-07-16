@@ -140,9 +140,8 @@ class _TeacherLoungeScreenState extends ConsumerState<TeacherLoungeScreen>
   /// 포인트 획득 안내 시트.
   void _showHowToSheet(BuildContext context) {
     const rows = [
-      ('✍️ K-ODR 작성', '+10P', '하루 3건까지'),
-      ('🤝 CICO 일일 점검', '+6P', '하루 5건까지'),
-      ('📢 공지 작성', '+5P', '하루 1건'),
+      ('🤝 CICO 일일 점검', '+10P', '하루 5건까지'),
+      ('✍️ K-ODR 작성', '+8P', '하루 3건까지'),
       ('🍽️ 수업맛집 투표', '+3P', '주간 투표 수만큼'),
       ('⚡ 초성 퀴즈 정답', '+3P', '하루 1회'),
       ('💚 칭찬 보내기', '+2P', '하루 5회까지'),
