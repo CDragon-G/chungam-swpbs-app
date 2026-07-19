@@ -53,13 +53,17 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
             ? announcements.first['title'] as String
             : null;
 
+    final fs = farmScale(context);
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(schoolGrowthProvider);
         ref.invalidate(schoolOverviewProvider);
         ref.invalidate(announcementsProvider);
       },
-      child: Stack(
+      // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
+      child: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.1,
+        child: Stack(
         children: [
           // 스크롤 없는 홈이지만 당겨서 새로고침은 지원
           ListView(physics: const AlwaysScrollableScrollPhysics()),
@@ -79,6 +83,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
             child: Padding(
               padding: const EdgeInsets.only(top: 2),
               child: SchoolSign(
+                scale: fs,
                 name: growth?.schoolName ?? profile?.nickname ?? '자람 학교',
                 onTap: growth == null
                     ? null
@@ -89,9 +94,9 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
 
           // ── 팻말 아래: 최근 공지 배너 ──
           Positioned(
-            top: 102,
-            left: 62,
-            right: 62,
+            top: 102 * fs,
+            left: 62 * fs,
+            right: 62 * fs,
             child: FarmNoticeBanner(
               text: latestNotice ?? '첫 공지를 남겨보세요!',
               onTap: () => context.go('/teacher/announce'),
@@ -137,37 +142,43 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
           // ── 좌측: 실행 메뉴 (스크롤 없이 모두 표시) ──
           Positioned(
             left: 6,
-            top: 148,
+            top: 148 * fs,
             child: Column(
                 children: [
                   if (isAdmin)
                     FarmMenuButton(
+                      scale: fs,
                       asset: 'assets/icons/menu_permission.png',
                       label: '교사 권한',
                       onTap: () => context.go('/teacher/permissions'),
                     ),
                   if (isAdmin)
                     FarmMenuButton(
+                      scale: fs,
                       asset: 'assets/icons/menu_roster.png',
                       label: '학생 명단',
                       onTap: () => context.go('/teacher/roster'),
                     ),
                   FarmMenuButton(
+                    scale: fs,
                     asset: 'assets/icons/menu_praise.png',
                     label: '칭찬하기',
                     onTap: () => context.go('/teacher/students'),
                   ),
                   FarmMenuButton(
+                    scale: fs,
                     asset: 'assets/icons/menu_kodr.png',
                     label: 'K-ODR',
                     onTap: () => context.go('/teacher/kodr'),
                   ),
                   FarmMenuButton(
+                    scale: fs,
                     asset: 'assets/icons/menu_cico.png',
                     label: 'CICO',
                     onTap: () => context.go('/teacher/cico'),
                   ),
                   FarmMenuButton(
+                    scale: fs,
                     asset: 'assets/icons/menu_vote.png',
                     label: '수업맛집',
                     onTap: () => context.go('/teacher/vote'),
@@ -179,30 +190,35 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
           // ── 우측: 정보 메뉴 (시트) ──
           Positioned(
             right: 6,
-            top: 148,
+            top: 148 * fs,
             child: Column(
               children: [
                 FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/info_school.png',
                   label: '학교 코드',
                   onTap: () => _showSchoolSheet(context),
                 ),
                 FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/info_status.png',
                   label: '오늘 현황',
                   onTap: () => _showTodaySheet(context),
                 ),
                 FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/info_classes.png',
                   label: '반별 참여',
                   onTap: () => _showClassesSheet(context),
                 ),
                 FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/menu_fame.png',
                   label: '명예의 전당',
                   onTap: () => context.go('/teacher/hall-of-fame'),
                 ),
                 FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/info_missions.png',
                   label: '교사 라운지',
                   onTap: () => context.go('/teacher/lounge'),
@@ -215,7 +231,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 14,
+            bottom: 14 * fs,
             child: GestureDetector(
               onTap: growth == null
                   ? null
@@ -224,6 +240,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   PlantSpeechBubble(
+                    scale: fs,
                     pinned: (growth != null && growth.isGateLocked)
                         ? '양분은 가득 찼어요! 🌕\n🔑 "${growth.gateKeyLabel}"\n미션이 끝나면 바로 레벨업해요!'
                         : null,
@@ -239,15 +256,17 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                   BreathingSprout(
                     asset: growth?.levelAsset ?? GrowthStatus.assetFor(1),
                     level: growth?.level ?? 1,
-                    size: 172,
+                    size: 172 * fs,
                   ),
-                  const SizedBox(height: 10),
-                  if (growth != null) GrowthProgressBar(growth: growth),
+                  SizedBox(height: 10 * fs),
+                  if (growth != null)
+                    GrowthProgressBar(growth: growth, scale: fs),
                 ],
               ),
             ),
           ),
         ],
+        ),
       ),
     );
   }

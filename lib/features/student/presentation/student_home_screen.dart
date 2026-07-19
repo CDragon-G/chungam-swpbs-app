@@ -56,6 +56,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             ? announcements.first['title'] as String
             : null;
 
+    final fs = farmScale(context);
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(schoolGrowthProvider);
@@ -64,7 +65,10 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         ref.invalidate(announcementsProvider);
         ref.invalidate(voteHintProvider);
       },
-      child: Stack(
+      // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
+      child: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.1,
+        child: Stack(
         children: [
           ListView(physics: const AlwaysScrollableScrollPhysics()),
           // ── 농장 배경 ──
@@ -83,6 +87,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             child: Padding(
               padding: const EdgeInsets.only(top: 2),
               child: SchoolSign(
+                scale: fs,
                 name: growth?.schoolName ?? '자람 학교',
                 onTap: growth == null
                     ? null
@@ -94,9 +99,9 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
           // ── 팻말 아래: 최근 공지 배너 ──
           if (latestNotice != null)
             Positioned(
-              top: 102,
-              left: 62,
-              right: 62,
+              top: 102 * fs,
+              left: 62 * fs,
+              right: 62 * fs,
               child: FarmNoticeBanner(
                 text: latestNotice,
                 onTap: () => _showNoticeSheet(context),
@@ -168,22 +173,25 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
           // ── 좌측: 실행 메뉴 ──
           Positioned(
             left: 6,
-            top: 148,
+            top: 148 * fs,
             child: Column(
               children: [
                 FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/info_status.png',
                   label: '오늘 점검',
                   badge: todayDone ? null : '!',
                   onTap: () => context.go('/student/checkin'),
                 ),
                 FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/menu_fame.png',
                   label: '명예의 전당',
                   onTap: () => context.go('/student/hall-of-fame'),
                 ),
                 if (hasCico)
                   FarmMenuButton(
+                    scale: fs,
                     asset: 'assets/icons/menu_cico.png',
                     label: 'CICO',
                     onTap: () => context.go('/student/cico'),
@@ -195,10 +203,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
           // ── 우측: 정보 메뉴 ──
           Positioned(
             right: 6,
-            top: 148,
+            top: 148 * fs,
             child: Column(
               children: [
                 FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/info_missions.png',
                   label: '성장 미션',
                   onTap: growth == null
@@ -207,6 +216,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                 ),
                 if (voteHint?.hasRound == true)
                   FarmMenuButton(
+                    scale: fs,
                     asset: 'assets/icons/menu_vote.png',
                     label: '수업맛집',
                     onTap: () => _showVoteHintSheet(context),
@@ -219,7 +229,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 76,
+            bottom: 76 * fs,
             child: GestureDetector(
               onTap: growth == null
                   ? null
@@ -228,6 +238,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   PlantSpeechBubble(
+                    scale: fs,
                     pinned: (growth != null && growth.isGateLocked)
                         ? '양분은 가득 찼어! 🌕\n🔑 "${growth.gateKeyLabel}"\n미션이 끝나면 바로 레벨업이야!'
                         : null,
@@ -243,10 +254,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                   BreathingSprout(
                     asset: growth?.levelAsset ?? GrowthStatus.assetFor(1),
                     level: growth?.level ?? 1,
-                    size: 172,
+                    size: 172 * fs,
                   ),
-                  const SizedBox(height: 10),
-                  if (growth != null) GrowthProgressBar(growth: growth),
+                  SizedBox(height: 10 * fs),
+                  if (growth != null)
+                    GrowthProgressBar(growth: growth, scale: fs),
                 ],
               ),
             ),
@@ -292,6 +304,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

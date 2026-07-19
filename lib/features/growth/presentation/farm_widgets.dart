@@ -7,6 +7,13 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/growth_status.dart';
 
+/// 화면 크기 기반 농장 홈 스케일 (기준 390x780, 작은/확대 화면에서 축소).
+double farmScale(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  final s = math.min(size.width / 390.0, size.height / 780.0);
+  return s.clamp(0.62, 1.0);
+}
+
 /// ── 올팜식 농장 홈 공용 위젯 ─────────────────────────────────
 /// 풀스크린 농장 배경 위에 얹는 부품들: 숨쉬는 식물, 학교 팻말,
 /// 좌/우 플로팅 메뉴 버튼, 성장 진행바.
@@ -84,24 +91,26 @@ class SchoolSign extends StatelessWidget {
     required this.name,
     this.levelLabel,
     this.onTap,
+    this.scale = 1,
   });
   final String name;
   final String? levelLabel; // 예: 'Lv.5 튼튼한 나무'
   final VoidCallback? onTap;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 236,
-        height: 108,
+        width: 236 * scale,
+        height: 108 * scale,
         child: Stack(
           alignment: Alignment.center,
           children: [
             Image.asset(
               'assets/farm/prop_sign.png',
-              width: 236,
+              width: 236 * scale,
               fit: BoxFit.contain,
               filterQuality: FilterQuality.medium,
             ),
@@ -111,7 +120,8 @@ class SchoolSign extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 36),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 36 * scale),
                   child: Text(
                     name,
                     maxLines: 1,
@@ -163,11 +173,13 @@ class FarmMenuButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.badge,
+    this.scale = 1,
   });
   final String asset;
   final String label;
   final VoidCallback onTap;
   final String? badge; // 예: '!' 또는 'N'
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
@@ -182,9 +194,9 @@ class FarmMenuButton extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 46,
-                  height: 46,
-                  padding: const EdgeInsets.all(5),
+                  width: 46 * scale,
+                  height: 46 * scale,
+                  padding: EdgeInsets.all(5 * scale),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.95),
                     shape: BoxShape.circle,
@@ -232,7 +244,7 @@ class FarmMenuButton extends StatelessWidget {
               child: Text(
                 label,
                 style: GoogleFonts.notoSansKr(
-                  fontSize: 9.5,
+                  fontSize: 9.5 * scale,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
@@ -248,19 +260,21 @@ class FarmMenuButton extends StatelessWidget {
 /// 식물 아래 성장 진행바 — 레벨 이름 + 진행률(%)을 명확하게.
 /// 관문에 걸렸으면 🔑 안내는 아래 별도 칩으로 분리 (올팜식 레이아웃).
 class GrowthProgressBar extends StatelessWidget {
-  const GrowthProgressBar({super.key, required this.growth});
+  const GrowthProgressBar({super.key, required this.growth, this.scale = 1});
   final GrowthStatus growth;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
     final g = growth;
     final pct = (g.progressToNext * 100).round();
+    final sc = scale;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 236,
-          padding: const EdgeInsets.fromLTRB(14, 9, 14, 10),
+          width: 236 * sc,
+          padding: EdgeInsets.fromLTRB(14 * sc, 9 * sc, 14 * sc, 10 * sc),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.94),
             borderRadius: BorderRadius.circular(16),
@@ -280,7 +294,7 @@ class GrowthProgressBar extends StatelessWidget {
                   Text(
                     'Lv.${g.level} ${g.levelName}',
                     style: GoogleFonts.notoSansKr(
-                      fontSize: 13,
+                      fontSize: 13 * sc,
                       fontWeight: FontWeight.w900,
                       color: const Color(0xFF3D6B21),
                     ),
@@ -293,7 +307,7 @@ class GrowthProgressBar extends StatelessWidget {
                             ? '양분 가득!'
                             : '$pct%',
                     style: GoogleFonts.notoSansKr(
-                      fontSize: 13,
+                      fontSize: 13 * sc,
                       fontWeight: FontWeight.w900,
                       color: AppColors.studentGreen,
                     ),
@@ -305,7 +319,7 @@ class GrowthProgressBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
                   value: g.progressToNext,
-                  minHeight: 12,
+                  minHeight: 12 * sc,
                   backgroundColor: const Color(0xFFE9E5D8),
                   valueColor:
                       const AlwaysStoppedAnimation(AppColors.studentGreen),
@@ -319,7 +333,7 @@ class GrowthProgressBar extends StatelessWidget {
                         ? '🔑 열쇠 미션만 끝나면 바로 레벨업!'
                         : '레벨업까지 ${100 - pct}% 남았어요!',
                 style: GoogleFonts.notoSansKr(
-                  fontSize: 11,
+                  fontSize: 11 * sc,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textSecondary,
                 ),
@@ -341,7 +355,7 @@ class GrowthProgressBar extends StatelessWidget {
             child: Text(
               '🔑 다음 열쇠: ${g.gateKeyLabel}',
               style: GoogleFonts.notoSansKr(
-                fontSize: 11,
+                fontSize: 11 * sc,
                 fontWeight: FontWeight.w800,
                 color: const Color(0xFF9A6A0B),
               ),
@@ -409,9 +423,11 @@ class PlantSpeechBubble extends StatefulWidget {
     super.key,
     this.pinned,
     this.messages = const [],
+    this.scale = 1,
   });
   final String? pinned;
   final List<String> messages;
+  final double scale;
 
   @override
   State<PlantSpeechBubble> createState() => _PlantSpeechBubbleState();
@@ -463,9 +479,9 @@ class _PlantSpeechBubbleState extends State<PlantSpeechBubble> {
           ),
           child: Container(
             key: ValueKey(text),
-            constraints: const BoxConstraints(maxWidth: 252),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+            constraints: BoxConstraints(maxWidth: 252 * widget.scale),
+            padding: EdgeInsets.symmetric(
+                horizontal: 13 * widget.scale, vertical: 8 * widget.scale),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.96),
               borderRadius: BorderRadius.circular(14),
@@ -484,7 +500,7 @@ class _PlantSpeechBubbleState extends State<PlantSpeechBubble> {
               text,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
-                fontSize: 11.5,
+                fontSize: 11.5 * widget.scale,
                 fontWeight: FontWeight.w700,
                 height: 1.4,
                 color: isPinned
