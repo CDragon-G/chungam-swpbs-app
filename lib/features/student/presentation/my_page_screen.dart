@@ -241,11 +241,12 @@ class MyPageScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      DateFormat('M월 d일')
-                                          .format(p.createdAt),
+                                      '${p.teacherName ?? "선생님"} 선생님 · '
+                                      '${DateFormat('M월 d일').format(p.createdAt)}',
                                       style: GoogleFonts.notoSansKr(
-                                        fontSize: 11,
-                                        color: AppColors.textTertiary,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.studentGreen,
                                       ),
                                     ),
                                   ],

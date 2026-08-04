@@ -6,6 +6,7 @@ class Praise {
     required this.createdAt,
     this.studentId,
     this.studentName,
+    this.teacherName,
   });
 
   final String id;
@@ -14,6 +15,7 @@ class Praise {
   final DateTime createdAt;
   final String? studentId;
   final String? studentName; // join 시 채워짐 (교사 화면용)
+  final String? teacherName; // 칭찬을 보낸 선생님 (학생 화면용)
 
   factory Praise.fromMap(Map<String, dynamic> m) => Praise(
         id: m['id'] as String,
@@ -21,5 +23,6 @@ class Praise {
         isRead: (m['is_read'] as bool?) ?? false,
         createdAt: DateTime.parse(m['created_at'] as String),
         studentId: m['student_id'] as String?,
+        teacherName: m['teacher_name'] as String?,
       );
 }

@@ -39,15 +39,13 @@ class PraiseRepository {
     return 0;
   }
 
-  /// 학생: 내가 받은 칭찬 목록.
+  /// 학생: 내가 받은 칭찬 목록 (보낸 선생님 이름 포함).
+  /// teacher_id가 auth.users를 참조해 조인이 안 되므로 RPC를 쓴다.
   Future<List<Praise>> fetchMyReceived({int limit = 50}) async {
-    final rows = await _c
-        .from('praise')
-        .select()
-        .eq('student_id', _myId())
-        .order('created_at', ascending: false)
-        .limit(limit);
-    return List<Map<String, dynamic>>.from(rows).map(Praise.fromMap).toList();
+    final rows = await _c.rpc('my_praises', params: {'p_limit': limit});
+    return List<Map<String, dynamic>>.from(rows as List)
+        .map(Praise.fromMap)
+        .toList();
   }
 
   /// 학생: 안 읽은 칭찬 개수.
