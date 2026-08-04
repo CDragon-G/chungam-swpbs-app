@@ -523,18 +523,19 @@ class _RewardRow extends ConsumerWidget {
                   : () async {
                       final ok = await showDialog<bool>(
                         context: context,
-                        builder: (_) => AlertDialog(
+                        // pop은 반드시 dialogCtx로 (바깥 context면 화면이 닫힘)
+                        builder: (dialogCtx) => AlertDialog(
                           title: const Text('강화물 교환'),
                           content: Text(
                               '${item.name}\n${item.costPoints}P를 사용해 교환할까요?\n리더십팀 승인 후 지급됩니다.'),
                           actions: [
                             TextButton(
                                 onPressed: () =>
-                                    Navigator.pop(context, false),
+                                    Navigator.pop(dialogCtx, false),
                                 child: const Text('취소')),
                             FilledButton(
                                 onPressed: () =>
-                                    Navigator.pop(context, true),
+                                    Navigator.pop(dialogCtx, true),
                                 child: const Text('교환')),
                           ],
                         ),

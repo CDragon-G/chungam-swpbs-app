@@ -23,10 +23,13 @@ class NotificationConsent {
     if (p.getBool(_kAsked) ?? false) return;
     if (!context.mounted) return;
 
+    // ⚠️ 다이얼로그 안에서는 반드시 dialogCtx로 pop 할 것.
+    // 바깥 context를 쓰면 ShellRoute 환경에서 다이얼로그가 아니라
+    // 화면 자체가 닫혀 검은 화면이 된다.
     final agreed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('🔔 알림을 받아볼까요?',
@@ -80,12 +83,12 @@ class NotificationConsent {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogCtx, false),
             child: Text('나중에',
                 style: GoogleFonts.notoSansKr(color: AppColors.textTertiary)),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             child: Text('알림 받기',
                 style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
@@ -97,11 +100,16 @@ class NotificationConsent {
     await p.setBool(_kAsked, true);
     if (agreed != true) return;
 
-    // 동의했을 때만 OS 권한 요청 + 푸시 토큰 등록
-    await NotificationsService.requestPermission();
-    await FcmService.initialize();
-    if (!isTeacher) {
-      await ReminderPrefs.ensureDefaultOnForStudent();
+    // 동의했을 때만 OS 권한 요청 + 푸시 토큰 등록.
+    // 권한 거부·토큰 발급 실패가 홈 화면을 막지 않도록 개별 보호.
+    try {
+      await NotificationsService.requestPermission();
+      await FcmService.initialize();
+      if (!isTeacher) {
+        await ReminderPrefs.ensureDefaultOnForStudent();
+      }
+    } catch (_) {
+      // 알림은 부가 기능 — 실패해도 앱 사용에 지장 없음
     }
   }
 }
