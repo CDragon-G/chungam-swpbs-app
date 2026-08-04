@@ -28,6 +28,12 @@ class AppNotification {
         isRead: m['is_read'] as bool? ?? false,
       );
 
+  /// 제목 앞의 이모지를 뗀 텍스트.
+  /// 알림 제목은 푸시 알림용으로 이모지를 포함하는데, 알림 센터는
+  /// 왼쪽에 아이콘을 따로 그리므로 중복을 없앤다.
+  String get displayTitle =>
+      title.replaceFirst(RegExp(r'^[^\p{L}\p{N}]+', unicode: true), '').trim();
+
   String get emoji => switch (type) {
         'praise' => '💚',
         'store_item' => '🎁',

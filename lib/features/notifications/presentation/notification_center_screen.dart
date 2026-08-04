@@ -138,7 +138,7 @@ class _NotificationTile extends StatelessWidget {
                           ),
                         Expanded(
                           child: Text(
-                            n.title,
+                            n.displayTitle,
                             style: GoogleFonts.notoSansKr(
                               fontSize: 14,
                               fontWeight:
