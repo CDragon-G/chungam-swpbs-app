@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/supabase/supabase_client.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
@@ -115,26 +116,33 @@ class _ItemsTab extends ConsumerWidget {
         error: (e, _) => Center(child: Text(translateError(e))),
         data: (items) {
           if (items.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSizes.xl),
-                child: Text(
-                  '아직 등록된 강화물이 없어요.\n우측 상단 + 버튼으로 추가해주세요.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.notoSansKr(
-                    color: AppColors.textTertiary,
+            return ListView(
+              padding: const EdgeInsets.all(AppSizes.lg),
+              children: [
+                const _EconomyPanel(),
+                Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Text(
+                    '아직 등록된 강화물이 없어요.\n우측 상단 + 버튼으로 추가해주세요.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.notoSansKr(
+                      color: AppColors.textTertiary,
+                    ),
                   ),
                 ),
-              ),
+              ],
             );
           }
           return ListView.builder(
             padding: const EdgeInsets.all(AppSizes.lg),
-            itemCount: items.length,
-            itemBuilder: (context, i) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSizes.sm),
-              child: _ItemRow(item: items[i]),
-            ),
+            itemCount: items.length + 1,
+            itemBuilder: (context, i) {
+              if (i == 0) return const _EconomyPanel();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSizes.sm),
+                child: _ItemRow(item: items[i - 1]),
+              );
+            },
           );
         },
       ),
@@ -692,6 +700,7 @@ class _ExchangesTab extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.all(AppSizes.lg),
         children: [
+          const _ScopeNotice(),
           const SectionHeader(title: '🔔 처리 대기'),
           pending.when(
             loading: () =>
@@ -895,6 +904,179 @@ class _ExchangeTile extends ConsumerWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+/// 🔔 교환 요청 가시성 안내 — 담임은 본인이 등록한 강화물의 요청만 본다.
+class _ScopeNotice extends ConsumerWidget {
+  const _ScopeNotice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(profileProvider).value?.isAdminTeacher ?? false;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.sm),
+      padding: const EdgeInsets.all(AppSizes.md),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Row(
+        children: [
+          Text(isAdmin ? '👑' : '🧑‍🏫', style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isAdmin
+                  ? '관리자는 우리 학교 전체 교환 요청을 볼 수 있어요.'
+                  : '내가 등록한 강화물의 교환 요청만 보여요. 바로 지급 처리할 수 있어요.',
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 🪙 포인트 경제 패널 (관리자) — 인플레이션을 눈으로 보고 조정한다.
+/// 평균 잔액이 높을수록 강화물 가격을 올리거나 학기 마감을 검토한다.
+class _EconomyPanel extends ConsumerWidget {
+  const _EconomyPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(profileProvider).value?.isAdminTeacher ?? false;
+    if (!isAdmin) return const SizedBox.shrink();
+    final stats = ref.watch(pointEconomyProvider).value;
+    if (stats == null || stats['ok'] != true) return const SizedBox.shrink();
+
+    final avg = (stats['avg'] as num?)?.toInt() ?? 0;
+    final median = (stats['median'] as num?)?.toInt() ?? 0;
+    final maxP = (stats['max'] as num?)?.toInt() ?? 0;
+    final richRatio = (stats['rich_ratio'] as num?)?.toInt() ?? 0;
+    final f = NumberFormat('#,###');
+    // 권장 가격대: 중앙값의 40~120% (한 학기에 2~3개 교환 가능한 수준)
+    final lo = ((median * 0.4) / 50).round() * 50;
+    final hi = ((median * 1.2) / 50).round() * 50;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.md),
+      padding: const EdgeInsets.all(AppSizes.md),
+      decoration: BoxDecoration(
+        color: AppColors.teacherNavyLight,
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(color: AppColors.teacherNavy.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('🪙 우리 학교 포인트 현황',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.teacherNavy)),
+              ),
+              GestureDetector(
+                onTap: () => _showSeasonDialog(context, ref),
+                child: Text('학기 마감 →',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.teacherNavy)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _stat('평균 잔액', '${f.format(avg)}P'),
+              _stat('중앙값', '${f.format(median)}P'),
+              _stat('최고', '${f.format(maxP)}P'),
+              _stat('1000P↑', '$richRatio%'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            median <= 0
+                ? '아직 쌓인 포인트가 적어요. 강화물은 100~300P부터 시작해보세요.'
+                : '💡 권장 가격대 ${f.format(lo)}~${f.format(hi)}P '
+                    '(한 학기에 2~3개 교환할 수 있는 수준)'
+                    '${richRatio >= 30 ? "\n⚠️ 포인트가 많이 쌓였어요 — 가격을 올리거나 학기 마감을 검토해보세요." : ""}',
+            style: GoogleFonts.notoSansKr(
+                fontSize: 11.5, color: AppColors.textSecondary, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String label, String value) => Expanded(
+        child: Column(
+          children: [
+            Text(value,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.teacherNavy)),
+            Text(label,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 10.5, color: AppColors.textSecondary)),
+          ],
+        ),
+      );
+
+  /// 학기 마감 — 전교생 잔여 포인트를 정산(소멸)하고 새 학기를 시작한다.
+  void _showSeasonDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('학기 포인트 마감',
+            style: GoogleFonts.notoSansKr(
+                fontSize: 17, fontWeight: FontWeight.w900)),
+        content: Text(
+          '전교생의 남은 포인트를 0으로 정산하고 새 학기를 시작합니다.\n\n'
+          '· 뱃지·명예의 전당·점검 기록은 그대로 유지돼요\n'
+          '· 학생들에게 마감 안내 알림이 전송돼요\n'
+          '· 되돌릴 수 없으니 학기말에만 사용해주세요',
+          style: GoogleFonts.notoSansKr(
+              fontSize: 13, height: 1.6, color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('취소',
+                  style:
+                      GoogleFonts.notoSansKr(color: AppColors.textTertiary))),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () async {
+              final res = await SupabaseService.client
+                  .rpc('close_point_season');
+              final m = Map<String, dynamic>.from(res as Map);
+              ref.invalidate(pointEconomyProvider);
+              if (!ctx.mounted) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(m['ok'] == true
+                    ? '학기 마감 완료 — 학생 ${m['students']}명 · ${m['points']}P 정산'
+                    : (m['error'] as String? ?? '실패했어요')),
+              ));
+            },
+            child: Text('마감 실행',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+          ),
+        ],
       ),
     );
   }

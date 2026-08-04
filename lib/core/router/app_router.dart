@@ -20,6 +20,7 @@ import '../../features/checkin/presentation/checkin_result_screen.dart';
 import '../../features/checkin/presentation/checkin_screen.dart';
 import '../../features/points/presentation/student_store_screen.dart';
 import '../../features/lounge/presentation/teacher_lounge_screen.dart';
+import '../../features/notifications/presentation/notification_center_screen.dart';
 import '../../features/points/presentation/teacher_store_screen.dart';
 import '../../features/student/presentation/badges_screen.dart';
 import '../../features/student/presentation/compare_screen.dart';
@@ -111,6 +112,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/student/compare', builder: (_, __) => const CompareScreen()),
           GoRoute(path: '/student/hall-of-fame', builder: (_, __) => const HallOfFameScreen()),
           GoRoute(path: '/student/cico', builder: (_, __) => const StudentCicoScreen()),
+          GoRoute(path: '/student/notifications', builder: (_, __) => const NotificationCenterScreen()),
         ],
       ),
 
@@ -132,6 +134,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/teacher/kodr', builder: (_, __) => const KodrScreen()),
           GoRoute(path: '/teacher/cico', builder: (_, __) => const CicoHomeScreen()),
           GoRoute(path: '/teacher/lounge', builder: (_, __) => const TeacherLoungeScreen()),
+          GoRoute(path: '/teacher/notifications', builder: (_, __) => const NotificationCenterScreen()),
         ],
       ),
     ],

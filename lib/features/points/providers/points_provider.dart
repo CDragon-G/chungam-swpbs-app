@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/supabase/supabase_client.dart';
+
 import '../../../shared/providers/profile_provider.dart';
 import '../data/points_repository.dart';
 import '../models/point_exchange.dart';
@@ -77,4 +79,12 @@ final mySchoolEntryProvider =
   final profile = ref.watch(profileProvider).value;
   if (profile?.schoolId == null) return null;
   return ref.read(pointsRepositoryProvider).fetchMySchool(profile!.schoolId!);
+});
+
+
+/// 🪙 우리 학교 포인트 경제 통계 (관리자용 — 인플레이션 점검).
+final pointEconomyProvider =
+    FutureProvider<Map<String, dynamic>>((ref) async {
+  final res = await SupabaseService.client.rpc('point_economy_stats');
+  return Map<String, dynamic>.from(res as Map);
 });

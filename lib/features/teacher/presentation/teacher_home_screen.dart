@@ -9,6 +9,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
+import '../../notifications/presentation/notification_center_screen.dart';
+import '../../notifications/presentation/notification_consent.dart';
+import '../../notifications/providers/notification_provider.dart';
 import '../../quiz/quiz_popup.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -35,8 +38,12 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
     super.initState();
     // 교사 접속 시 SWPBS 안내 캐로셀 (처음 + 7일마다 다시)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // 첫 실행 알림 권한 안내 → SWPBS 캐로셀 → 깜짝 퀴즈 순서
+      if (mounted) {
+        await NotificationConsent.showIfFirstLaunch(context, isTeacher: true);
+      }
       if (mounted) TeacherOnboarding.showIfDue(context);
-      // 깜짝 초성 퀴즈 (30% 확률, 하루 1회)
+      checkGrowthLevelUp(ref);
       await Future.delayed(const Duration(milliseconds: 1600));
       if (mounted) maybeShowQuizPopup(context, ref, isTeacher: true);
     });
@@ -59,6 +66,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
         ref.invalidate(schoolGrowthProvider);
         ref.invalidate(schoolOverviewProvider);
         ref.invalidate(announcementsProvider);
+        ref.invalidate(unreadNotificationCountProvider);
       },
       // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
       child: MediaQuery.withClampedTextScaling(
@@ -103,20 +111,26 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
             ),
           ),
 
-          // ── 우상단: 설정(계정) — 투명 톱니 ──
+          // ── 우상단: 알림 종 + 설정(계정) 톱니 ──
           Positioned(
             top: 8,
             right: 10,
-            child: GestureDetector(
-              onTap: () => _showAccountMenu(context, ref),
-              child: const Icon(
-                Icons.settings_rounded,
-                size: 27,
-                color: Colors.white,
-                shadows: [
-                  Shadow(color: Colors.black45, blurRadius: 6),
-                ],
-              ),
+            child: Row(
+              children: [
+                const NotificationBell(route: '/teacher/notifications'),
+                const SizedBox(width: 14),
+                GestureDetector(
+                  onTap: () => _showAccountMenu(context, ref),
+                  child: const Icon(
+                    Icons.settings_rounded,
+                    size: 27,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(color: Colors.black45, blurRadius: 6),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           // 좌상단: 관리자 배지

@@ -17,6 +17,9 @@ import '../../growth/providers/growth_provider.dart';
 import '../../school/providers/school_provider.dart';
 import '../../vote/presentation/vote_hint_card.dart';
 import '../../vote/providers/vote_provider.dart';
+import '../../notifications/presentation/notification_center_screen.dart';
+import '../../notifications/presentation/notification_consent.dart';
+import '../../notifications/providers/notification_provider.dart';
 import '../../quiz/quiz_popup.dart';
 import '../providers/student_stats_provider.dart';
 
@@ -35,7 +38,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
     super.initState();
     // 학생 첫 진입 시 일일 리마인더 기본 ON (한 번도 설정 안 했을 때만)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      ReminderPrefs.ensureDefaultOnForStudent();
+      // 첫 실행 알림 권한 안내 (동의 시 일일 리마인더도 함께 켜짐)
+      if (mounted) {
+        await NotificationConsent.showIfFirstLaunch(context, isTeacher: false);
+      }
+      checkGrowthLevelUp(ref);
       // 깜짝 초성 퀴즈 (30% 확률, 하루 1회)
       await Future.delayed(const Duration(milliseconds: 1600));
       if (mounted) maybeShowQuizPopup(context, ref, isTeacher: false);
@@ -64,6 +71,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         ref.invalidate(studentStatsProvider);
         ref.invalidate(announcementsProvider);
         ref.invalidate(voteHintProvider);
+        ref.invalidate(unreadNotificationCountProvider);
       },
       // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
       child: MediaQuery.withClampedTextScaling(
@@ -152,21 +160,27 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             ),
           ),
 
-          // ── 우상단: 로그아웃 ──
+          // ── 우상단: 알림 종 + 로그아웃 ──
           Positioned(
             top: 6,
             right: 8,
-            child: GestureDetector(
-              onTap: () async {
-                await ref.read(authRepositoryProvider).signOut();
-                if (context.mounted) context.go('/welcome');
-              },
-              child: const Icon(
-                Icons.logout_rounded,
-                size: 25,
-                color: Colors.white,
-                shadows: [Shadow(color: Colors.black45, blurRadius: 6)],
-              ),
+            child: Row(
+              children: [
+                const NotificationBell(route: '/student/notifications'),
+                const SizedBox(width: 14),
+                GestureDetector(
+                  onTap: () async {
+                    await ref.read(authRepositoryProvider).signOut();
+                    if (context.mounted) context.go('/welcome');
+                  },
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    size: 25,
+                    color: Colors.white,
+                    shadows: [Shadow(color: Colors.black45, blurRadius: 6)],
+                  ),
+                ),
+              ],
             ),
           ),
 
