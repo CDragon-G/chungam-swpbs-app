@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
+import '../../calendar/providers/calendar_provider.dart';
 import '../../notifications/presentation/notification_center_screen.dart';
 import '../../notifications/presentation/notification_consent.dart';
 import '../../notifications/providers/notification_provider.dart';
@@ -67,6 +68,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
         ref.invalidate(schoolOverviewProvider);
         ref.invalidate(announcementsProvider);
         ref.invalidate(unreadNotificationCountProvider);
+        ref.invalidate(todaySchoolStatusProvider);
       },
       // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
       child: MediaQuery.withClampedTextScaling(
@@ -237,6 +239,13 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                   label: '교사 라운지',
                   onTap: () => context.go('/teacher/lounge'),
                 ),
+                if (isAdmin)
+                  FarmMenuButton(
+                    scale: fs,
+                    asset: 'assets/icons/info_classes.png',
+                    label: '학사일정',
+                    onTap: () => context.go('/teacher/calendar'),
+                  ),
               ],
             ),
           ),

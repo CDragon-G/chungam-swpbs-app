@@ -9,6 +9,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../calendar/providers/calendar_provider.dart';
 import '../../growth/growth_celebration.dart';
 import '../../school/models/school_rule.dart';
 import '../../school/providers/school_provider.dart';
@@ -192,6 +193,53 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
         ),
       ),
       data: (rules) {
+        // 주말·공휴일·방학·재량휴업일에는 점검을 열지 않는다
+        final schoolDay = ref.watch(todaySchoolStatusProvider).value;
+        if (schoolDay != null && !schoolDay.isSchoolDay) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(
+              backgroundColor: AppColors.background,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => context.go('/student/home'),
+              ),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🌿', style: TextStyle(fontSize: 52)),
+                    const SizedBox(height: AppSizes.lg),
+                    Text(
+                      schoolDay.message,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.sm),
+                    Text(
+                      '자기점검은 수업이 있는 날에 열려요.\n다음 수업일에 만나요!',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
         if (rules.isEmpty) {
           return Scaffold(
             appBar: AppBar(

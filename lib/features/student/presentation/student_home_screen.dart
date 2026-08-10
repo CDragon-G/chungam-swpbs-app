@@ -5,9 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
-import '../../../core/notifications/reminder_prefs.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../calendar/providers/calendar_provider.dart';
 import '../../checkin/providers/checkin_provider.dart';
 import '../../cico/providers/cico_provider.dart';
 import '../../growth/models/growth_status.dart';
@@ -43,6 +43,8 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         await NotificationConsent.showIfFirstLaunch(context, isTeacher: false);
       }
       checkGrowthLevelUp(ref);
+      // 리마인더를 '수업일에만' 다시 예약 (주말·공휴일·방학 제외)
+      syncStudentReminders();
       // 깜짝 초성 퀴즈 (30% 확률, 하루 1회)
       await Future.delayed(const Duration(milliseconds: 1600));
       if (mounted) maybeShowQuizPopup(context, ref, isTeacher: false);
@@ -57,6 +59,8 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
     final todayDone = ref.watch(todayCheckinProvider).value != null;
     final hasCico = ref.watch(myCicoProvider).value != null;
     final voteHint = ref.watch(voteHintProvider).value;
+    final schoolDay = ref.watch(todaySchoolStatusProvider).value;
+    final isRestDay = schoolDay != null && !schoolDay.isSchoolDay;
     final announcements = ref.watch(announcementsProvider).value;
     final latestNotice =
         (announcements != null && announcements.isNotEmpty)
@@ -72,6 +76,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         ref.invalidate(announcementsProvider);
         ref.invalidate(voteHintProvider);
         ref.invalidate(unreadNotificationCountProvider);
+        ref.invalidate(todaySchoolStatusProvider);
       },
       // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
       child: MediaQuery.withClampedTextScaling(
@@ -194,7 +199,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                   scale: fs,
                   asset: 'assets/icons/info_status.png',
                   label: '오늘 점검',
-                  badge: todayDone ? null : '!',
+                  badge: (todayDone || isRestDay) ? null : '!',
                   onTap: () => context.go('/student/checkin'),
                 ),
                 FarmMenuButton(
@@ -289,7 +294,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                 SizedBox(
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: todayDone
+                    onPressed: (todayDone || isRestDay)
                         ? null
                         : () => context.go('/student/checkin'),
                     style: ElevatedButton.styleFrom(
@@ -304,9 +309,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                       ),
                     ),
                     child: Text(
-                      todayDone
-                          ? '오늘 점검 완료! 새싹이 자랐어요 🌱'
-                          : '✅ 오늘 자기점검 하러 가기',
+                      isRestDay
+                          ? schoolDay.message
+                          : todayDone
+                              ? '오늘 점검 완료! 새싹이 자랐어요 🌱'
+                              : '✅ 오늘 자기점검 하러 가기',
                       style: GoogleFonts.notoSansKr(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,

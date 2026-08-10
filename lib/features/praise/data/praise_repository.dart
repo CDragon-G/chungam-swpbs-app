@@ -39,6 +39,32 @@ class PraiseRepository {
     return 0;
   }
 
+  /// 교사가 여러 학생을 한 번에 칭찬. 실제 전송된 인원 수를 반환.
+  /// 학급 전체처럼 여러 명에게 같은 한마디를 보낼 때 사용한다.
+  Future<int> givePraiseBulk({
+    required List<String> studentUserIds,
+    required String message,
+  }) async {
+    final res = await _c.rpc('give_praise_bulk', params: {
+      'p_student_ids': studentUserIds,
+      'p_message': message,
+    });
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) {
+      throw StateError(m['error'] as String? ?? '칭찬을 보내지 못했어요');
+    }
+    // 받은 학생들에게 푸시 (백그라운드 — 실패해도 칭찬은 이미 저장됨)
+    for (final id in studentUserIds) {
+      unawaited(
+        _c.functions.invoke('send-praise-push', body: {
+          'student_id': id,
+          'message': message,
+        }).then((_) {}).catchError((_) {}),
+      );
+    }
+    return (m['sent'] as num?)?.toInt() ?? 0;
+  }
+
   /// 학생: 내가 받은 칭찬 목록 (보낸 선생님 이름 포함).
   /// teacher_id가 auth.users를 참조해 조인이 안 되므로 RPC를 쓴다.
   Future<List<Praise>> fetchMyReceived({int limit = 50}) async {

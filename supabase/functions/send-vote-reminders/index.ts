@@ -71,8 +71,24 @@ Deno.serve(async (req) => {
     const url =
       `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`;
 
+    // 오늘(KST) 날짜 — 학교별 수업일 판정에 사용
+    const todayKst = new Date(Date.now() + 9 * 3600 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
     let sent = 0;
+    let skipped = 0;
     for (const round of rounds) {
+      // 공휴일·방학·재량휴업일에는 알림을 보내지 않는다
+      const { data: isSchoolDay } = await supabase.rpc("is_school_day", {
+        p_school: round.school_id,
+        p_date: todayKst,
+      });
+      if (isSchoolDay === false) {
+        skipped++;
+        continue;
+      }
+
       // 그 학교 교사들
       const { data: teachers } = await supabase
         .from("profiles")
@@ -112,7 +128,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ schools: rounds.length, sent }), {
+    return new Response(JSON.stringify({ schools: rounds.length, sent, skipped }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {

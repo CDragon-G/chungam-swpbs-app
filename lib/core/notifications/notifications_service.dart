@@ -17,6 +17,8 @@ class NotificationsService {
 
   static const _channelId = 'pbs_plus_reminder';
   static const _reminderId = 1002;
+  static const _schoolDayIdBase = 1100; // 수업일별 리마인더 ID 시작점
+  static const _maxSchoolDayReminders = 21;
 
   static Future<void> initialize() async {
     tz_data.initializeTimeZones();
@@ -65,33 +67,44 @@ class NotificationsService {
     iOS: DarwinNotificationDetails(),
   );
 
-  /// 매일 [hour]:[minute]에 반복되는 리마인더 예약.
-  static Future<void> scheduleDailyReminder(int hour, int minute) async {
-    await _plugin.cancel(_reminderId);
-    await _plugin.zonedSchedule(
-      _reminderId,
-      '오늘 자기점검 잊지 마세요! 🌱',
-      '1분이면 충분해요. 지금 바로 시작해볼까요?',
-      _nextInstance(hour, minute),
-      _details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // 매일 같은 시각 반복
-    );
-  }
-
-  static Future<void> cancelReminder() => _plugin.cancel(_reminderId);
-
-  static tz.TZDateTime _nextInstance(int hour, int minute) {
+  /// 📅 수업일에만 리마인더 예약 (주말·공휴일·방학 제외).
+  /// 매일 반복 대신 [days]의 날짜마다 하나씩 예약한다.
+  /// 앱을 열 때마다 호출하면 항상 앞으로 3주치가 유지된다.
+  static Future<void> scheduleSchoolDayReminders(
+    List<DateTime> days,
+    int hour,
+    int minute,
+  ) async {
+    await cancelReminder();
     final now = tz.TZDateTime.now(tz.local);
-    var scheduled =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (!scheduled.isAfter(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
+    var i = 0;
+    for (final d in days) {
+      if (i >= _maxSchoolDayReminders) break;
+      final when =
+          tz.TZDateTime(tz.local, d.year, d.month, d.day, hour, minute);
+      if (!when.isAfter(now)) continue; // 이미 지난 시각은 건너뜀
+      await _plugin.zonedSchedule(
+        _schoolDayIdBase + i,
+        '오늘 자기점검 잊지 마세요! 🌱',
+        '1분이면 충분해요. 지금 바로 시작해볼까요?',
+        when,
+        _details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        // 반복 없음 — 날짜마다 하나씩
+      );
+      i++;
     }
-    return scheduled;
   }
+
+  static Future<void> cancelReminder() async {
+    await _plugin.cancel(_reminderId); // 옛 방식(매일 반복) 정리
+    for (var i = 0; i < _maxSchoolDayReminders; i++) {
+      await _plugin.cancel(_schoolDayIdBase + i);
+    }
+  }
+
 
   /// 즉시 알림 (테스트/수동 트리거용).
   static Future<void> showReminderNow() async {
