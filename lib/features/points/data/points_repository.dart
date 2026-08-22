@@ -86,6 +86,8 @@ class PointsRepository {
     int? grade,
     int? classNum,
     String? createdByName,
+    String itemType = 'individual',
+    int? maxPerStudent,
   }) async {
     final uid = _c.auth.currentUser?.id;
     final row = await _c
@@ -103,6 +105,8 @@ class PointsRepository {
           'class_num': classNum,
           'created_by': uid,
           'created_by_name': createdByName,
+          'item_type': itemType,
+          'max_per_student': maxPerStudent,
         })
         .select()
         .single();
@@ -133,6 +137,48 @@ class PointsRepository {
           .update({'order_index': i})
           .eq('id', items[i].id);
     }
+  }
+
+  // ── 함께 키우기 (단체 강화물) ──────────────────────────────
+  /// 포인트를 보탠다. 남은 금액을 넘기면 남은 만큼만 차감된다.
+  Future<GroupItemStatus> contribute({
+    required String itemId,
+    required int amount,
+  }) async {
+    final res = await _c.rpc('contribute_to_group_item',
+        params: {'p_item_id': itemId, 'p_amount': amount});
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) {
+      throw StateError(m['error'] as String? ?? '포인트를 보태지 못했어요');
+    }
+    return groupStatus(itemId);
+  }
+
+  Future<GroupItemStatus> groupStatus(String itemId) async {
+    final res =
+        await _c.rpc('group_item_status', params: {'p_item_id': itemId});
+    return GroupItemStatus.fromMap(Map<String, dynamic>.from(res as Map));
+  }
+
+  /// 교사: 목표를 채운 강화물을 지급 완료로 처리.
+  Future<void> fulfillGroupItem(String itemId) async {
+    final res =
+        await _c.rpc('fulfill_group_item', params: {'p_item_id': itemId});
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) {
+      throw StateError(m['error'] as String? ?? '처리하지 못했어요');
+    }
+  }
+
+  /// 교사: 취소하고 보탠 포인트를 전원에게 환불.
+  Future<int> cancelGroupItem(String itemId) async {
+    final res =
+        await _c.rpc('cancel_group_item', params: {'p_item_id': itemId});
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) {
+      throw StateError(m['error'] as String? ?? '취소하지 못했어요');
+    }
+    return (m['refunded_users'] as num?)?.toInt() ?? 0;
   }
 
   // ── Exchanges ──────────────────────────────────────────────

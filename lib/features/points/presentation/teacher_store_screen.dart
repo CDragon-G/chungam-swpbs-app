@@ -193,7 +193,9 @@ class _ItemRow extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
+                  item.isGroup
+                      ? '함께 키우기 · 목표 ${item.costPoints}P'
+                      : '${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.notoSansKr(
@@ -211,6 +213,25 @@ class _ItemRow extends ConsumerWidget {
                     style: GoogleFonts.notoSansKr(
                       fontSize: 10.5,
                       color: AppColors.textTertiary,
+                    ),
+                  ),
+                if (item.isGroup && item.isAchieved && !item.isClosed)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.celebration_rounded,
+                            size: 14, color: AppColors.studentGreen),
+                        const SizedBox(width: 4),
+                        Text(
+                          '목표 달성 — 지급 처리를 해주세요',
+                          style: GoogleFonts.notoSansKr(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.studentGreen,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -246,6 +267,89 @@ class _ItemRow extends ConsumerWidget {
             onSelected: (v) async {
               if (v == 'edit') {
                 _showEditSheet(context, item);
+                return;
+              }
+              // 함께 키우기 — 지급 완료
+              if (v == 'fulfill') {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('지급 완료 처리'),
+                    content: Text(
+                        '${item.name} 을(를) 학급에 지급하셨나요?\n'
+                        '처리하면 학생들에게 알림이 가고 목록에서 내려갑니다.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('취소'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.studentGreen),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('지급 완료'),
+                      ),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
+                try {
+                  await ref
+                      .read(pointsRepositoryProvider)
+                      .fulfillGroupItem(item.id);
+                  ref.invalidate(allStoreItemsProvider);
+                  ref.invalidate(activeStoreItemsProvider);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(translateError(e))),
+                    );
+                  }
+                }
+                return;
+              }
+              // 함께 키우기 — 취소하고 전액 환불
+              if (v == 'refund') {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('취소하고 환불'),
+                    content: Text(
+                        '${item.name} 을(를) 취소할까요?\n'
+                        '학생들이 보탠 포인트를 전액 돌려드립니다.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('그만두기'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.danger),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('취소하고 환불'),
+                      ),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
+                try {
+                  final n = await ref
+                      .read(pointsRepositoryProvider)
+                      .cancelGroupItem(item.id);
+                  ref.invalidate(allStoreItemsProvider);
+                  ref.invalidate(activeStoreItemsProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('$n명에게 포인트를 돌려드렸어요.')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(translateError(e))),
+                    );
+                  }
+                }
                 return;
               }
               // 삭제
@@ -284,6 +388,27 @@ class _ItemRow extends ConsumerWidget {
                   Text('편집'),
                 ]),
               ),
+              if (item.isGroup && item.isAchieved && !item.isClosed)
+                const PopupMenuItem(
+                  value: 'fulfill',
+                  child: Row(children: [
+                    Icon(Icons.check_circle_outline_rounded,
+                        size: 18, color: AppColors.studentGreen),
+                    SizedBox(width: 8),
+                    Text('지급 완료',
+                        style: TextStyle(color: AppColors.studentGreen)),
+                  ]),
+                ),
+              if (item.isGroup && !item.isClosed)
+                const PopupMenuItem(
+                  value: 'refund',
+                  child: Row(children: [
+                    Icon(Icons.undo_rounded, size: 18, color: AppColors.warning),
+                    SizedBox(width: 8),
+                    Text('취소하고 환불',
+                        style: TextStyle(color: AppColors.warning)),
+                  ]),
+                ),
               const PopupMenuItem(
                 value: 'delete',
                 child: Row(children: [
@@ -381,6 +506,9 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
   late final TextEditingController _desc;
   late final TextEditingController _cost;
   late final TextEditingController _stock;
+  late final TextEditingController _maxPer;
+  bool _isGroup = false;      // 함께 키우기 여부
+  bool _capPerStudent = true; // 1인 한도를 둘 것인가
   bool _unlimited = true;
   bool _saving = false;
   String _emoji = '🎁';
@@ -396,6 +524,9 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     _desc = TextEditingController(text: e?.description ?? '');
     _cost = TextEditingController(text: e?.costPoints.toString() ?? '');
     _stock = TextEditingController(text: e?.stock?.toString() ?? '');
+    _maxPer = TextEditingController(text: e?.maxPerStudent?.toString() ?? '');
+    _isGroup = e?.isGroup ?? false;
+    _capPerStudent = e == null ? true : e.maxPerStudent != null;
     _unlimited = e?.stock == null;
     _emoji = e?.emoji ?? '🎁';
     if (e != null) {
@@ -411,6 +542,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     _desc.dispose();
     _cost.dispose();
     _stock.dispose();
+    _maxPer.dispose();
     super.dispose();
   }
 
@@ -423,12 +555,32 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
       );
       return;
     }
-    final stock = _unlimited ? null : int.tryParse(_stock.text);
-    if (!_unlimited && (stock == null || stock < 0)) {
+    // 함께 키우기는 재고 개념이 없다
+    final stock = _isGroup ? null : (_unlimited ? null : int.tryParse(_stock.text));
+    if (!_isGroup && !_unlimited && (stock == null || stock < 0)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('재고는 0 이상의 숫자여야 해요.')),
       );
       return;
+    }
+
+    int? maxPer;
+    if (_isGroup) {
+      if (cost <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('목표 포인트는 1 이상이어야 해요.')),
+        );
+        return;
+      }
+      if (_capPerStudent) {
+        maxPer = int.tryParse(_maxPer.text);
+        if (maxPer == null || maxPer <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('1인 최대 포인트를 입력해주세요.')),
+          );
+          return;
+        }
+      }
     }
 
     setState(() => _saving = true);
@@ -455,6 +607,8 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
           grade: schoolWide ? null : _grade,
           classNum: schoolWide ? null : _classNum,
           createdByName: profile.nickname,
+          itemType: _isGroup ? 'group' : 'individual',
+          maxPerStudent: maxPer,
         );
       } else {
         await repo.updateItem(widget.existing!.id, {
@@ -466,6 +620,8 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
           'emoji': _emoji,
           'grade': schoolWide ? null : _grade,
           'class_num': schoolWide ? null : _classNum,
+          'item_type': _isGroup ? 'group' : 'individual',
+          'max_per_student': maxPer,
         });
       }
       ref.invalidate(allStoreItemsProvider);
@@ -636,12 +792,106 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
             hint: '예: 인성생활부 비치',
           ),
           const SizedBox(height: AppSizes.md),
+          // ── 강화물 유형 ──
+          Text(
+            '강화물 유형',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: _TypeChip(
+                  label: '개별',
+                  desc: '한 명이 포인트를 내고 받아요',
+                  selected: !_isGroup,
+                  onTap: () => setState(() => _isGroup = false),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _TypeChip(
+                  label: '함께 키우기',
+                  desc: '학급이 포인트를 모아 함께 받아요',
+                  selected: _isGroup,
+                  onTap: () => setState(() => _isGroup = true),
+                ),
+              ),
+            ],
+          ),
+          if (_isGroup)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.studentGreenLight,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                ),
+                child: Text(
+                  '과자 파티처럼 학급 전체가 함께 누리는 강화물에 알맞아요. '
+                  '학생들이 조금씩 포인트를 보태 목표를 채우면 알림이 옵니다.',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11.5,
+                    height: 1.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: AppSizes.md),
           PbsTextField(
             controller: _cost,
-            label: '필요 포인트',
+            label: _isGroup ? '목표 포인트 (학급 합계)' : '필요 포인트',
             keyboardType: TextInputType.number,
-            hint: '예: 300',
+            hint: _isGroup ? '예: 5000' : '예: 300',
           ),
+          if (_isGroup) ...[
+            const SizedBox(height: AppSizes.md),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '1인 최대 포인트 제한',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _capPerStudent,
+                  onChanged: (v) => setState(() => _capPerStudent = v),
+                ),
+              ],
+            ),
+            if (_capPerStudent) ...[
+              const SizedBox(height: AppSizes.sm),
+              PbsTextField(
+                controller: _maxPer,
+                label: '한 사람이 보탤 수 있는 최대 포인트',
+                keyboardType: TextInputType.number,
+                hint: '예: 300',
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '한 학생이 목표를 혼자 채우지 않도록 막아줍니다.',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11.5,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+          if (!_isGroup) ...[
           const SizedBox(height: AppSizes.md),
           Row(
             children: [
@@ -670,6 +920,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
               hint: '예: 30',
             ),
           ],
+          ],
           const SizedBox(height: AppSizes.lg),
           PbsPrimaryButton(
             label: widget.existing == null ? '추가' : '저장',
@@ -679,6 +930,78 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
           ),
           const SizedBox(height: AppSizes.md),
         ],
+      ),
+    );
+  }
+}
+
+/// 강화물 유형 선택 칩 (개별 / 함께 키우기)
+class _TypeChip extends StatelessWidget {
+  const _TypeChip({
+    required this.label,
+    required this.desc,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String desc;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.teacherNavyLight : Colors.transparent,
+          border: Border.all(
+            color: selected ? AppColors.teacherNavy : AppColors.borderLight,
+            width: selected ? 1.6 : 1,
+          ),
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 17,
+                  color: selected
+                      ? AppColors.teacherNavy
+                      : AppColors.textTertiary,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: selected
+                        ? AppColors.teacherNavy
+                        : AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              desc,
+              style: GoogleFonts.notoSansKr(
+                fontSize: 10.5,
+                height: 1.4,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

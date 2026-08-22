@@ -98,10 +98,10 @@ class StudentStoreScreen extends ConsumerWidget {
                   ],
                 );
               }
-              final classItems =
-                  items.where((it) => it.isClassItem).toList();
-              final schoolItems =
-                  items.where((it) => !it.isClassItem).toList();
+              final groupItems = items.where((it) => it.isGroup).toList();
+              final solo = items.where((it) => !it.isGroup).toList();
+              final classItems = solo.where((it) => it.isClassItem).toList();
+              final schoolItems = solo.where((it) => !it.isClassItem).toList();
               Widget cards(List<PointStoreItem> list) => Column(
                     children: list
                         .map((it) => _ItemCard(
@@ -115,6 +115,21 @@ class StudentStoreScreen extends ConsumerWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (groupItems.isNotEmpty) ...[
+                    const SectionHeader(title: '🌱 함께 키우기'),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        '우리 반이 포인트를 모아 함께 받는 강화물이에요. 조금씩 보태면 목표가 채워져요!',
+                        style: GoogleFonts.notoSansKr(
+                          fontSize: 12,
+                          color: AppColors.studentGreen,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    ...groupItems.map((it) => _GroupCard(item: it)),
+                  ],
                   if (classItems.isNotEmpty) ...[
                     const SectionHeader(title: '🧑‍🏫 우리 반 교환소'),
                     Padding(
@@ -218,6 +233,334 @@ class StudentStoreScreen extends ConsumerWidget {
           SnackBar(content: Text(translateError(e))),
         );
       }
+    }
+  }
+}
+
+/// 🌱 함께 키우기 카드 — 목표 진행률과 기여 TOP 3를 보여주고 포인트를 보탠다.
+class _GroupCard extends ConsumerStatefulWidget {
+  const _GroupCard({required this.item});
+  final PointStoreItem item;
+
+  @override
+  ConsumerState<_GroupCard> createState() => _GroupCardState();
+}
+
+class _GroupCardState extends ConsumerState<_GroupCard> {
+  GroupItemStatus? _st;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final st =
+          await ref.read(pointsRepositoryProvider).groupStatus(widget.item.id);
+      if (!mounted) return;
+      setState(() {
+        _st = st;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final it = widget.item;
+    final st = _st;
+    final balance = ref.watch(myPointsProvider).value ?? 0;
+    final done = st?.achieved ?? false;
+
+    return PbsCard(
+      color: done ? AppColors.studentGreenLight : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(it.emoji, style: const TextStyle(fontSize: 26)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      it.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      done
+                          ? '목표 달성! 곧 받을 수 있어요'
+                          : '${it.scopeLabel} · 함께 키우는 중',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 11.5,
+                        color: done
+                            ? AppColors.studentGreen
+                            : AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (done)
+                const Icon(Icons.verified_rounded,
+                    color: AppColors.studentGreen, size: 26),
+            ],
+          ),
+          if (it.description != null && it.description!.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              it.description!,
+              style: GoogleFonts.notoSansKr(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.45,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          if (_loading)
+            const LinearProgressIndicator(minHeight: 10)
+          else if (st != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: st.progress,
+                minHeight: 12,
+                backgroundColor: AppColors.borderLight,
+                valueColor:
+                    const AlwaysStoppedAnimation(AppColors.studentGreen),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  '${st.raised}P / ${st.goal}P',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.studentGreen,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${st.percent}%',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${st.people}명 참여',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            if (st.top.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🏅 많이 보탠 친구',
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    ...List.generate(st.top.length, (i) {
+                      const medals = ['🥇', '🥈', '🥉'];
+                      final c = st.top[i];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Row(
+                          children: [
+                            Text(medals[i],
+                                style: const TextStyle(fontSize: 13)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                c.nickname,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.notoSansKr(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${c.amount}P',
+                              style: GoogleFonts.notoSansKr(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.studentGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            if (st.myAmount > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  st.maxPerStudent == null
+                      ? '내가 보탠 포인트 ${st.myAmount}P'
+                      : '내가 보탠 포인트 ${st.myAmount}P · 한 사람 최대 ${st.maxPerStudent}P',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.studentGreen,
+                  disabledBackgroundColor: AppColors.borderLight,
+                ),
+                onPressed: (done || st.myMaxAddable(balance) <= 0)
+                    ? null
+                    : () => _contribute(st, balance),
+                child: Text(
+                  done
+                      ? '목표를 채웠어요 🎉'
+                      : st.myMaxAddable(balance) <= 0
+                          ? (balance <= 0 ? '포인트가 부족해요' : '더 보탤 수 없어요')
+                          : '포인트 보태기',
+                  style: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _contribute(GroupItemStatus st, int balance) async {
+    final maxAdd = st.myMaxAddable(balance);
+    var amount = maxAdd >= 100 ? 100 : maxAdd;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setSt) => AlertDialog(
+          title: Text('포인트 보태기',
+              style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                '${widget.item.name}\n목표까지 ${st.remain}P 남았어요.',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                '$amount P',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.studentGreen,
+                ),
+              ),
+              Slider(
+                value: amount.toDouble(),
+                min: 0,
+                max: maxAdd.toDouble(),
+                divisions: maxAdd >= 10 ? (maxAdd ~/ 10) : null,
+                activeColor: AppColors.studentGreen,
+                onChanged: (v) => setSt(() => amount = v.round()),
+              ),
+              Text(
+                '보유 ${balance}P · 최대 ${maxAdd}P까지 보탤 수 있어요',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 11.5, color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: Text('취소',
+                  style:
+                      GoogleFonts.notoSansKr(color: AppColors.textTertiary)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.studentGreen),
+              onPressed:
+                  amount <= 0 ? null : () => Navigator.pop(dialogCtx, true),
+              child: Text('보태기',
+                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || amount <= 0) return;
+
+    try {
+      final next = await ref
+          .read(pointsRepositoryProvider)
+          .contribute(itemId: widget.item.id, amount: amount);
+      ref.invalidate(myPointsProvider);
+      ref.invalidate(activeStoreItemsProvider);
+      if (!mounted) return;
+      setState(() => _st = next);
+      celebrateGrowth(context, ref,
+          headline: next.achieved
+              ? '목표 달성! 우리 반이 함께 해냈어요 🎉'
+              : '${amount}P를 보탰어요! 목표까지 ${next.remain}P 🌱');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(translateError(e))),
+      );
     }
   }
 }
