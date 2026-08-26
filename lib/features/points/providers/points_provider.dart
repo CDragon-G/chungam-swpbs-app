@@ -88,3 +88,12 @@ final pointEconomyProvider =
   final res = await SupabaseService.client.rpc('point_economy_stats');
   return Map<String, dynamic>.from(res as Map);
 });
+
+/// 우리 반 포인트 현황 — 담임 선생님용.
+/// 프로필에 학년·반이 없으면 ok:false 로 돌아온다.
+final classPointEconomyProvider =
+    FutureProvider<Map<String, dynamic>>((ref) async {
+  final res =
+      await SupabaseService.client.rpc('class_point_economy_stats');
+  return Map<String, dynamic>.from(res as Map);
+});

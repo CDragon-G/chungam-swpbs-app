@@ -173,9 +173,28 @@ class LoungeRepository {
         'created_by': _client.auth.currentUser!.id,
       });
 
+  Future<void> updateItem({
+    required String itemId,
+    required String name,
+    String? description,
+    required int costPoints,
+    int? stock,
+  }) =>
+      _client.from('teacher_store_items').update({
+        'name': name,
+        'description': description,
+        'cost_points': costPoints,
+        'stock': stock,
+      }).eq('id', itemId);
+
   Future<void> deactivateItem(String itemId) => _client
       .from('teacher_store_items')
       .update({'is_active': false}).eq('id', itemId);
+
+  /// 내렸던 강화물을 다시 올린다.
+  Future<void> reactivateItem(String itemId) => _client
+      .from('teacher_store_items')
+      .update({'is_active': true}).eq('id', itemId);
 
   Future<void> openClass({
     required String schoolId,

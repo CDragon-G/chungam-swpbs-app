@@ -110,7 +110,7 @@ class _TeacherLoungeScreenState extends ConsumerState<TeacherLoungeScreen>
       floatingActionButton: switch (_tc.index) {
         0 when isAdmin => FloatingActionButton.extended(
             backgroundColor: AppColors.teacherNavy,
-            onPressed: () => _showAddItemSheet(context),
+            onPressed: () => _showAddItemSheet(context, ref),
             icon: const Icon(Icons.add_rounded, color: Colors.white),
             label: Text('강화물 등록',
                 style: GoogleFonts.notoSansKr(
@@ -198,96 +198,6 @@ class _TeacherLoungeScreenState extends ConsumerState<TeacherLoungeScreen>
   }
 
   /// (관리자) 강화물 등록 시트.
-  void _showAddItemSheet(BuildContext context) {
-    final name = TextEditingController();
-    final desc = TextEditingController();
-    final cost = TextEditingController(text: '30');
-    final stock = TextEditingController(text: '5');
-    bool unlimited = false;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.only(
-              left: AppSizes.xl,
-              right: AppSizes.xl,
-              top: AppSizes.xl,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSizes.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('🎁 새 강화물 등록',
-                  style: GoogleFonts.notoSansKr(
-                      fontSize: 17, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 4),
-              Text('예: 커피 기프티콘, 조기 퇴근 우선권, 주차 명당 1주',
-                  style: GoogleFonts.notoSansKr(
-                      fontSize: 12, color: AppColors.textTertiary)),
-              const SizedBox(height: 12),
-              _field(name, '강화물 이름'),
-              const SizedBox(height: 8),
-              _field(desc, '설명 (선택)'),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
-                    child: _field(cost, '포인트',
-                        keyboard: TextInputType.number)),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: unlimited
-                        ? const SizedBox()
-                        : _field(stock, '재고',
-                            keyboard: TextInputType.number)),
-              ]),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('재고 무제한',
-                    style: GoogleFonts.notoSansKr(
-                        fontSize: 14, fontWeight: FontWeight.w700)),
-                value: unlimited,
-                onChanged: (v) => setSheet(() => unlimited = v),
-              ),
-              FilledButton(
-                style:
-                    FilledButton.styleFrom(backgroundColor: AppColors.teacherNavy),
-                onPressed: () async {
-                  final schoolId =
-                      ref.read(profileProvider).value?.schoolId;
-                  final c = int.tryParse(cost.text.trim());
-                  if (schoolId == null ||
-                      name.text.trim().isEmpty ||
-                      c == null ||
-                      c <= 0) {
-                    return;
-                  }
-                  await ref.read(loungeRepositoryProvider).addItem(
-                        schoolId: schoolId,
-                        name: name.text.trim(),
-                        description: desc.text.trim().isEmpty
-                            ? null
-                            : desc.text.trim(),
-                        costPoints: c,
-                        stock: unlimited
-                            ? null
-                            : int.tryParse(stock.text.trim()) ?? 1,
-                      );
-                  invalidateLounge(ref);
-                  if (ctx.mounted) Navigator.pop(ctx);
-                },
-                child: Text('등록',
-                    style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   /// 클래스 개설 시트 — 재능기부 원데이클래스.
   void _showOpenClassSheet(BuildContext context) {
@@ -413,22 +323,6 @@ class _TeacherLoungeScreenState extends ConsumerState<TeacherLoungeScreen>
     );
   }
 
-  Widget _field(TextEditingController c, String label,
-          {TextInputType? keyboard}) =>
-      TextField(
-        controller: c,
-        keyboardType: keyboard,
-        style: GoogleFonts.notoSansKr(fontSize: 14),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.notoSansKr(fontSize: 13),
-          filled: true,
-          fillColor: AppColors.background,
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none),
-        ),
-      );
 }
 
 // ═══════════ 강화물 탭 ═══════════
@@ -559,15 +453,40 @@ class _RewardRow extends ConsumerWidget {
                 icon: const Icon(Icons.more_vert_rounded,
                     size: 20, color: AppColors.textTertiary),
                 onSelected: (v) async {
-                  if (v == 'off') {
-                    await ref
-                        .read(loungeRepositoryProvider)
-                        .deactivateItem(item.id);
-                    invalidateLounge(ref);
+                  if (v == 'edit') {
+                    _showAddItemSheet(context, ref, existing: item);
+                    return;
                   }
+                  final repo = ref.read(loungeRepositoryProvider);
+                  if (v == 'off') {
+                    await repo.deactivateItem(item.id);
+                  } else if (v == 'on') {
+                    await repo.reactivateItem(item.id);
+                  }
+                  invalidateLounge(ref);
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'off', child: Text('내리기')),
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(children: [
+                      Icon(Icons.edit_outlined, size: 18),
+                      SizedBox(width: 8),
+                      Text('편집'),
+                    ]),
+                  ),
+                  PopupMenuItem(
+                    value: item.isActive ? 'off' : 'on',
+                    child: Row(children: [
+                      Icon(
+                        item.isActive
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(item.isActive ? '내리기' : '다시 올리기'),
+                    ]),
+                  ),
                 ],
               ),
           ],
@@ -1031,3 +950,126 @@ class _ExampleClassCard extends StatelessWidget {
     );
   }
 }
+
+/// 라운지 강화물 등록·편집 시트 (탭과 카드 양쪽에서 사용).
+void _showAddItemSheet(BuildContext context, WidgetRef ref, {TeacherRewardItem? existing}) {
+  final editing = existing != null;
+  final name = TextEditingController(text: existing?.name ?? '');
+  final desc = TextEditingController(text: existing?.description ?? '');
+  final cost =
+      TextEditingController(text: existing?.costPoints.toString() ?? '30');
+  final stock =
+      TextEditingController(text: existing?.stock?.toString() ?? '5');
+  bool unlimited = editing ? existing.stock == null : false;
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setSheet) => Padding(
+        padding: EdgeInsets.only(
+            left: AppSizes.xl,
+            right: AppSizes.xl,
+            top: AppSizes.xl,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSizes.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(editing ? '🎁 강화물 편집' : '🎁 새 강화물 등록',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 17, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('예: 커피 기프티콘, 조기 퇴근 우선권, 주차 명당 1주',
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 12, color: AppColors.textTertiary)),
+            const SizedBox(height: 12),
+            _field(name, '강화물 이름'),
+            const SizedBox(height: 8),
+            _field(desc, '설명 (선택)'),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                  child: _field(cost, '포인트',
+                      keyboard: TextInputType.number)),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: unlimited
+                      ? const SizedBox()
+                      : _field(stock, '재고',
+                          keyboard: TextInputType.number)),
+            ]),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('재고 무제한',
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 14, fontWeight: FontWeight.w700)),
+              value: unlimited,
+              onChanged: (v) => setSheet(() => unlimited = v),
+            ),
+            FilledButton(
+              style:
+                  FilledButton.styleFrom(backgroundColor: AppColors.teacherNavy),
+              onPressed: () async {
+                final schoolId =
+                    ref.read(profileProvider).value?.schoolId;
+                final c = int.tryParse(cost.text.trim());
+                if (schoolId == null ||
+                    name.text.trim().isEmpty ||
+                    c == null ||
+                    c <= 0) {
+                  return;
+                }
+                final repo = ref.read(loungeRepositoryProvider);
+                final st =
+                    unlimited ? null : int.tryParse(stock.text.trim()) ?? 1;
+                final d = desc.text.trim().isEmpty ? null : desc.text.trim();
+                if (editing) {
+                  await repo.updateItem(
+                    itemId: existing.id,
+                    name: name.text.trim(),
+                    description: d,
+                    costPoints: c,
+                    stock: st,
+                  );
+                } else {
+                  await repo.addItem(
+                    schoolId: schoolId,
+                    name: name.text.trim(),
+                    description: d,
+                    costPoints: c,
+                    stock: st,
+                  );
+                }
+                invalidateLounge(ref);
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: Text(editing ? '저장' : '등록',
+                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// 라운지 시트용 입력 필드.
+Widget _field(TextEditingController c, String label,
+        {TextInputType? keyboard}) =>
+    TextField(
+      controller: c,
+      keyboardType: keyboard,
+      style: GoogleFonts.notoSansKr(fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.notoSansKr(fontSize: 13),
+        filled: true,
+        fillColor: AppColors.background,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+      ),
+    );

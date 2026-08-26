@@ -1275,9 +1275,12 @@ class _EconomyPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isAdmin = ref.watch(profileProvider).value?.isAdminTeacher ?? false;
-    if (!isAdmin) return const SizedBox.shrink();
-    final stats = ref.watch(pointEconomyProvider).value;
+    // 관리자는 전교 현황, 담임 선생님은 우리 반 현황을 본다
+    final stats = isAdmin
+        ? ref.watch(pointEconomyProvider).value
+        : ref.watch(classPointEconomyProvider).value;
     if (stats == null || stats['ok'] != true) return const SizedBox.shrink();
+    final isClass = stats['scope'] == 'class';
 
     final avg = (stats['avg'] as num?)?.toInt() ?? 0;
     final median = (stats['median'] as num?)?.toInt() ?? 0;
@@ -1302,12 +1305,14 @@ class _EconomyPanel extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text('🪙 우리 학교 포인트 현황',
+                child: Text(
+                    isClass ? '🪙 우리 반 포인트 현황' : '🪙 우리 학교 포인트 현황',
                     style: GoogleFonts.notoSansKr(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w900,
                         color: AppColors.teacherNavy)),
               ),
+              if (isAdmin)
               GestureDetector(
                 onTap: () => _showSeasonDialog(context, ref),
                 child: Text('학기 마감 →',

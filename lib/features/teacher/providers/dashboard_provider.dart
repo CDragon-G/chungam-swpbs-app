@@ -293,76 +293,33 @@ class StudentRow {
   final int missedDays;
 }
 
+/// 학생 목록 — 집계를 서버(RPC)에서 처리한다.
+/// 예전에는 전교 60일치 점검 기록을 전부 내려받아 앱에서 계산했는데,
+/// 학생 수가 늘면 전송량과 연산량이 함께 폭증해 서버 집계로 옮겼다.
 final studentRowsProvider = FutureProvider<List<StudentRow>>((ref) async {
   final profile = ref.watch(profileProvider).value;
   if (profile?.schoolId == null) return [];
-  final schoolId = profile!.schoolId!;
-  final students = await ref.read(schoolStudentsProvider.future);
-  final repo = ref.read(checkinRepositoryProvider);
-  final history = await repo.fetchSchoolHistory(schoolId: schoolId, days: 60);
 
-  final badges = await _fetchBadgeCounts(
-    students.map((s) => s['user_id'] as String).toList(),
-  );
+  final rows = await SupabaseService.client
+      .rpc('student_rows', params: {'p_days': 60}) as List;
 
-  final rows = <StudentRow>[];
-  final today = KstDate.today();
-  for (final s in students) {
-    final uid = s['user_id'] as String;
-    final mine = history.where((c) => c.userId == uid).toList()
-      ..sort((a, b) => b.checkinDate.compareTo(a.checkinDate));
-    final lastDate = mine.isEmpty ? null : mine.first.checkinDate;
-    final avg = mine.isEmpty
-        ? 0.0
-        : mine.map((c) => c.scorePct).reduce((a, b) => a + b) / mine.length;
-    final missed =
-        lastDate == null ? 999 : today.difference(lastDate).inDays;
-    rows.add(StudentRow(
-      userId: uid,
-      profileId: s['id'] as String,
-      nickname: s['nickname'] as String,
-      grade: (s['grade'] as int?) ?? 0,
-      classNum: (s['class_num'] as int?) ?? 0,
-      studentNum: (s['student_num'] as int?) ?? 0,
-      streak: _streakForUser(history, uid),
-      lastCheckinDate: lastDate,
-      avgScore: avg,
-      badgeCount: badges[uid] ?? 0,
-      missedDays: missed < 0 ? 0 : missed,
-    ));
-  }
-  return rows;
+  return rows.map((r) {
+    final m = Map<String, dynamic>.from(r as Map);
+    final last = m['last_checkin_date'] as String?;
+    return StudentRow(
+      userId: m['user_id'] as String,
+      profileId: m['profile_id'] as String,
+      nickname: (m['nickname'] as String?) ?? '',
+      grade: (m['grade'] as num?)?.toInt() ?? 0,
+      classNum: (m['class_num'] as num?)?.toInt() ?? 0,
+      studentNum: (m['student_num'] as num?)?.toInt() ?? 0,
+      streak: (m['streak'] as num?)?.toInt() ?? 0,
+      lastCheckinDate: last == null ? null : DateTime.parse(last),
+      avgScore: (m['avg_score'] as num?)?.toDouble() ?? 0,
+      badgeCount: (m['badge_count'] as num?)?.toInt() ?? 0,
+      missedDays: (m['missed_days'] as num?)?.toInt() ?? 0,
+    );
+  }).toList();
 });
 
-int _streakForUser(List<DailyCheckin> history, String userId) {
-  final mine = history.where((c) => c.userId == userId).toList();
-  if (mine.isEmpty) return 0;
-  final dates = mine
-      .map((c) => DateTime(c.checkinDate.year, c.checkinDate.month, c.checkinDate.day))
-      .toSet();
-  var probe = KstDate.today();
-  if (!dates.contains(probe)) {
-    probe = probe.subtract(const Duration(days: 1));
-    if (!dates.contains(probe)) return 0;
-  }
-  var streak = 0;
-  while (dates.contains(probe)) {
-    streak++;
-    probe = probe.subtract(const Duration(days: 1));
-  }
-  return streak;
-}
 
-Future<Map<String, int>> _fetchBadgeCounts(List<String> userIds) async {
-  if (userIds.isEmpty) return {};
-  final rows = await SupabaseService.client
-      .from('user_badges')
-      .select('user_id')
-      .inFilter('user_id', userIds);
-  final counts = <String, int>{};
-  for (final r in rows) {
-    final uid = r['user_id'] as String;
-    counts[uid] = (counts[uid] ?? 0) + 1;
-  }
-  return counts;
-}
