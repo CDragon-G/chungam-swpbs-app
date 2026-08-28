@@ -86,7 +86,11 @@ String? _authMessageByCode(String? code) {
       return '현재 회원가입이 잠시 중단되었어요.';
     case 'over_email_send_rate_limit':
     case 'over_request_rate_limit':
-      return '너무 많이 시도했어요. 잠시 후 다시 시도해주세요.';
+      // 한 교실이 같은 와이파이(같은 IP)로 몰리면 걸린다.
+      // 학생이 스스로 해결할 수 있는 방법을 알려준다.
+      return '지금 가입이 몰려서 잠시 막혔어요.\n'
+          '2~3분 뒤에 다시 해보거나,\n'
+          '와이파이를 끄고 데이터로 시도하면 바로 됩니다.';
     case 'user_not_found':
       return '등록되지 않은 이메일이에요.';
     case 'session_expired':

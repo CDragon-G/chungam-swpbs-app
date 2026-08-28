@@ -30,8 +30,11 @@ class AuthRepository {
     required String password,
   }) async {
     try {
-      await _c.auth.signUp(email: email, password: password);
-      // 가입 성공 → 로그인 시도 (Confirm email OFF면 즉시 로그인됨)
+      final res = await _c.auth.signUp(email: email, password: password);
+      // Confirm email 이 꺼져 있으면 signUp 응답에 이미 세션이 담겨 온다.
+      // 그때 로그인을 또 부르면 인증 요청이 두 배가 되어,
+      // 한 교실이 같은 IP 로 몰릴 때 요청 제한에 걸린다. 세션이 있으면 건너뛴다.
+      if (res.session != null) return;
       try {
         await _c.auth.signInWithPassword(email: email, password: password);
       } catch (_) {/* 세션은 createProfile 전 다시 확인 */}

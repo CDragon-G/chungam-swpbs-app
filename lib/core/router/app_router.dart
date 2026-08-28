@@ -20,6 +20,7 @@ import '../../features/checkin/presentation/checkin_result_screen.dart';
 import '../../features/checkin/presentation/checkin_screen.dart';
 import '../../features/points/presentation/student_store_screen.dart';
 import '../../features/calendar/presentation/school_calendar_screen.dart';
+import '../../features/homeroom/presentation/homeroom_screen.dart';
 import '../../features/lounge/presentation/teacher_lounge_screen.dart';
 import '../../features/notifications/presentation/notification_center_screen.dart';
 import '../../features/points/presentation/teacher_store_screen.dart';
@@ -137,6 +138,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/teacher/lounge', builder: (_, __) => const TeacherLoungeScreen()),
           GoRoute(path: '/teacher/notifications', builder: (_, __) => const NotificationCenterScreen()),
           GoRoute(path: '/teacher/calendar', builder: (_, __) => const SchoolCalendarScreen()),
+          GoRoute(path: '/teacher/homeroom', builder: (_, __) => const HomeroomScreen()),
         ],
       ),
     ],

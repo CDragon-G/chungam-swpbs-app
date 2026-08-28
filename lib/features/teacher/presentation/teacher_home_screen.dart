@@ -235,6 +235,12 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                 ),
                 FarmMenuButton(
                   scale: fs,
+                  asset: 'assets/icons/menu_roster.png',
+                  label: '담임반',
+                  onTap: () => context.go('/teacher/homeroom'),
+                ),
+                FarmMenuButton(
+                  scale: fs,
                   asset: 'assets/icons/info_missions.png',
                   label: '교사 라운지',
                   onTap: () => context.go('/teacher/lounge'),
