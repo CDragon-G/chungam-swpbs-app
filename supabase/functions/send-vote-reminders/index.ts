@@ -89,6 +89,25 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // 학년마다 시험 일정이 다르다. 오늘 투표할 수 있는 학년이 하나도 없으면
+      // (예: 전 학년 시험 주간) 알림을 보내지 않는다.
+      const { data: ctx } = await supabase.rpc("vote_reminder_grades", {
+        p_school: round.school_id,
+      });
+      const openGrades: number[] = ctx?.open ?? [];
+      const pausedGrades: { grade: number; label: string }[] = ctx?.paused ?? [];
+      if (ctx && openGrades.length === 0) {
+        skipped++;
+        continue;
+      }
+
+      // 일부 학년만 쉬면 어느 학년이 대상인지 알려준다
+      let scope = "";
+      if (ctx && pausedGrades.length > 0) {
+        scope = ` · 오늘은 ${openGrades.join("·")}학년만 (` +
+          pausedGrades.map((p) => `${p.grade}학년 ${p.label}`).join(", ") + ")";
+      }
+
       // 그 학교 교사들
       const { data: teachers } = await supabase
         .from("profiles")
@@ -116,7 +135,7 @@ Deno.serve(async (req) => {
               notification: {
                 title: "🍽️ 수업맛집 투표 시간이에요!",
                 body:
-                  `이번 주 수업 규칙을 가장 잘 지킨 학급에 투표해주세요 (주 ${round.votes_per_week}표) · ${round.title}`,
+                  `이번 주 수업 규칙을 가장 잘 지킨 학급에 투표해주세요 (주 ${round.votes_per_week}표) · ${round.title}${scope}`,
               },
               data: { type: "vote_reminder" },
               android: { priority: "high" },

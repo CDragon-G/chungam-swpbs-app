@@ -78,15 +78,37 @@ class VoteHint {
 }
 
 class GradeHint {
-  GradeHint({required this.grade, required this.top, required this.second});
+  GradeHint({
+    required this.grade,
+    required this.top,
+    required this.second,
+    this.weekNow = 1,
+    this.totalWeeks = 5,
+    this.closed = false,
+    this.pausedLabel,
+  });
   final int grade;
   final int top;
   final int second;
+
+  /// 학년별 주차 — 시험 기간처럼 쉬는 주는 여기 포함되지 않는다.
+  final int weekNow;
+  final int totalWeeks;
+
+  /// 이 학년만 먼저 마감됐는가.
+  final bool closed;
+
+  /// 지금 이 학년이 쉬는 중이면 사유('중간고사' 등), 아니면 null.
+  final String? pausedLabel;
+
+  bool get isPaused => pausedLabel != null;
 
   int get gap => top - second;
 
   /// 재미 멘트 — 순위·학급은 비밀, 접전 상황만 살짝.
   String get message {
+    if (closed) return '이 학년은 투표가 끝났어요. 결과를 확인해보세요! 🏆';
+    if (isPaused) return '$pausedLabel 기간이라 이번 주는 쉬어가요. 시험 끝나고 다시 만나요!';
     if (top == 0) return '아직 첫 표를 기다리는 중이에요!';
     if (gap == 0) return '공동 1위! 다음 투표가 운명을 가른다! 🔥';
     if (gap == 1) return '앗! 1등과 2등이 단 1표 차이예요! 대역전 가능! ⚡';
@@ -98,7 +120,97 @@ class GradeHint {
         grade: (m['grade'] as num).toInt(),
         top: (m['top'] as num?)?.toInt() ?? 0,
         second: (m['second'] as num?)?.toInt() ?? 0,
+        weekNow: (m['week_now'] as num?)?.toInt() ?? 1,
+        totalWeeks: (m['total_weeks'] as num?)?.toInt() ?? 5,
+        closed: (m['closed'] as bool?) ?? false,
+        pausedLabel: m['paused_label'] as String?,
       );
+}
+
+/// 투표를 쉬는 기간 — 3학년 중간고사처럼 학년마다 다른 시험 일정.
+/// grade 가 null 이면 전 학년.
+class VoteBlackout {
+  VoteBlackout({
+    required this.id,
+    required this.grade,
+    required this.startDate,
+    required this.endDate,
+    required this.label,
+  });
+  final String id;
+  final int? grade;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String label;
+
+  String get gradeLabel => grade == null ? '전 학년' : '$grade학년';
+
+  bool containsToday() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return !today.isBefore(startDate) && !today.isAfter(endDate);
+  }
+
+  factory VoteBlackout.fromMap(Map<String, dynamic> m) => VoteBlackout(
+        id: m['id'] as String,
+        grade: (m['grade'] as num?)?.toInt(),
+        startDate: DateTime.parse(m['start_date'] as String),
+        endDate: DateTime.parse(m['end_date'] as String),
+        label: (m['label'] as String?) ?? '시험 기간',
+      );
+}
+
+/// 라운드 안에서 한 학년이 어디까지 왔는지.
+class VoteGradeProgress {
+  VoteGradeProgress({
+    required this.grade,
+    required this.weekNow,
+    required this.totalWeeks,
+    required this.customWeeks,
+    required this.closed,
+    required this.votes,
+    this.pausedLabel,
+    this.closedAt,
+  });
+  final int grade;
+  final int weekNow;
+  final int totalWeeks;
+
+  /// 라운드 기본 주차 대신 이 학년만 따로 정했는가.
+  final bool customWeeks;
+  final bool closed;
+  final int votes;
+  final String? pausedLabel;
+  final DateTime? closedAt;
+
+  bool get isPaused => pausedLabel != null;
+
+  /// 투표를 받을 수 있는 상태인가.
+  bool get isVotable => !closed && !isPaused;
+
+  /// 정해진 주차를 다 채웠는가 — 관리자에게 마감을 권할 시점.
+  bool get isFinished => !closed && weekNow >= totalWeeks;
+
+  String get statusText {
+    if (closed) return '마감';
+    if (isPaused) return pausedLabel!;
+    if (isFinished) return '$weekNow/$totalWeeks주차 · 마감 가능';
+    return '$weekNow/$totalWeeks주차';
+  }
+
+  factory VoteGradeProgress.fromMap(Map<String, dynamic> m) {
+    final closedAt = m['closed_at'] as String?;
+    return VoteGradeProgress(
+      grade: (m['grade'] as num).toInt(),
+      weekNow: (m['week_now'] as num?)?.toInt() ?? 1,
+      totalWeeks: (m['total_weeks'] as num?)?.toInt() ?? 5,
+      customWeeks: (m['custom_weeks'] as bool?) ?? false,
+      closed: (m['closed'] as bool?) ?? false,
+      votes: (m['votes'] as num?)?.toInt() ?? 0,
+      pausedLabel: m['paused_label'] as String?,
+      closedAt: closedAt == null ? null : DateTime.parse(closedAt),
+    );
+  }
 }
 
 class ClassVote {

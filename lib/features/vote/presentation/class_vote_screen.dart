@@ -34,10 +34,12 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
     ref.invalidate(voteRoundsProvider);
     ref.invalidate(voteSubjectsProvider);
     ref.invalidate(voteHintProvider);
+    ref.invalidate(voteBlackoutsProvider);
     final round = ref.read(openRoundProvider);
     if (round != null) {
       ref.invalidate(myVotesProvider(round.id));
       ref.invalidate(voteTallyProvider(round.id));
+      ref.invalidate(voteProgressProvider(round.id));
     }
   }
 
@@ -59,6 +61,7 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
           );
       ref.invalidate(myVotesProvider(round.id));
       ref.invalidate(voteTallyProvider(round.id));
+      ref.invalidate(voteProgressProvider(round.id));
       ref.invalidate(voteHintProvider);
       if (mounted) {
         celebrateGrowth(context, ref,
@@ -101,6 +104,13 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
           ],
         ),
         actions: [
+          if (isAdmin)
+            IconButton(
+              tooltip: '학년별 일정',
+              icon: const Icon(Icons.event_busy_rounded,
+                  color: AppColors.teacherNavy),
+              onPressed: () => _showGradeScheduleSheet(context),
+            ),
           if (isAdmin)
             IconButton(
               tooltip: '과목 관리',
@@ -157,10 +167,25 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
                   _buildVoteForm(openRound),
                   const SectionHeader(title: '🗳️ 이번 주 내 투표'),
                   _MyWeekVotes(round: openRound),
+                  // 먼저 마감된 학년(예: 3학년)의 결과는 모든 선생님께 공개
+                  if (!isAdmin) _EarlyClosedResults(round: openRound),
                   if (isAdmin) ...[
                     const SectionHeader(title: '📊 실시간 집계 (관리자만 보여요)'),
                     _TallyView(roundId: openRound.id),
                     const SizedBox(height: AppSizes.md),
+                    OutlinedButton.icon(
+                      onPressed: () => _showGradeScheduleSheet(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.teacherNavy,
+                        side: const BorderSide(color: AppColors.teacherNavy),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.event_busy_rounded, size: 18),
+                      label: Text('학년별 일정 · 시험 기간 · 조기 마감',
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w800)),
+                    ),
+                    const SizedBox(height: AppSizes.sm),
                     OutlinedButton.icon(
                       onPressed: () => _confirmClose(openRound),
                       style: OutlinedButton.styleFrom(
@@ -196,6 +221,17 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
         .where((v) => v.weekKey == weekKey)
         .length;
     final remaining = (round.votesPerWeek - usedThisWeek).clamp(0, 99);
+
+    // 학년마다 시험 일정이 달라, 지금 투표를 받을 수 있는 학년만 고를 수 있다.
+    final progress =
+        ref.watch(voteProgressProvider(round.id)).value ??
+            const <VoteGradeProgress>[];
+    final gradeItems = progress.isEmpty
+        // 아직 현황을 못 받았으면 예전처럼 전 학년을 보여준다.
+        ? [for (var g = 1; g <= 6; g++) g]
+        : progress.where((p) => p.isVotable).map((p) => p.grade).toList();
+    final blocked = progress.where((p) => !p.isVotable).toList();
+    final gradeOk = gradeItems.contains(_grade);
 
     return PbsCard(
       child: Column(
@@ -256,22 +292,30 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
               );
             },
           ),
+          if (blocked.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.sm),
+            _PausedGradesNotice(blocked: blocked),
+          ],
           const SizedBox(height: AppSizes.sm),
           Row(
             children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _grade,
+                  value: gradeOk ? _grade : null,
                   decoration: const InputDecoration(
                     labelText: '학년',
                     isDense: true,
                     border: OutlineInputBorder(),
                   ),
+                  hint: Text(gradeItems.isEmpty ? '투표 가능한 학년 없음' : '선택',
+                      style: GoogleFonts.notoSansKr(fontSize: 13)),
                   items: [
-                    for (var g = 1; g <= 6; g++)
+                    for (final g in gradeItems)
                       DropdownMenuItem(value: g, child: Text('$g학년')),
                   ],
-                  onChanged: (v) => setState(() => _grade = v ?? 1),
+                  onChanged: gradeItems.isEmpty
+                      ? null
+                      : (v) => setState(() => _grade = v ?? _grade),
                 ),
               ),
               const SizedBox(width: 8),
@@ -294,10 +338,17 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
           ),
           const SizedBox(height: AppSizes.md),
           PbsPrimaryButton(
-            label: remaining > 0 ? '🍽️ 투표하기' : '이번 주 투표 완료!',
+            label: gradeItems.isEmpty
+                ? '지금은 모든 학년이 쉬는 기간이에요'
+                : !gradeOk
+                    ? '학년을 선택해주세요'
+                    : remaining > 0
+                        ? '🍽️ 투표하기'
+                        : '이번 주 투표 완료!',
             color: AppColors.teacherNavy,
             loading: _voting,
-            onPressed: remaining > 0 ? () => _castVote(round) : null,
+            onPressed:
+                remaining > 0 && gradeOk ? () => _castVote(round) : null,
           ),
         ],
       ),
@@ -332,6 +383,267 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
     try {
       await ref.read(voteRepositoryProvider).closeRound(round.id);
       _refreshAll();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(translateError(e))));
+      }
+    }
+  }
+
+  // ── 학년별 투표 일정 (관리자) ─────────────────────────────
+  //   3학년은 진학 때문에 시험을 먼저 본다. 시험 주간에는 볼 수업이 없으니
+  //   그 학년만 투표를 쉬게 하고, 쉰 주는 주차에서 빼고, 먼저 마감할 수 있게 한다.
+  Future<void> _showGradeScheduleSheet(BuildContext context) async {
+    final schoolId = ref.read(profileProvider).value?.schoolId;
+    if (schoolId == null) return;
+
+    await showModalBottomSheet<void>(
+      context: this.context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        builder: (_, scrollCtrl) => Consumer(
+          builder: (ctx, r, __) {
+            final round = r.watch(openRoundProvider);
+            final blackoutsAsync = r.watch(voteBlackoutsProvider);
+            return ListView(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.all(AppSizes.lg),
+              children: [
+                Row(
+                  children: [
+                    const Text('🗓️', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('학년별 투표 일정',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 17, fontWeight: FontWeight.w900)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(sheetCtx),
+                    ),
+                  ],
+                ),
+                Text(
+                  '3학년처럼 시험을 먼저 보는 학년은 그 기간 동안 투표를 쉽니다. '
+                  '쉬는 주는 그 학년의 주차에 포함되지 않고, '
+                  '먼저 끝난 학년은 따로 마감해서 결과를 발표할 수 있어요.',
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 12.5,
+                      height: 1.6,
+                      color: AppColors.textSecondary),
+                ),
+                if (round == null) ...[
+                  const SizedBox(height: AppSizes.md),
+                  PbsCard(
+                    child: Text(
+                      '진행 중인 투표가 없어요.\n'
+                      '투표를 시작하면 학년별 주차와 마감을 여기서 조절할 수 있어요.',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 13,
+                          height: 1.6,
+                          color: AppColors.textTertiary),
+                    ),
+                  ),
+                ] else ...[
+                  const SectionHeader(title: '📈 학년별 진행'),
+                  r.watch(voteProgressProvider(round.id)).when(
+                        loading: () =>
+                            const PbsCard(child: SizedBox(height: 60)),
+                        error: (e, _) => PbsCard(child: Text(translateError(e))),
+                        data: (list) => Column(
+                          children: list
+                              .map((p) => _GradeScheduleRow(round: round, p: p))
+                              .toList(),
+                        ),
+                      ),
+                ],
+                const SectionHeader(title: '⏸ 투표 쉬는 기간'),
+                blackoutsAsync.when(
+                  loading: () => const PbsCard(child: SizedBox(height: 50)),
+                  error: (e, _) => PbsCard(child: Text(translateError(e))),
+                  data: (list) {
+                    if (list.isEmpty) {
+                      return PbsCard(
+                        child: Text(
+                          '등록된 기간이 없어요.\n'
+                          '학년별 시험 기간을 넣어두면 그 학년은 자동으로 투표를 쉽니다.',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 12.5,
+                              height: 1.6,
+                              color: AppColors.textTertiary),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: list
+                          .map((b) => _BlackoutTile(blackout: b))
+                          .toList(),
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSizes.md),
+                PbsPrimaryButton(
+                  label: '＋ 쉬는 기간 추가',
+                  color: AppColors.teacherNavy,
+                  onPressed: () => _showAddBlackout(sheetCtx, schoolId),
+                ),
+                const SizedBox(height: AppSizes.xxxl),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+    _refreshAll();
+  }
+
+  Future<void> _showAddBlackout(
+      BuildContext sheetCtx, String schoolId) async {
+    final grades = ref.read(schoolGradesProvider).value ?? const [1, 2, 3];
+    final labelCtrl = TextEditingController(text: '중간고사');
+    int? grade = grades.isEmpty ? null : grades.last; // 보통 3학년이 먼저 본다
+    var start = DateTime.now();
+    var end = DateTime.now().add(const Duration(days: 3));
+
+    final saved = await showDialog<bool>(
+      context: sheetCtx,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setSt) {
+          Future<void> pick(bool isStart) async {
+            final base = isStart ? start : end;
+            final picked = await showDatePicker(
+              context: dialogCtx,
+              initialDate: base,
+              firstDate: DateTime(base.year - 1),
+              lastDate: DateTime(base.year + 2),
+            );
+            if (picked == null) return;
+            setSt(() {
+              if (isStart) {
+                start = picked;
+                if (end.isBefore(start)) end = start;
+              } else {
+                end = picked.isBefore(start) ? start : picked;
+              }
+            });
+          }
+
+          return AlertDialog(
+            title: Text('투표 쉬는 기간',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: labelCtrl,
+                    decoration: const InputDecoration(
+                      labelText: '이름',
+                      hintText: '예: 2학기 중간고사',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    children: ['중간고사', '기말고사', '수학여행', '체험학습']
+                        .map((s) => ActionChip(
+                              label: Text(s,
+                                  style:
+                                      GoogleFonts.notoSansKr(fontSize: 11.5)),
+                              onPressed: () =>
+                                  setSt(() => labelCtrl.text = s),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int?>(
+                    value: grade,
+                    decoration: const InputDecoration(
+                      labelText: '어느 학년이 쉬나요',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('전 학년')),
+                      for (final g in grades)
+                        DropdownMenuItem(value: g, child: Text('$g학년')),
+                    ],
+                    onChanged: (v) => setSt(() => grade = v),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => pick(true),
+                          child: Text(
+                              '시작 ${DateFormat('M/d').format(start)}',
+                              style: GoogleFonts.notoSansKr(fontSize: 13)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => pick(false),
+                          child: Text('종료 ${DateFormat('M/d').format(end)}',
+                              style: GoogleFonts.notoSansKr(fontSize: 13)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    grade == null
+                        ? '이 기간에는 모든 학년이 투표를 쉬어요.'
+                        : '이 기간에는 $grade학년만 투표를 쉬고, '
+                            '나머지 학년은 그대로 투표합니다.',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 11.5,
+                        height: 1.5,
+                        color: AppColors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx, false),
+                  child: const Text('취소')),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                child: const Text('추가'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (saved != true) return;
+    try {
+      await ref.read(voteRepositoryProvider).addBlackout(
+            schoolId: schoolId,
+            grade: grade,
+            startDate: start,
+            endDate: end,
+            label: labelCtrl.text,
+          );
+      ref.invalidate(voteBlackoutsProvider);
+      final round = ref.read(openRoundProvider);
+      if (round != null) ref.invalidate(voteProgressProvider(round.id));
+      ref.invalidate(voteHintProvider);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -562,54 +874,26 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
   }
 }
 
-class _RoundHeader extends StatelessWidget {
+class _RoundHeader extends ConsumerWidget {
   const _RoundHeader({required this.round});
   final VoteRound round;
 
-  /// 시작일 기준 현재 몇 주차인지 (KST, 서버 vote_hint와 동일 규칙).
-  static int _weekNow(VoteRound round) {
-    final kstNow = DateTime.now().toUtc().add(const Duration(hours: 9));
-    final kstStart = round.createdAt.toUtc().add(const Duration(hours: 9));
-    final days = DateTime(kstNow.year, kstNow.month, kstNow.day)
-        .difference(DateTime(kstStart.year, kstStart.month, kstStart.day))
-        .inDays;
-    return ((days ~/ 7) + 1).clamp(1, round.totalWeeks);
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progress = ref.watch(voteProgressProvider(round.id)).value ??
+        const <VoteGradeProgress>[];
+
     return PbsCard(
       color: AppColors.teacherNavy,
       border: Border.all(color: AppColors.teacherNavy),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(round.title,
-                    style: GoogleFonts.notoSansKr(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white)),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '📅 ${_weekNow(round)}/${round.totalWeeks}주차',
-                  style: GoogleFonts.notoSansKr(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white),
-                ),
-              ),
-            ],
-          ),
+          Text(round.title,
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white)),
           const SizedBox(height: 4),
           Text(
             '매주 우리 학교 수업 규칙을 가장 잘 실천한 학급에 투표해주세요. '
@@ -617,7 +901,71 @@ class _RoundHeader extends StatelessWidget {
             style: GoogleFonts.notoSansKr(
                 fontSize: 12, color: Colors.white70, height: 1.5),
           ),
+          if (progress.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            // 학년마다 시험 일정이 달라 주차가 따로 흐른다.
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: progress.map((p) {
+                final dim = !p.isVotable;
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: dim ? 0.10 : 0.20),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    p.closed
+                        ? '🏆 ${p.grade}학년 마감'
+                        : p.isPaused
+                            ? '⏸ ${p.grade}학년 ${p.pausedLabel}'
+                            : '${p.grade}학년 ${p.weekNow}/${p.totalWeeks}주차',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: dim ? Colors.white60 : Colors.white,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// 지금 투표를 받지 않는 학년 안내 — 시험 기간이거나 먼저 마감된 학년.
+class _PausedGradesNotice extends StatelessWidget {
+  const _PausedGradesNotice({required this.blocked});
+  final List<VoteGradeProgress> blocked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: blocked
+            .map((p) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 1),
+                  child: Text(
+                    p.closed
+                        ? '${p.grade}학년은 먼저 마감돼서 투표할 수 없어요.'
+                        : '${p.grade}학년은 ${p.pausedLabel} 기간이라 지금은 투표하지 않아요.',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12, height: 1.5, color: Colors.brown),
+                  ),
+                ))
+            .toList(),
       ),
     );
   }
@@ -872,6 +1220,290 @@ class _ClosedRoundCard extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 학년 한 줄 — 주차 조정과 조기 마감. 관리자 시트에서만 쓴다.
+class _GradeScheduleRow extends ConsumerWidget {
+  const _GradeScheduleRow({required this.round, required this.p});
+  final VoteRound round;
+  final VoteGradeProgress p;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    Future<void> run(Future<void> Function() task) async {
+      try {
+        await task();
+        ref.invalidate(voteProgressProvider(round.id));
+        ref.invalidate(voteTallyProvider(round.id));
+        ref.invalidate(voteHintProvider);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(translateError(e))));
+        }
+      }
+    }
+
+    final chipColor = p.closed
+        ? AppColors.textTertiary
+        : p.isPaused
+            ? AppColors.warning
+            : p.isFinished
+                ? AppColors.studentGreen
+                : AppColors.teacherNavy;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.sm),
+      child: PbsCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('${p.grade}학년',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 15, fontWeight: FontWeight.w900)),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: chipColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(p.statusText,
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: chipColor)),
+                ),
+                const Spacer(),
+                Text('${p.votes}표',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12, color: AppColors.textTertiary)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    // 0 = 라운드 기본값 사용
+                    value: p.customWeeks ? p.totalWeeks : 0,
+                    decoration: const InputDecoration(
+                      labelText: '총 주차',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                          value: 0,
+                          child: Text('기본 ${round.totalWeeks}주',
+                              style:
+                                  GoogleFonts.notoSansKr(fontSize: 13))),
+                      for (var w = 1; w <= 20; w++)
+                        DropdownMenuItem(
+                            value: w,
+                            child: Text('$w주',
+                                style:
+                                    GoogleFonts.notoSansKr(fontSize: 13))),
+                    ],
+                    onChanged: p.closed
+                        ? null
+                        : (v) => run(() => ref
+                            .read(voteRepositoryProvider)
+                            .setGradeWeeks(
+                                roundId: round.id,
+                                grade: p.grade,
+                                weeks: (v == null || v == 0) ? null : v)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (p.closed)
+                  OutlinedButton(
+                    onPressed: () => run(() => ref
+                        .read(voteRepositoryProvider)
+                        .setGradeClosed(
+                            roundId: round.id,
+                            grade: p.grade,
+                            closed: false)),
+                    child: Text('마감 취소',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 12.5, fontWeight: FontWeight.w800)),
+                  )
+                else
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.teacherNavy),
+                    onPressed: () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogCtx) => AlertDialog(
+                          title: Text('${p.grade}학년 먼저 마감',
+                              style: GoogleFonts.notoSansKr(
+                                  fontWeight: FontWeight.w900)),
+                          content: Text(
+                            '${p.grade}학년 투표를 지금 마감할까요?\n\n'
+                            '${p.grade}학년은 더 이상 투표를 받지 않고,\n'
+                            '결과가 모든 선생님께 공개돼요.\n'
+                            '다른 학년은 그대로 계속 투표합니다.',
+                            style: GoogleFonts.notoSansKr(
+                                fontSize: 13, height: 1.6),
+                          ),
+                          actions: [
+                            TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogCtx, false),
+                                child: const Text('취소')),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(dialogCtx, true),
+                              child: const Text('마감하기'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                      await run(() => ref
+                          .read(voteRepositoryProvider)
+                          .setGradeClosed(
+                              roundId: round.id,
+                              grade: p.grade,
+                              closed: true));
+                    },
+                    child: Text('먼저 마감',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 12.5, fontWeight: FontWeight.w800)),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 등록된 쉬는 기간 한 줄.
+class _BlackoutTile extends ConsumerWidget {
+  const _BlackoutTile({required this.blackout});
+  final VoteBlackout blackout;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = blackout.containsToday();
+    final f = DateFormat('M/d');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: PbsCard(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.md, vertical: AppSizes.sm),
+        child: Row(
+          children: [
+            Text(now ? '⏸' : '🗓️', style: const TextStyle(fontSize: 17)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${blackout.gradeLabel} · ${blackout.label}',
+                      style: GoogleFonts.notoSansKr(
+                          fontWeight: FontWeight.w800, fontSize: 13.5)),
+                  Text(
+                    '${f.format(blackout.startDate)} ~ '
+                    '${f.format(blackout.endDate)}'
+                    '${now ? "  ·  진행 중" : ""}',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 11,
+                        color: now
+                            ? AppColors.warning
+                            : AppColors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: '삭제',
+              icon: const Icon(Icons.delete_outline_rounded,
+                  size: 19, color: AppColors.textTertiary),
+              onPressed: () async {
+                try {
+                  await ref
+                      .read(voteRepositoryProvider)
+                      .deleteBlackout(blackout.id);
+                  ref.invalidate(voteBlackoutsProvider);
+                  ref.invalidate(voteHintProvider);
+                  final round = ref.read(openRoundProvider);
+                  if (round != null) {
+                    ref.invalidate(voteProgressProvider(round.id));
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(translateError(e))));
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 라운드가 아직 열려 있어도, 먼저 마감된 학년(예: 3학년)의 결과는 모두에게 공개.
+class _EarlyClosedResults extends ConsumerWidget {
+  const _EarlyClosedResults({required this.round});
+  final VoteRound round;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progress = ref.watch(voteProgressProvider(round.id)).value ??
+        const <VoteGradeProgress>[];
+    final closedGrades =
+        progress.where((p) => p.closed).map((p) => p.grade).toSet();
+    if (closedGrades.isEmpty) return const SizedBox.shrink();
+
+    final rows = ref.watch(voteTallyProvider(round.id)).value ??
+        const <VoteTallyRow>[];
+    // rows 는 학년별 득표순 → 학년마다 첫 항목이 1위
+    final winners = <int, VoteTallyRow>{};
+    for (final r in rows) {
+      if (closedGrades.contains(r.grade)) {
+        winners.putIfAbsent(r.grade, () => r);
+      }
+    }
+    final grades = closedGrades.toList()..sort();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SectionHeader(title: '🏆 먼저 마감된 학년 결과'),
+        PbsCard(
+          color: const Color(0xFFFEF9E7),
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: grades.map((g) {
+              final w = winners[g];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Text(
+                  w == null
+                      ? '$g학년 — 투표 기록이 없어요.'
+                      : '🏆 ${w.classLabel} (${w.votes}표)',
+                  style: GoogleFonts.notoSansKr(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: const Color(0xFFB45309)),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 }

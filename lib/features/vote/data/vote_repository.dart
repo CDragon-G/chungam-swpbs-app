@@ -72,6 +72,95 @@ class VoteRepository {
     return VoteHint.fromMap(Map<String, dynamic>.from(res as Map));
   }
 
+  /// 우리 학교에 실제로 있는 학년 (학생 프로필 기준).
+  Future<List<int>> fetchGrades(String schoolId) async {
+    final res = await _c.rpc('school_grades', params: {'p_school': schoolId});
+    return ((res as List?) ?? const [])
+        .map((e) => (e as num).toInt())
+        .toList();
+  }
+
+  /// 라운드 안 학년별 진행 현황 (주차·쉬는 기간·마감 여부).
+  Future<List<VoteGradeProgress>> roundProgress(String roundId) async {
+    final res = await _c
+        .rpc('vote_round_progress', params: {'p_round_id': roundId});
+    final m = Map<String, dynamic>.from(res as Map);
+    return ((m['grades'] as List?) ?? const [])
+        .map((e) =>
+            VoteGradeProgress.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
+  /// 이 학년만 먼저 마감(또는 마감 취소).
+  Future<void> setGradeClosed({
+    required String roundId,
+    required int grade,
+    required bool closed,
+  }) async {
+    final res = await _c.rpc('set_vote_grade_close', params: {
+      'p_round_id': roundId,
+      'p_grade': grade,
+      'p_closed': closed,
+    });
+    _throwIfFailed(res);
+  }
+
+  /// 이 학년만 총 주차를 따로 정한다. null 이면 라운드 기본값으로 되돌린다.
+  Future<void> setGradeWeeks({
+    required String roundId,
+    required int grade,
+    int? weeks,
+  }) async {
+    final res = await _c.rpc('set_vote_grade_weeks', params: {
+      'p_round_id': roundId,
+      'p_grade': grade,
+      'p_weeks': weeks,
+    });
+    _throwIfFailed(res);
+  }
+
+  void _throwIfFailed(dynamic res) {
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) {
+      throw StateError(m['error'] as String? ?? '처리하지 못했어요');
+    }
+  }
+
+  // ── 투표 쉬는 기간 (시험 기간 등) ─────────────────────────
+  Future<List<VoteBlackout>> fetchBlackouts(String schoolId) async {
+    final rows = await _c
+        .from('vote_blackouts')
+        .select()
+        .eq('school_id', schoolId)
+        .order('start_date', ascending: true);
+    return rows.map((m) => VoteBlackout.fromMap(m)).toList();
+  }
+
+  Future<void> addBlackout({
+    required String schoolId,
+    required int? grade,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String label,
+  }) async {
+    String d(DateTime x) =>
+        '${x.year.toString().padLeft(4, '0')}-'
+        '${x.month.toString().padLeft(2, '0')}-'
+        '${x.day.toString().padLeft(2, '0')}';
+    await _c.from('vote_blackouts').insert({
+      'school_id': schoolId,
+      'grade': grade,
+      'start_date': d(startDate),
+      'end_date': d(endDate),
+      'label': label.trim().isEmpty ? '시험 기간' : label.trim(),
+      'created_by': _c.auth.currentUser?.id,
+    });
+  }
+
+  Future<void> deleteBlackout(String id) async {
+    await _c.from('vote_blackouts').delete().eq('id', id);
+  }
+
   Future<void> closeRound(String id) async {
     await _c.from('vote_rounds').update({
       'status': 'closed',

@@ -44,22 +44,25 @@ class VoteHintCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFBE123C).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '${hint.weekNow}/${hint.totalWeeks}주차',
-                    style: GoogleFonts.notoSansKr(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFFBE123C),
+                // 학년마다 시험 일정이 달라 주차가 따로 흐른다.
+                // 학년이 하나뿐이거나 모두 같은 주차일 때만 한 줄로 보여준다.
+                if (hint.grades.map((g) => g.weekNow).toSet().length <= 1)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFBE123C).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${hint.weekNow}/${hint.totalWeeks}주차',
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFFBE123C),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 2),
@@ -90,6 +93,21 @@ class VoteHintCard extends ConsumerWidget {
                             style: GoogleFonts.notoSansKr(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
+                              color: g.isPaused || g.closed
+                                  ? AppColors.textTertiary
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        // 학년별 주차 — 3학년이 시험으로 쉬면 여기서 멈춰 보인다
+                        SizedBox(
+                          width: 44,
+                          child: Text(
+                            g.closed ? '마감' : '${g.weekNow}/${g.totalWeeks}',
+                            style: GoogleFonts.notoSansKr(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textTertiary,
                             ),
                           ),
                         ),
@@ -97,7 +115,11 @@ class VoteHintCard extends ConsumerWidget {
                           child: Text(
                             g.message,
                             style: GoogleFonts.notoSansKr(
-                                fontSize: 12.5, height: 1.45),
+                                fontSize: 12.5,
+                                height: 1.45,
+                                color: g.isPaused || g.closed
+                                    ? AppColors.textSecondary
+                                    : AppColors.textPrimary),
                           ),
                         ),
                       ],
