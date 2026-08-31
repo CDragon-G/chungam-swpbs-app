@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase/supabase_client.dart';
@@ -80,16 +82,69 @@ class VoteRepository {
         .toList();
   }
 
-  /// 라운드 안 학년별 진행 현황 (주차·쉬는 기간·마감 여부).
-  Future<List<VoteGradeProgress>> roundProgress(String roundId) async {
+  /// 라운드 진행 현황 — 오늘 투표 가능 여부 + 학년별 주차·쉬는 기간·마감.
+  Future<VoteProgress> roundProgress(String roundId) async {
     final res = await _c
         .rpc('vote_round_progress', params: {'p_round_id': roundId});
-    final m = Map<String, dynamic>.from(res as Map);
-    return ((m['grades'] as List?) ?? const [])
-        .map((e) =>
-            VoteGradeProgress.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    return VoteProgress.fromMap(Map<String, dynamic>.from(res as Map));
   }
+
+  /// 진행 중인 투표를 수정한다 (이름·투표권·주차·투표 가능한 날).
+  Future<void> updateRound({
+    required String roundId,
+    required String title,
+    required int votesPerWeek,
+    required int totalWeeks,
+    DateTime? startDate,
+    DateTime? endDate,
+    List<int>? weekdays,
+  }) async {
+    final res = await _c.rpc('update_vote_round', params: {
+      'p_round_id': roundId,
+      'p_title': title,
+      'p_votes_per_week': votesPerWeek,
+      'p_total_weeks': totalWeeks,
+      'p_start_date': _ymd(startDate),
+      'p_end_date': _ymd(endDate),
+      'p_weekdays': (weekdays == null || weekdays.isEmpty) ? null : weekdays,
+    });
+    _throwIfFailed(res);
+  }
+
+  /// 라운드를 지운다. 그 라운드의 투표 기록도 함께 사라진다.
+  Future<int> deleteRound(String roundId) async {
+    final res =
+        await _c.rpc('delete_vote_round', params: {'p_round_id': roundId});
+    _throwIfFailed(res);
+    final m = Map<String, dynamic>.from(res as Map);
+    return (m['deleted_votes'] as num?)?.toInt() ?? 0;
+  }
+
+  /// 우리 학교 교사들에게 투표 안내 알림을 보낸다.
+  /// 알림 센터에 기록한 뒤, 푸시는 Edge Function 이 맡는다.
+  Future<String> sendNotice({required String roundId, String? body}) async {
+    final res = await _c.rpc('send_vote_notice', params: {
+      'p_round_id': roundId,
+      'p_body': body,
+    });
+    _throwIfFailed(res);
+    final m = Map<String, dynamic>.from(res as Map);
+    final sentBody = (m['body'] as String?) ?? '';
+    // 푸시 실패가 안내 기록까지 되돌리지는 않게 결과를 기다리지 않는다.
+    unawaited(
+      _c.functions.invoke('send-vote-notice', body: {
+        'title': '🍽️ 수업맛집 투표 안내',
+        'body': sentBody,
+      }).then((_) {}).catchError((_) {}),
+    );
+    return sentBody;
+  }
+
+  static String? _ymd(DateTime? d) => d == null
+      ? null
+      : '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
 
   /// 이 학년만 먼저 마감(또는 마감 취소).
   Future<void> setGradeClosed({
@@ -143,15 +198,11 @@ class VoteRepository {
     required DateTime endDate,
     required String label,
   }) async {
-    String d(DateTime x) =>
-        '${x.year.toString().padLeft(4, '0')}-'
-        '${x.month.toString().padLeft(2, '0')}-'
-        '${x.day.toString().padLeft(2, '0')}';
     await _c.from('vote_blackouts').insert({
       'school_id': schoolId,
       'grade': grade,
-      'start_date': d(startDate),
-      'end_date': d(endDate),
+      'start_date': _ymd(startDate),
+      'end_date': _ymd(endDate),
       'label': label.trim().isEmpty ? '시험 기간' : label.trim(),
       'created_by': _c.auth.currentUser?.id,
     });

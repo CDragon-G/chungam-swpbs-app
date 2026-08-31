@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'core/back_handler.dart';
 import 'core/constants/app_colors.dart';
 import 'core/router/app_router.dart';
+import 'core/update/update_gate.dart';
 
 /// Global navigator key — used by JaramBackHandler to show SnackBars
 /// without a BuildContext.
@@ -61,7 +62,8 @@ class _PbsPlusAppState extends ConsumerState<PbsPlusApp> {
       builder: (context, child) => MediaQuery.withClampedTextScaling(
         minScaleFactor: 0.85,
         maxScaleFactor: 1.3,
-        child: child ?? const SizedBox.shrink(),
+        // 앱을 켤 때 한 번 최신 버전인지 확인하고, 아니면 안내 팝업을 띄운다.
+        child: UpdateGate(child: child ?? const SizedBox.shrink()),
       ),
       routerConfig: router,
     );

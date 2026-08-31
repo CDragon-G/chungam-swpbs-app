@@ -39,7 +39,7 @@ final voteTallyProvider =
 
 /// 라운드 안 학년별 진행 현황 — 학년마다 시험 일정이 달라 주차가 따로 간다.
 final voteProgressProvider =
-    FutureProvider.family<List<VoteGradeProgress>, String>((ref, roundId) async {
+    FutureProvider.family<VoteProgress, String>((ref, roundId) async {
   return ref.read(voteRepositoryProvider).roundProgress(roundId);
 });
 

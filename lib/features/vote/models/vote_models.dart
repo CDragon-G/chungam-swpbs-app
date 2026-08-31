@@ -21,6 +21,9 @@ class VoteRound {
     required this.status,
     required this.createdAt,
     this.closedAt,
+    this.startDate,
+    this.endDate,
+    this.voteWeekdays = const [],
   });
   final String id;
   final String title;
@@ -30,7 +33,27 @@ class VoteRound {
   final DateTime createdAt;
   final DateTime? closedAt;
 
+  /// 학기 시작 때 미리 정해두는 투표 기간. null 이면 제한 없음.
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  /// 투표 가능한 요일 (1=월 … 7=일). 비어 있으면 모든 수업일에 투표 가능.
+  final List<int> voteWeekdays;
+
   bool get isOpen => status == 'open';
+
+  static const _dayNames = ['월', '화', '수', '목', '금', '토', '일'];
+
+  /// '금요일만' · '월·수·금' 처럼 사람이 읽는 문구. 지정이 없으면 null.
+  String? get weekdayLabel {
+    if (voteWeekdays.isEmpty) return null;
+    final sorted = [...voteWeekdays]..sort();
+    if (sorted.length == 1) return '${_dayNames[sorted.first - 1]}요일만';
+    return sorted.map((d) => _dayNames[d - 1]).join('·');
+  }
+
+  static DateTime? _date(dynamic v) =>
+      v == null ? null : DateTime.parse(v as String);
 
   factory VoteRound.fromMap(Map<String, dynamic> m) => VoteRound(
         id: m['id'] as String,
@@ -39,9 +62,12 @@ class VoteRound {
         totalWeeks: (m['total_weeks'] as num?)?.toInt() ?? 5,
         status: m['status'] as String,
         createdAt: DateTime.parse(m['created_at'] as String),
-        closedAt: m['closed_at'] == null
-            ? null
-            : DateTime.parse(m['closed_at'] as String),
+        closedAt: _date(m['closed_at']),
+        startDate: _date(m['start_date']),
+        endDate: _date(m['end_date']),
+        voteWeekdays: ((m['vote_weekdays'] as List?) ?? const [])
+            .map((e) => (e as num).toInt())
+            .toList(),
       );
 }
 
@@ -157,6 +183,33 @@ class VoteBlackout {
         startDate: DateTime.parse(m['start_date'] as String),
         endDate: DateTime.parse(m['end_date'] as String),
         label: (m['label'] as String?) ?? '시험 기간',
+      );
+}
+
+/// 라운드 전체 진행 상황 — 오늘 투표할 수 있는지 + 학년별 현황.
+class VoteProgress {
+  const VoteProgress({
+    required this.todayOk,
+    required this.grades,
+    this.todayReason,
+  });
+
+  /// 오늘 이 라운드에 투표할 수 있는가 (지정한 시작·종료일·요일 기준).
+  final bool todayOk;
+
+  /// 투표할 수 없다면 그 이유 ('수업맛집 투표는 금요일에만 할 수 있어요.').
+  final String? todayReason;
+  final List<VoteGradeProgress> grades;
+
+  static const empty = VoteProgress(todayOk: true, grades: []);
+
+  factory VoteProgress.fromMap(Map<String, dynamic> m) => VoteProgress(
+        todayOk: (m['today_ok'] as bool?) ?? true,
+        todayReason: m['today_reason'] as String?,
+        grades: ((m['grades'] as List?) ?? const [])
+            .map((e) =>
+                VoteGradeProgress.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList(),
       );
 }
 

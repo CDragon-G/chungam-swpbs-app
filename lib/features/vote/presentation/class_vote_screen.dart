@@ -173,6 +173,25 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
                     const SectionHeader(title: '📊 실시간 집계 (관리자만 보여요)'),
                     _TallyView(roundId: openRound.id),
                     const SizedBox(height: AppSizes.md),
+                    PbsPrimaryButton(
+                      label: '📢 투표 안내 보내기',
+                      color: AppColors.teacherNavy,
+                      onPressed: () => _confirmSendNotice(openRound),
+                    ),
+                    const SizedBox(height: AppSizes.sm),
+                    OutlinedButton.icon(
+                      onPressed: () => _showEditRound(openRound),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.teacherNavy,
+                        side: const BorderSide(color: AppColors.teacherNavy),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.edit_calendar_rounded, size: 18),
+                      label: Text('투표 수정 · 투표 가능한 날 지정',
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w800)),
+                    ),
+                    const SizedBox(height: AppSizes.sm),
                     OutlinedButton.icon(
                       onPressed: () => _showGradeScheduleSheet(context),
                       style: OutlinedButton.styleFrom(
@@ -223,15 +242,17 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
     final remaining = (round.votesPerWeek - usedThisWeek).clamp(0, 99);
 
     // 학년마다 시험 일정이 달라, 지금 투표를 받을 수 있는 학년만 고를 수 있다.
-    final progress =
-        ref.watch(voteProgressProvider(round.id)).value ??
-            const <VoteGradeProgress>[];
+    final prog = ref.watch(voteProgressProvider(round.id)).value ??
+        VoteProgress.empty;
+    final progress = prog.grades;
     final gradeItems = progress.isEmpty
         // 아직 현황을 못 받았으면 예전처럼 전 학년을 보여준다.
         ? [for (var g = 1; g <= 6; g++) g]
         : progress.where((p) => p.isVotable).map((p) => p.grade).toList();
     final blocked = progress.where((p) => !p.isVotable).toList();
-    final gradeOk = gradeItems.contains(_grade);
+    // 학기 시작 때 지정한 투표 기간·요일에 맞지 않는 날이면 오늘은 투표할 수 없다.
+    final dayOk = prog.todayOk;
+    final gradeOk = dayOk && gradeItems.contains(_grade);
 
     return PbsCard(
       child: Column(
@@ -292,6 +313,10 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
               );
             },
           ),
+          if (!dayOk && prog.todayReason != null) ...[
+            const SizedBox(height: AppSizes.sm),
+            _NoticeBox(text: prog.todayReason!),
+          ],
           if (blocked.isNotEmpty) ...[
             const SizedBox(height: AppSizes.sm),
             _PausedGradesNotice(blocked: blocked),
@@ -338,13 +363,15 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
           ),
           const SizedBox(height: AppSizes.md),
           PbsPrimaryButton(
-            label: gradeItems.isEmpty
-                ? '지금은 모든 학년이 쉬는 기간이에요'
-                : !gradeOk
-                    ? '학년을 선택해주세요'
-                    : remaining > 0
-                        ? '🍽️ 투표하기'
-                        : '이번 주 투표 완료!',
+            label: !dayOk
+                ? '오늘은 투표할 수 없어요'
+                : gradeItems.isEmpty
+                    ? '지금은 모든 학년이 쉬는 기간이에요'
+                    : !gradeOk
+                        ? '학년을 선택해주세요'
+                        : remaining > 0
+                            ? '🍽️ 투표하기'
+                            : '이번 주 투표 완료!',
             color: AppColors.teacherNavy,
             loading: _voting,
             onPressed:
@@ -459,8 +486,8 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
                         loading: () =>
                             const PbsCard(child: SizedBox(height: 60)),
                         error: (e, _) => PbsCard(child: Text(translateError(e))),
-                        data: (list) => Column(
-                          children: list
+                        data: (prog) => Column(
+                          children: prog.grades
                               .map((p) => _GradeScheduleRow(round: round, p: p))
                               .toList(),
                         ),
@@ -644,6 +671,343 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
       final round = ref.read(openRoundProvider);
       if (round != null) ref.invalidate(voteProgressProvider(round.id));
       ref.invalidate(voteHintProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(translateError(e))));
+      }
+    }
+  }
+
+  // ── 진행 중인 투표 수정 (관리자) ───────────────────────────
+  //   학기 시작 때 투표 기간과 요일을 미리 잡아두면, 그 밖의 날에는
+  //   투표 버튼이 잠기고 이유가 화면에 표시된다.
+  Future<void> _showEditRound(VoteRound round) async {
+    final titleCtrl = TextEditingController(text: round.title);
+    var votes = round.votesPerWeek;
+    var weeks = round.totalWeeks;
+    DateTime? start = round.startDate;
+    DateTime? end = round.endDate;
+    final days = {...round.voteWeekdays};
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSt) {
+          Future<void> pick(bool isStart) async {
+            final base = (isStart ? start : end) ?? DateTime.now();
+            final picked = await showDatePicker(
+              context: sheetCtx,
+              initialDate: base,
+              firstDate: DateTime(base.year - 1),
+              lastDate: DateTime(base.year + 2),
+            );
+            if (picked == null) return;
+            setSt(() {
+              if (isStart) {
+                start = picked;
+                if (end != null && end!.isBefore(picked)) end = picked;
+              } else {
+                end = (start != null && picked.isBefore(start!)) ? start : picked;
+              }
+            });
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSizes.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Text('✏️', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text('투표 수정',
+                            style: GoogleFonts.notoSansKr(
+                                fontSize: 17, fontWeight: FontWeight.w900)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(sheetCtx, false),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(
+                      labelText: '투표 이름',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          value: votes,
+                          decoration: const InputDecoration(
+                            labelText: '주당 투표권',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: [
+                            for (var v = 1; v <= 10; v++)
+                              DropdownMenuItem(value: v, child: Text('$v표')),
+                          ],
+                          onChanged: (v) => setSt(() => votes = v ?? votes),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          value: weeks,
+                          decoration: const InputDecoration(
+                            labelText: '총 주차',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: [
+                            for (var w = 1; w <= 20; w++)
+                              DropdownMenuItem(value: w, child: Text('$w주')),
+                          ],
+                          onChanged: (v) => setSt(() => weeks = v ?? weeks),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SectionHeader(title: '🗓️ 투표 기간'),
+                  Text(
+                    '학기 시작 때 미리 잡아두시면 그 기간에만 투표가 열립니다. '
+                    '비워두시면 기한 없이 진행돼요.',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12,
+                        height: 1.5,
+                        color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => pick(true),
+                          child: Text(
+                            start == null
+                                ? '시작일 없음'
+                                : '시작 ${DateFormat('M/d').format(start!)}',
+                            style: GoogleFonts.notoSansKr(fontSize: 13),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => pick(false),
+                          child: Text(
+                            end == null
+                                ? '종료일 없음'
+                                : '종료 ${DateFormat('M/d').format(end!)}',
+                            style: GoogleFonts.notoSansKr(fontSize: 13),
+                          ),
+                        ),
+                      ),
+                      if (start != null || end != null)
+                        IconButton(
+                          tooltip: '기간 지우기',
+                          icon: const Icon(Icons.backspace_outlined, size: 18),
+                          onPressed: () => setSt(() {
+                            start = null;
+                            end = null;
+                          }),
+                        ),
+                    ],
+                  ),
+                  const SectionHeader(title: '📅 투표 가능한 요일'),
+                  Text(
+                    '고르지 않으시면 수업일 아무 때나 투표할 수 있어요. '
+                    '금요일만 고르시면 한 주를 지켜본 뒤 투표하게 됩니다.',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12,
+                        height: 1.5,
+                        color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      for (var d = 1; d <= 5; d++)
+                        FilterChip(
+                          label: Text(
+                            ['월', '화', '수', '목', '금'][d - 1],
+                            style: GoogleFonts.notoSansKr(
+                                fontSize: 13, fontWeight: FontWeight.w700),
+                          ),
+                          selected: days.contains(d),
+                          selectedColor:
+                              AppColors.teacherNavy.withValues(alpha: 0.18),
+                          onSelected: (on) => setSt(
+                              () => on ? days.add(d) : days.remove(d)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.lg),
+                  PbsPrimaryButton(
+                    label: '저장',
+                    color: AppColors.teacherNavy,
+                    onPressed: () => Navigator.pop(sheetCtx, true),
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                  TextButton.icon(
+                    onPressed: () => Navigator.pop(sheetCtx, null),
+                    icon: const Icon(Icons.delete_outline_rounded,
+                        size: 18, color: AppColors.danger),
+                    label: Text('이 투표 삭제',
+                        style: GoogleFonts.notoSansKr(
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                  const SizedBox(height: AppSizes.md),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    if (!mounted) return;
+    if (saved == null) {
+      await _confirmDeleteRound(round);
+      return;
+    }
+    if (saved != true) return;
+
+    try {
+      await ref.read(voteRepositoryProvider).updateRound(
+            roundId: round.id,
+            title: titleCtrl.text,
+            votesPerWeek: votes,
+            totalWeeks: weeks,
+            startDate: start,
+            endDate: end,
+            weekdays: days.toList(),
+          );
+      _refreshAll();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(translateError(e))));
+      }
+    }
+  }
+
+  /// 라운드 삭제 — 그 라운드의 투표 기록도 함께 사라지므로 표 수를 알려주고 묻는다.
+  Future<void> _confirmDeleteRound(VoteRound round) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text('투표 삭제',
+            style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+        content: Text(
+          '"${round.title}" 을(를) 삭제할까요?\n\n'
+          '이 투표에 들어온 표와 학년별 설정이 모두 함께 지워지고,\n'
+          '되돌릴 수 없어요.',
+          style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('취소')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('삭제하기'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final n = await ref.read(voteRepositoryProvider).deleteRound(round.id);
+      _refreshAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('삭제했어요. (투표 $n표 함께 삭제)')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(translateError(e))));
+      }
+    }
+  }
+
+  // ── 투표 안내 알림 발송 (관리자) ───────────────────────────
+  Future<void> _confirmSendNotice(VoteRound round) async {
+    final bodyCtrl = TextEditingController();
+    final send = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text('투표 안내 보내기',
+            style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '우리 학교 선생님들께 수업맛집 투표 알림을 보냅니다.\n'
+              '비워두시면 기본 안내 문구로 나갑니다.',
+              style: GoogleFonts.notoSansKr(fontSize: 12.5, height: 1.6),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: bodyCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: '보낼 말 (선택)',
+                hintText: '예: 오늘까지 투표해주세요!',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('취소')),
+          FilledButton(
+            style:
+                FilledButton.styleFrom(backgroundColor: AppColors.teacherNavy),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('보내기'),
+          ),
+        ],
+      ),
+    );
+    if (send != true) return;
+    try {
+      await ref.read(voteRepositoryProvider).sendNotice(
+            roundId: round.id,
+            body: bodyCtrl.text.trim().isEmpty ? null : bodyCtrl.text.trim(),
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('선생님들께 투표 안내를 보냈어요.')),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -874,14 +1238,63 @@ class _ClassVoteScreenState extends ConsumerState<ClassVoteScreen> {
   }
 }
 
+/// 라운드에 지정된 투표 기간·요일을 한 줄로. 지정이 없으면 null.
+String? _scheduleLine(VoteRound round) {
+  final parts = <String>[];
+  final f = DateFormat('M/d');
+  if (round.startDate != null || round.endDate != null) {
+    parts.add('${round.startDate == null ? "" : f.format(round.startDate!)}'
+        '~'
+        '${round.endDate == null ? "" : f.format(round.endDate!)}');
+  }
+  final w = round.weekdayLabel;
+  if (w != null) parts.add(w);
+  return parts.isEmpty ? null : parts.join(' · ');
+}
+
+/// 안내 한 줄 상자 — 오늘 투표할 수 없는 이유 등.
+class _NoticeBox extends StatelessWidget {
+  const _NoticeBox({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.teacherNavy.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border:
+            Border.all(color: AppColors.teacherNavy.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              size: 17, color: AppColors.teacherNavy),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 12.5,
+                    height: 1.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.teacherNavy)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RoundHeader extends ConsumerWidget {
   const _RoundHeader({required this.round});
   final VoteRound round;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final progress = ref.watch(voteProgressProvider(round.id)).value ??
-        const <VoteGradeProgress>[];
+    final prog = ref.watch(voteProgressProvider(round.id)).value ??
+        VoteProgress.empty;
+    final progress = prog.grades;
 
     return PbsCard(
       color: AppColors.teacherNavy,
@@ -901,6 +1314,15 @@ class _RoundHeader extends ConsumerWidget {
             style: GoogleFonts.notoSansKr(
                 fontSize: 12, color: Colors.white70, height: 1.5),
           ),
+          if (_scheduleLine(round) != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('🗓️ ${_scheduleLine(round)}',
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white70)),
+            ),
           if (progress.isNotEmpty) ...[
             const SizedBox(height: 10),
             // 학년마다 시험 일정이 달라 주차가 따로 흐른다.
@@ -1166,15 +1588,34 @@ class _ClosedRoundCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(round.title,
-                style: GoogleFonts.notoSansKr(
-                    fontWeight: FontWeight.w900, fontSize: 15)),
-            if (round.closedAt != null)
-              Text(
-                '${DateFormat('yyyy.M.d').format(round.closedAt!.toLocal())} 마감',
-                style: GoogleFonts.notoSansKr(
-                    fontSize: 11, color: AppColors.textTertiary),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(round.title,
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w900, fontSize: 15)),
+                      if (round.closedAt != null)
+                        Text(
+                          '${DateFormat('yyyy.M.d').format(round.closedAt!.toLocal())} 마감',
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 11, color: AppColors.textTertiary),
+                        ),
+                    ],
+                  ),
+                ),
+                // 지난 결과가 쌓이면 관리자가 정리할 수 있어야 한다.
+                if (ref.watch(profileProvider).value?.isAdminTeacher ?? false)
+                  IconButton(
+                    tooltip: '이 결과 삭제',
+                    icon: const Icon(Icons.delete_outline_rounded,
+                        size: 19, color: AppColors.textTertiary),
+                    onPressed: () => _confirmDeleteClosedRound(context, ref, round),
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
             tallyAsync.when(
               loading: () => const SizedBox(
@@ -1460,8 +1901,9 @@ class _EarlyClosedResults extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final progress = ref.watch(voteProgressProvider(round.id)).value ??
-        const <VoteGradeProgress>[];
+    final progress = (ref.watch(voteProgressProvider(round.id)).value ??
+            VoteProgress.empty)
+        .grades;
     final closedGrades =
         progress.where((p) => p.closed).map((p) => p.grade).toSet();
     if (closedGrades.isEmpty) return const SizedBox.shrink();
@@ -1505,5 +1947,42 @@ class _EarlyClosedResults extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+/// 지난 투표 결과 삭제 — 표까지 함께 사라지므로 한 번 더 묻는다.
+Future<void> _confirmDeleteClosedRound(
+    BuildContext context, WidgetRef ref, VoteRound round) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (dialogCtx) => AlertDialog(
+      title: Text('지난 결과 삭제',
+          style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+      content: Text(
+        '"${round.title}" 결과를 목록에서 지울까요?\n\n'
+        '그 투표에 들어온 표도 함께 지워지고, 되돌릴 수 없어요.',
+        style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('취소')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+          onPressed: () => Navigator.pop(dialogCtx, true),
+          child: const Text('삭제하기'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await ref.read(voteRepositoryProvider).deleteRound(round.id);
+    ref.invalidate(voteRoundsProvider);
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(translateError(e))));
+    }
   }
 }
