@@ -1,13 +1,16 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/category_radar_chart.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../honor/honor_gardener.dart';
 import '../providers/dashboard_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -99,6 +102,8 @@ class _OverallTab extends ConsumerWidget {
         data: (o) => ListView(
           padding: const EdgeInsets.all(AppSizes.lg),
           children: [
+            HonorGardenerCard(
+                isAdmin: ref.watch(profileProvider).value?.isAdminTeacher ?? false),
             PbsCard(
               color: AppColors.teacherNavyLight,
               child: Column(
@@ -130,11 +135,37 @@ class _OverallTab extends ConsumerWidget {
               child: SizedBox(height: 200, child: _TrendLine(data: o.last14Days)),
             ),
             const SectionHeader(title: '반별 참여율'),
-            PbsCard(
-              child: SizedBox(height: 220, child: _ClassBars(data: o.classParticipation)),
-            ),
+            PbsCard(child: _ClassBars(data: o.classParticipation)),
             const SectionHeader(title: '카테고리 평균'),
             PbsCard(child: CategoryRadarChart(scores: o.categoryAverages)),
+            const SizedBox(height: AppSizes.lg),
+            // 규칙별 O/X 통계와 학생 건의함으로 가는 길
+            OutlinedButton.icon(
+              onPressed: () => context.go('/teacher/rule-stats'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.teacherNavy,
+                side: const BorderSide(color: AppColors.teacherNavy),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.rule_rounded, size: 18),
+              label: Text('규칙별 실천 현황 보기',
+                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+            ),
+            if (ref.watch(profileProvider).value?.isAdminTeacher ?? false) ...[
+              const SizedBox(height: AppSizes.sm),
+              OutlinedButton.icon(
+                onPressed: () => context.go('/teacher/suggestions'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.teacherNavy,
+                  side: const BorderSide(color: AppColors.teacherNavy),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                icon: const Icon(Icons.mark_email_unread_rounded, size: 18),
+                label: Text('학생 규칙 건의함',
+                    style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+              ),
+            ],
+            const SizedBox(height: AppSizes.xxxl),
           ],
         ),
       ),
@@ -222,65 +253,106 @@ class _TrendLine extends StatelessWidget {
   }
 }
 
+/// 반별 참여율 — 가로 막대.
+/// 세로 막대일 때는 학급이 많으면 아래 라벨이 서로 겹쳐 읽을 수 없었다.
+/// 한 학급이 한 줄을 차지하게 눕히고, 학년이 바뀌면 사이를 띄운다.
 class _ClassBars extends StatelessWidget {
   const _ClassBars({required this.data});
   final Map<String, double> data;
 
   @override
   Widget build(BuildContext context) {
-    if (data.isEmpty) return const Center(child: Text('데이터 없음'));
-    final entries = data.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
-    return BarChart(
-      BarChartData(
-        maxY: 100,
-        minY: 0,
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(
-          rightTitles: const AxisTitles(),
-          topTitles: const AxisTitles(),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 28,
-              interval: 25,
-              getTitlesWidget: (v, _) => Text('${v.toInt()}',
-                  style: GoogleFonts.notoSansKr(
-                      fontSize: 10, color: AppColors.textTertiary)),
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 22,
-              getTitlesWidget: (v, _) {
-                final i = v.toInt();
-                if (i < 0 || i >= entries.length) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    entries[i].key,
-                    style: GoogleFonts.notoSansKr(
-                        fontSize: 10, color: AppColors.textSecondary),
-                  ),
-                );
-              },
-            ),
-          ),
+    if (data.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Text('데이터 없음',
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 13, color: AppColors.textTertiary)),
         ),
-        barGroups: [
-          for (var i = 0; i < entries.length; i++)
-            BarChartGroupData(
-              x: i,
-              barRods: [
-                BarChartRodData(
-                  toY: entries[i].value,
-                  width: 18,
-                  borderRadius: BorderRadius.circular(6),
-                  color: AppColors.scoreColor(entries[i].value),
+      );
+    }
+
+    // '1-3' 처럼 학년-반 형태를 숫자로 정렬한다 (문자열 정렬이면 10반이 2반 앞에 온다)
+    int gradeOf(String k) => int.tryParse(k.split('-').first) ?? 0;
+    int classOf(String k) =>
+        int.tryParse(k.split('-').length > 1 ? k.split('-')[1] : '') ?? 0;
+
+    final entries = data.entries.toList()
+      ..sort((a, b) {
+        final g = gradeOf(a.key).compareTo(gradeOf(b.key));
+        return g != 0 ? g : classOf(a.key).compareTo(classOf(b.key));
+      });
+
+    final rows = <Widget>[];
+    int? prevGrade;
+    for (final e in entries) {
+      final g = gradeOf(e.key);
+      if (prevGrade != null && g != prevGrade) {
+        rows.add(const SizedBox(height: 10));
+      }
+      prevGrade = g;
+      rows.add(_ClassBarRow(label: e.key, value: e.value));
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+  }
+}
+
+class _ClassBarRow extends StatelessWidget {
+  const _ClassBarRow({required this.label, required this.value});
+  final String label;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColors.scoreColor(value);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 44,
+            child: Text(
+              label,
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                Container(
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderLight,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: (value / 100).clamp(0.02, 1.0),
+                  child: Container(
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
                 ),
               ],
             ),
+          ),
+          SizedBox(
+            width: 42,
+            child: Text(
+              '${value.round()}%',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 12, fontWeight: FontWeight.w800, color: color),
+            ),
+          ),
         ],
       ),
     );

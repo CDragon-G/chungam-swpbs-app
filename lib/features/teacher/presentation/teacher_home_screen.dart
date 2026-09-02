@@ -13,6 +13,7 @@ import '../../calendar/providers/calendar_provider.dart';
 import '../../notifications/presentation/notification_center_screen.dart';
 import '../../notifications/presentation/notification_consent.dart';
 import '../../notifications/providers/notification_provider.dart';
+import '../../growth/level_up_popup.dart';
 import '../../quiz/quiz_popup.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -45,6 +46,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
       }
       if (mounted) TeacherOnboarding.showIfDue(context);
       checkGrowthLevelUp(ref);
+      if (mounted) await maybeShowLevelUp(context, ref);
       await Future.delayed(const Duration(milliseconds: 1600));
       if (mounted) maybeShowQuizPopup(context, ref, isTeacher: true);
     });

@@ -21,6 +21,10 @@ import '../../features/checkin/presentation/checkin_screen.dart';
 import '../../features/points/presentation/student_store_screen.dart';
 import '../../features/calendar/presentation/school_calendar_screen.dart';
 import '../../features/homeroom/presentation/homeroom_screen.dart';
+import '../../features/quiz/quiz_admin_screen.dart';
+import '../../features/suggestions/suggestion_screens.dart';
+import '../../features/teacher/presentation/rule_stats_screen.dart';
+import '../../features/teacher/presentation/teacher_admin_screen.dart';
 import '../../features/lounge/presentation/teacher_lounge_screen.dart';
 import '../../features/notifications/presentation/notification_center_screen.dart';
 import '../../features/points/presentation/teacher_store_screen.dart';
@@ -115,6 +119,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/student/hall-of-fame', builder: (_, __) => const HallOfFameScreen()),
           GoRoute(path: '/student/cico', builder: (_, __) => const StudentCicoScreen()),
           GoRoute(path: '/student/notifications', builder: (_, __) => const NotificationCenterScreen()),
+          GoRoute(path: '/student/suggest', builder: (_, __) => const SuggestionBoxScreen()),
         ],
       ),
 
@@ -139,6 +144,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/teacher/notifications', builder: (_, __) => const NotificationCenterScreen()),
           GoRoute(path: '/teacher/calendar', builder: (_, __) => const SchoolCalendarScreen()),
           GoRoute(path: '/teacher/homeroom', builder: (_, __) => const HomeroomScreen()),
+          GoRoute(path: '/teacher/suggestions', builder: (_, __) => const SuggestionAdminScreen()),
+          GoRoute(path: '/teacher/rule-stats', builder: (_, __) => const RuleStatsScreen()),
+          GoRoute(path: '/teacher/accounts', builder: (_, __) => const TeacherAdminScreen()),
+          GoRoute(path: '/teacher/quiz-admin', builder: (_, __) => const QuizAdminScreen()),
         ],
       ),
     ],

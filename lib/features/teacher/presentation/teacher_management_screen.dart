@@ -71,6 +71,19 @@ class TeacherManagementScreen extends ConsumerWidget {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: '선생님 계정 관리',
+            icon: const Icon(Icons.manage_accounts_rounded,
+                color: AppColors.teacherNavy),
+            onPressed: () => context.go('/teacher/accounts'),
+          ),
+          IconButton(
+            tooltip: '퀴즈 문제 관리',
+            icon: const Icon(Icons.quiz_rounded, color: AppColors.teacherNavy),
+            onPressed: () => context.go('/teacher/quiz-admin'),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(schoolTeachersProvider),

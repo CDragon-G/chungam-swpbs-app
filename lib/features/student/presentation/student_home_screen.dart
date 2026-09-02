@@ -20,6 +20,8 @@ import '../../vote/providers/vote_provider.dart';
 import '../../notifications/presentation/notification_center_screen.dart';
 import '../../notifications/presentation/notification_consent.dart';
 import '../../notifications/providers/notification_provider.dart';
+import '../../growth/level_up_popup.dart';
+import '../../honor/honor_gardener.dart';
 import '../../quiz/quiz_popup.dart';
 import '../providers/student_stats_provider.dart';
 
@@ -43,6 +45,8 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         await NotificationConsent.showIfFirstLaunch(context, isTeacher: false);
       }
       checkGrowthLevelUp(ref);
+      // 학교가 한 단계 자랐으면 축하 팝업 (사용자마다 한 번씩)
+      if (mounted) await maybeShowLevelUp(context, ref);
       // 리마인더를 '수업일에만' 다시 예약 (주말·공휴일·방학 제외)
       syncStudentReminders();
       // 깜짝 초성 퀴즈 (30% 확률, 하루 1회)
@@ -233,7 +237,13 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                       ? () {}
                       : () => showGrowthSheet(context, growth),
                 ),
-                if (voteHint?.hasRound == true)
+                FarmMenuButton(
+                    scale: fs,
+                    asset: 'assets/icons/menu_praise.png',
+                    label: '건의함',
+                    onTap: () => context.go('/student/suggest'),
+                  ),
+                  if (voteHint?.hasRound == true)
                   FarmMenuButton(
                     scale: fs,
                     asset: 'assets/icons/menu_vote.png',
@@ -358,6 +368,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                     height: 1.5),
               ),
               const SizedBox(height: AppSizes.md),
+              const HonorGardenerCard(),
               const VoteHintCard(compact: true),
               const SizedBox(height: AppSizes.md),
             ],

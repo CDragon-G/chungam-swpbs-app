@@ -157,7 +157,7 @@ begin
     return json_build_object(
       'ok', true, 'kind', 'bank', 'id', v_q.id,
       'question', v_q.question,
-      'hint', coalesce(v_q.hint, quiz_chosung(v_q.answers[1])),
+      'hint', coalesce(nullif(btrim(v_q.hint), ''), quiz_chosung(v_q.answers[1])),
       'lengths', (select array_agg(distinct length(quiz_norm(a)) order by length(quiz_norm(a)))
                     from unnest(v_q.answers) a));
   end if;
@@ -169,10 +169,13 @@ begin
   if v_rule.id is null then return json_build_object('ok', false); end if;
 
   v_kw := quiz_keyword(v_rule.rule_text);
+  -- 정답 낱말은 서버에서 미리 가려 보낸다. 앱에 원문과 정답을 함께 주면
+  -- 화면만 봐도 답이 보인다.
   return json_build_object(
     'ok', true, 'kind', 'rule', 'id', v_rule.id,
-    'question', v_rule.rule_text,
-    'keyword_masked', quiz_chosung(v_kw),
+    'question', replace(v_rule.rule_text, v_kw,
+                        '［' || quiz_chosung(v_kw) || '］'),
+    'hint', quiz_chosung(v_kw),
     'lengths', (select array_agg(distinct length(quiz_norm(a)) order by length(quiz_norm(a)))
                   from unnest(quiz_rule_answers(v_kw)) a));
 end $$;
