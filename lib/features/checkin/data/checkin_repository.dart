@@ -74,56 +74,38 @@ class CheckinRepository {
     return rows.map((m) => DailyCheckin.fromMap(m as Map<String, dynamic>)).toList();
   }
 
-  /// UPSERT today's check-in (overwrite same-day).
+  /// 오늘 점검을 제출한다.
+  ///
+  /// 날짜·점수·포인트를 모두 서버가 정한다. 예전에는 앱이 기기 시간으로
+  /// 날짜를 만들어 테이블에 직접 넣었는데, 기기 날짜를 바꾸면 임의의 날짜로
+  /// 점검이 쌓여 포인트를 반복 취득할 수 있었다. 이제 앱은 답만 보낸다.
   Future<CheckinSubmitResult> submit({
     required String schoolId,
     required List<SchoolRule> rules,
     required Map<String, bool> answers,
     String? comment,
   }) async {
-    final today = KstDate.formatYmd(KstDate.today());
+    // 우리 학교 규칙에 해당하는 답만 추린다 (나머지는 서버가 어차피 버린다)
+    final ids = rules.map((r) => r.id).toSet();
+    final payload = <String, bool>{
+      for (final e in answers.entries)
+        if (ids.contains(e.key)) e.key: e.value,
+    };
 
-    int totalPossible = 0;
-    int totalScore = 0;
-    final perCategory = <String, List<int>>{};
-    for (final r in rules) {
-      final ans = answers[r.id];
-      if (ans == null) continue;
-      totalPossible++;
-      final val = ans ? 1 : 0;
-      totalScore += val;
-      perCategory.putIfAbsent(r.category, () => []).add(val);
+    final res = await _c.rpc('submit_checkin',
+        params: {'p_answers': payload, 'p_comment': comment});
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) {
+      throw StateError(m['error'] as String? ?? '점검을 저장하지 못했어요');
     }
-    final scorePct =
-        totalPossible == 0 ? 0.0 : (totalScore / totalPossible) * 100.0;
-    final categoryScores = <String, double>{
-      for (final e in perCategory.entries)
-        e.key: e.value.isEmpty
-            ? 0.0
-            : (e.value.reduce((a, b) => a + b) / e.value.length) * 100.0,
-    };
 
-    final payload = {
-      'user_id': _myUserId(),
-      'school_id': schoolId,
-      'checkin_date': today,
-      'answers': answers,
-      'total_score': totalScore,
-      'total_possible': totalPossible,
-      'score_pct': scorePct,
-      'category_scores': categoryScores,
-      'comment': comment,
-    };
-
-    final existing = await fetchToday(schoolId);
-    final row = await _c
-        .from('daily_checkins')
-        .upsert(payload, onConflict: 'user_id,checkin_date')
-        .select()
-        .single();
+    final saved = await fetchToday(schoolId);
+    if (saved == null) {
+      throw StateError('저장은 됐지만 불러오지 못했어요. 새로고침해 주세요.');
+    }
     return CheckinSubmitResult(
-      checkin: DailyCheckin.fromMap(row),
-      isOverwrite: existing != null,
+      checkin: saved,
+      isOverwrite: (m['is_overwrite'] as bool?) ?? false,
     );
   }
 

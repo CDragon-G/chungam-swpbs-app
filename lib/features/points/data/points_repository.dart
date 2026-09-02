@@ -296,18 +296,6 @@ class PointsRepository {
     return balances;
   }
 
-  // ── Award points after check-in ────────────────────────────
-  Future<void> awardCheckinPoints({
-    required String userId,
-    required String schoolId,
-    required DateTime checkinDate,
-  }) async {
-    final dateStr =
-        '${checkinDate.year.toString().padLeft(4, '0')}-${checkinDate.month.toString().padLeft(2, '0')}-${checkinDate.day.toString().padLeft(2, '0')}';
-    await _c.rpc('award_checkin_points', params: {
-      'p_user_id': userId,
-      'p_school_id': schoolId,
-      'p_checkin_date': dateStr,
-    });
-  }
+  // 자기점검 포인트는 서버(submit_checkin)가 직접 지급한다.
+  // 앱에서 부를 수 있으면 날짜·계정을 조작할 수 있어 권한을 회수했다.
 }

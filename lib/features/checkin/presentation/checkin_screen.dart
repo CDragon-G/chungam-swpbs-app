@@ -139,20 +139,13 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
 
     setState(() => _submitting = true);
     try {
-      final result = await ref.read(checkinRepositoryProvider).submit(
+      await ref.read(checkinRepositoryProvider).submit(
             schoolId: profile!.schoolId!,
             rules: rules,
             answers: clean,
             comment: null,
           );
-      // Award points (idempotent at DB level)
-      try {
-        await ref.read(pointsRepositoryProvider).awardCheckinPoints(
-              userId: result.checkin.userId,
-              schoolId: result.checkin.schoolId,
-              checkinDate: result.checkin.checkinDate,
-            );
-      } catch (_) {/* don't block on point award failure */}
+      // 포인트는 서버가 제출과 함께 지급한다 (앱에서 따로 부르지 않는다)
       ref.invalidate(todayCheckinProvider);
       ref.invalidate(studentStatsProvider);
       ref.invalidate(checkinHistoryProvider);
