@@ -58,23 +58,49 @@ class RosterDraftRow {
 class RosterParser {
   RosterParser._();
 
+  /// 전각 공백·줄바꿈 없는 공백 등을 보통 공백으로 통일한다.
+  /// 엑셀·한글에서 복사하면 이런 글자가 섞여 들어와 구분자 판정을 망친다.
+  static String _normalize(String s) => s
+      .replaceAll(' ', ' ')
+      .replaceAll('　', ' ')
+      .replaceAll('﻿', '')
+      .trim();
+
+  /// '3학년' · '2반' · '14번' 처럼 단위가 붙어 있어도 숫자만 뽑는다.
+  static int? _num(String s) =>
+      int.tryParse(s.replaceAll(RegExp(r'[^0-9]'), ''));
+
+  /// 공백 한 칸으로 구분된 줄: 앞의 숫자 셋을 떼고 나머지를 통째로 이름으로 본다.
+  /// '3 2 14 스튜어트유민리차드' 같은 줄이 한 덩어리로 읽히던 문제를 막는다.
+  static final _spaced = RegExp(
+      r'^(\d+)\s*(?:학년)?\s+(\d+)\s*(?:반)?\s+(\d+)\s*(?:번)?\s+(.+)$');
+
   static (List<RosterDraftRow> rows, List<String> errors) parse(String raw) {
     final rows = <RosterDraftRow>[];
     final errors = <String>[];
     final lines = raw
         .split(RegExp(r'\r?\n'))
-        .map((l) => l.trim())
+        .map(_normalize)
         .where((l) => l.isNotEmpty)
         .toList();
 
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
-      // 탭 우선, 없으면 콤마, 없으면 공백 다중
-      final parts = line
-          .split(RegExp(r'\t|,|\s{2,}'))
-          .map((p) => p.trim())
-          .where((p) => p.isNotEmpty)
-          .toList();
+
+      // 구분자를 하나만 고른다. 여러 개를 한꺼번에 쓰면
+      // 이름 안의 쉼표나 공백까지 잘려 나간다.
+      List<String> parts;
+      if (line.contains('\t')) {
+        parts = line.split('\t');
+      } else if (line.contains(',')) {
+        parts = line.split(',');
+      } else {
+        final m = _spaced.firstMatch(line);
+        parts = m == null
+            ? line.split(RegExp(r'\s{2,}'))
+            : [m[1]!, m[2]!, m[3]!, m[4]!];
+      }
+      parts = parts.map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
 
       if (parts.length < 4) {
         // 헤더로 추정되는 첫 줄은 조용히 무시
@@ -85,10 +111,11 @@ class RosterParser {
         continue;
       }
 
-      final grade = int.tryParse(parts[0]);
-      final classNum = int.tryParse(parts[1]);
-      final studentNum = int.tryParse(parts[2]);
-      final name = parts.sublist(3).join(' ').trim();
+      final grade = _num(parts[0]);
+      final classNum = _num(parts[1]);
+      final studentNum = _num(parts[2]);
+      // 이름이 여러 칸에 나뉘어 있으면(성/이름 분리) 다시 붙인다.
+      final name = parts.sublist(3).join(' ').replaceAll(RegExp(r'\s+'), ' ').trim();
 
       if (grade == null || classNum == null || studentNum == null) {
         // 헤더 줄 (학년/반/번호가 숫자가 아님) → 무시

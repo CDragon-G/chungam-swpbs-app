@@ -222,10 +222,9 @@ class StudentStoreScreen extends ConsumerWidget {
       // 수확 뱃지(첫 수확·수확왕) 평가
       await evaluateAndAwardBadges(ref);
       if (context.mounted) {
-        celebrateGrowth(context, ref,
-            headline: it.isClassItem
-                ? '교환 신청 완료! 담임선생님께 수령하세요 🎁'
-                : '교환 신청 완료! 담당 선생님께 수령하세요 🎁');
+        // 축하 토스트는 금방 사라져서 학생이 '찾아가야 한다'는 걸 놓친다.
+        // 직접 닫아야 하는 안내창으로 수령처를 확실히 알린다.
+        await _showPickupGuide(context, it);
       }
     } catch (e) {
       if (context.mounted) {
@@ -732,6 +731,76 @@ class _ItemCard extends StatelessWidget {
   }
 }
 
+/// 교환 신청 직후 안내 — 직접 닫아야 넘어간다.
+/// 신청만 하고 찾아가지 않는 학생이 많아, 수령처를 또렷하게 알린다.
+Future<void> _showPickupGuide(BuildContext context, PointStoreItem it) {
+  final who = it.createdByName != null
+      ? '${it.createdByName} 선생님'
+      : (it.isClassItem ? '담임선생님' : '담당 선생님');
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogCtx) => AlertDialog(
+      title: Row(
+        children: [
+          const Text('🎁', style: TextStyle(fontSize: 24)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('교환 신청 완료!',
+                style: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w900, fontSize: 18)),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.studentGreenLight,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${it.emoji} ${it.name}',
+                    style: GoogleFonts.notoSansKr(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        color: AppColors.studentGreen)),
+                const SizedBox(height: 6),
+                Text('$who께 찾아가세요',
+                    style: GoogleFonts.notoSansKr(
+                        fontWeight: FontWeight.w800, fontSize: 14)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            '신청만 하면 강화물이 오지 않아요.\n'
+            '선생님을 직접 찾아가야 받을 수 있습니다.\n\n'
+            '아직 안 받았다면 [내 교환 내역]에\n'
+            '"수령 대기"로 남아 있어요.',
+            style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.7),
+          ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          style: FilledButton.styleFrom(
+              backgroundColor: AppColors.studentGreen,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+          onPressed: () => Navigator.pop(dialogCtx),
+          child: Text('알겠어요',
+              style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+        ),
+      ],
+    ),
+  );
+}
+
 class _ExchangeRow extends StatelessWidget {
   const _ExchangeRow({required this.ex});
   final PointExchange ex;
@@ -769,6 +838,19 @@ class _ExchangeRow extends StatelessWidget {
                       color: AppColors.textTertiary,
                     ),
                   ),
+                  // 신청만 하고 안 찾아가는 학생이 많아 계속 눈에 띄게 둔다.
+                  if (ex.status == 'pending')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '👉 선생님께 찾아가야 받을 수 있어요',
+                        style: GoogleFonts.notoSansKr(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.warning,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
