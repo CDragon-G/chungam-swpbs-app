@@ -37,6 +37,20 @@ class _UpdateGateState extends State<UpdateGate> {
   Widget build(BuildContext context) => widget.child;
 }
 
+/// 로그인·가입을 하기 전에 버전을 확인한다.
+/// 최소 지원 버전보다 낮으면 안내창을 띄우고 `false`를 돌려준다 —
+/// 부르는 쪽에서 그대로 중단하면 된다.
+///
+/// 서버 확인이 실패하면 `true`를 돌려준다. 통신이 잠깐 끊겼다고
+/// 학교 전체가 로그인을 못 하게 되는 편이 훨씬 위험하다.
+Future<bool> ensureUpToDate(BuildContext context) async {
+  final info = await UpdateService.check();
+  if (!info.force) return true;
+  if (!context.mounted) return false;
+  await showUpdateDialog(context, info);
+  return false;
+}
+
 /// 업데이트 안내 팝업. force면 닫을 수 없다.
 Future<void> showUpdateDialog(BuildContext context, UpdateInfo info) {
   return showDialog<void>(

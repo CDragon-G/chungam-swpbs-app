@@ -9,6 +9,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/update/update_gate.dart';
 
 const _kSavedEmailKey = 'last_login_email';
 
@@ -56,6 +57,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
     try {
+      // 구버전에서는 로그인 자체를 막는다 (안내창에서 스토어로 보낸다)
+      if (!await ensureUpToDate(context)) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
       await ref.read(authRepositoryProvider).signIn(
             email: _email.text.trim(),
             password: _password.text,

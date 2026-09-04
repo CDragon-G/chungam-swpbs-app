@@ -18,6 +18,7 @@ import '../../../shared/widgets/wizard_stack.dart';
 import '../../school/models/school.dart';
 import '../../school/providers/school_provider.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/update/update_gate.dart';
 
 enum _Mode { newSchool, joinSchool }
 
@@ -225,6 +226,11 @@ class _State extends ConsumerState<TeacherSignupScreen> {
       _stepError = null;
     });
     try {
+      // 구버전에서는 가입도 막는다 (안내창에서 스토어로 보낸다)
+      if (!await ensureUpToDate(context)) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
       final auth = ref.read(authRepositoryProvider);
       // 가입 시도 (이미 존재하는 이메일이면 로그인으로 복구)
       await auth.signUpOrRecover(

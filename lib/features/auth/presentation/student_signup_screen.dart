@@ -17,6 +17,7 @@ import '../../../shared/widgets/wizard_stack.dart';
 import '../../school/models/school.dart';
 import '../../school/providers/school_provider.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/update/update_gate.dart';
 
 /// 명단 기반 학생 회원가입 (토스 스타일 누적식).
 /// 순서: 학교코드 → 학년/반/번호 → PIN(이름 확인) → 이메일 → 비밀번호 → 동의
@@ -286,6 +287,11 @@ class _State extends ConsumerState<StudentSignupScreen> {
       _stepError = null;
     });
     try {
+      // 구버전에서는 가입도 막는다 (안내창에서 스토어로 보낸다)
+      if (!await ensureUpToDate(context)) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
       final auth = ref.read(authRepositoryProvider);
       final repo = ref.read(schoolRepositoryProvider);
       final grade = int.parse(_grade.text);
