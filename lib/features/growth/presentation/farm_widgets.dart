@@ -328,10 +328,12 @@ class GrowthProgressBar extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 g.isMaxLevel
-                    ? '🎉 열매를 맺었어요! 모두의 결실이에요'
+                    ? '🎉 숲이 되었어요! 모두의 결실이에요'
                     : g.isGateLocked
                         ? '🔑 열쇠 미션만 끝나면 바로 레벨업!'
-                        : '레벨업까지 ${100 - pct}% 남았어요!',
+                        : g.isDayLocked
+                            ? '🌙 ${g.daysToNext}일 더 함께 자라면 레벨업!'
+                            : '레벨업까지 ${100 - pct}% 남았어요!',
                 style: GoogleFonts.notoSansKr(
                   fontSize: 11 * sc,
                   fontWeight: FontWeight.w700,

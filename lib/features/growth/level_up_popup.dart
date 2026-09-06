@@ -50,6 +50,11 @@ class _LevelUpDialog extends StatelessWidget {
         5 => '튼튼한 나무가 됐어요.\n웬만한 바람에는 흔들리지 않습니다.',
         6 => '꽃이 피었어요.\n그동안 쌓아온 것이 눈에 보이기 시작했습니다.',
         7 => '열매를 맺었어요.\n한 해의 실천이 여기까지 왔습니다. 정말 대단해요.',
+        8 => '열매를 나누기 시작했어요.\n받은 것을 돌려주는 학교가 되었습니다.',
+        9 => '큰 나무 곁에 어린나무가 자랍니다.\n올해의 실천이 다음 학년으로 이어지고 있어요.',
+        10 => '나무가 여럿이 되었어요.\n한 그루가 아니라 서로가 서로를 지탱합니다.',
+        11 => '숲에 길이 생겼어요.\n누가 시키지 않아도 함께 걷는 길입니다.',
+        12 => '숲이 되었습니다.\n여기까지 온 학교는 흔치 않아요. 정말 고맙습니다.',
         _ => '한 뼘 더 자랐어요.',
       };
 
@@ -128,8 +133,8 @@ class _LevelChip extends StatelessWidget {
       opacity: dim ? 0.45 : 1,
       child: Column(
         children: [
-          Text(GrowthStatus.levelEmojis[i],
-              style: const TextStyle(fontSize: 30)),
+          Image.asset(GrowthStatus.assetFor(level),
+              width: 54, height: 54, filterQuality: FilterQuality.medium),
           const SizedBox(height: 2),
           Text('Lv.$level',
               style: GoogleFonts.notoSansKr(

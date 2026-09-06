@@ -10,7 +10,7 @@ import '../providers/growth_provider.dart';
 import 'farm_widgets.dart';
 
 /// 🌱 학교 공동 새싹 카드 — 교사·학생 홈 공용 히어로.
-/// SWPBS 활동이 양분이 되어 씨앗 → 열매나무까지 함께 키운다.
+/// SWPBS 활동이 양분이 되어 씨앗 → 모두의 숲까지 12단계로 함께 키운다.
 /// 탭하면 미션 체크리스트(튜토리얼)·활동 지표·성장 로드맵 시트.
 class SchoolSproutCard extends ConsumerWidget {
   const SchoolSproutCard({super.key});
@@ -82,17 +82,22 @@ class SchoolSproutCard extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     g.isMaxLevel
-                        ? '🎉 열매를 맺었어요! 모두가 함께 키운 결실이에요.'
+                        ? '🎉 숲이 되었어요! 모두가 함께 키운 결실이에요.'
                         : g.isGateLocked
                             ? '🔑 다음 단계 열쇠: ${g.gateKeyLabel}'
-                            : '다음 단계(${GrowthStatus.levelEmojis[g.level]} ${GrowthStatus.levelNames[g.level]})까지 ${g.pointsToNext}점 — 함께 키워요!',
+                            : g.isDayLocked
+                                ? '🌙 양분은 가득! ${g.daysToNext}일 더 함께 자라면 ${GrowthStatus.levelNames[g.level]}이 돼요.'
+                                : '다음 단계(${GrowthStatus.levelEmojis[g.level]} ${GrowthStatus.levelNames[g.level]})까지 ${g.pointsToNext}점 — 함께 키워요!',
                     style: GoogleFonts.notoSansKr(
                       fontSize: 11,
-                      fontWeight:
-                          g.isGateLocked ? FontWeight.w700 : FontWeight.w400,
+                      fontWeight: g.isGateLocked || g.isDayLocked
+                          ? FontWeight.w700
+                          : FontWeight.w400,
                       color: g.isGateLocked
                           ? const Color(0xFFB45309)
-                          : AppColors.textSecondary,
+                          : g.isDayLocked
+                              ? const Color(0xFF3D6B21)
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -147,33 +152,38 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
             // 성장 로드맵
             PbsCard(
               color: const Color(0xFFF0FDF4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(GrowthStatus.levelEmojis.length, (i) {
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 6,
+                runSpacing: 8,
+                children: List.generate(GrowthStatus.levelNames.length, (i) {
                   final reached = g.level >= i + 1;
-                  return Column(
-                    children: [
-                      Opacity(
-                        opacity: reached ? 1 : 0.28,
-                        child: Image.asset(
-                          GrowthStatus.assetFor(i + 1),
-                          width: g.level == i + 1 ? 38 : 26,
-                          height: g.level == i + 1 ? 38 : 26,
+                  final here = g.level == i + 1;
+                  return SizedBox(
+                    width: 44,
+                    child: Column(
+                      children: [
+                        Opacity(
+                          opacity: reached ? 1 : 0.28,
+                          child: Image.asset(
+                            GrowthStatus.assetFor(i + 1),
+                            width: here ? 38 : 26,
+                            height: here ? 38 : 26,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Lv.${i + 1}',
-                        style: GoogleFonts.notoSansKr(
-                          fontSize: 8.5,
-                          fontWeight: g.level == i + 1
-                              ? FontWeight.w900
-                              : FontWeight.w500,
-                          color: reached
-                              ? AppColors.studentGreen
-                              : AppColors.textTertiary,
+                        Text(
+                          'Lv.${i + 1}',
+                          style: GoogleFonts.notoSansKr(
+                            fontSize: 8.5,
+                            fontWeight:
+                                here ? FontWeight.w900 : FontWeight.w500,
+                            color: reached
+                                ? AppColors.studentGreen
+                                : AppColors.textTertiary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   );
                 }),
               ),
