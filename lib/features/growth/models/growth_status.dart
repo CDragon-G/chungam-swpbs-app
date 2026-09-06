@@ -4,29 +4,34 @@ class GrowthStatus {
     required this.schoolName,
     required this.score,
     required this.days,
+    required this.yearLabel,
+    required this.history,
     required this.missions,
     required this.activity,
   });
 
   final String schoolName;
-  final int score; // 0 ~ 240
-  final int days; // 도입 후 경과일
+  final int score; // 0 ~ 240 (이번 학년도 기준)
+  final int days; // 이번 학년도 경과일 (학기 중 도입이면 도입일부터)
+  final String yearLabel; // '2026학년도'
+  final List<GrowthYear> history; // 지난 학년도 최고 기록
   final List<GrowthMission> missions;
   final GrowthActivity activity;
 
   // ── 레벨 (12단계) ───────────────────────────────
   // 점수 만점은 240 (성장 미션 80 + 활동 양분 160).
-  // Lv.7 열매나무까지는 한 해 안에 닿을 수 있게 두었다. 실제로 충암중이
-  // 한 학기 만에 도착했다. 거기서 끝내면 더 키울 것이 없어지므로
-  // Lv.8부터는 '점수'와 '함께한 날'을 같이 본다. 나무는 몰라도
-  // 숲은 한 학기에 만들어지지 않는다.
+  // 성장은 학년도(3/1~) 단위다. 3월이면 새 학생들과 다시 씨앗부터 키운다.
+  // 그래서 12단계 전체가 한 학년도 안에 들어가야 한다 — Lv.12 모두의 숲은
+  // 3월에 시작해 12월쯤 닿는 자리다.
   static const levelThresholds = [
-    0, 15, 40, 70, 100, 130, 160, 175, 190, 205, 220, 235,
+    0, 15, 40, 70, 100, 130, 160, 170, 182, 194, 206, 218,
   ];
 
-  /// 레벨별로 필요한 '도입 후 경과일'. Lv.7까지는 시간 조건이 없다.
+  /// 레벨별로 필요한 '이번 학년도 경과일'. Lv.7까지는 시간 조건이 없다.
+  /// 3/1 기준으로 60일≈4월 말, 100일≈6월 중순, 150일≈7월 말,
+  /// 210일≈9월 말, 270일≈11월 하순.
   static const levelDays = [
-    0, 0, 0, 0, 0, 0, 0, 120, 240, 400, 550, 730,
+    0, 0, 0, 0, 0, 0, 0, 60, 100, 150, 210, 270,
   ];
 
   static const levelEmojis = [
@@ -135,16 +140,42 @@ class GrowthStatus {
   int get pointsToNext =>
       isMaxLevel ? 0 : (levelThresholds[level] - score).clamp(0, 999);
 
+  /// 새 학년도가 막 시작된 시기인가 (리셋을 설명해 줘야 하는 구간).
+  bool get isNewYear => days <= 45;
+
   factory GrowthStatus.fromMap(Map<String, dynamic> m) => GrowthStatus(
         schoolName: m['school_name'] as String? ?? '우리 학교',
         score: (m['score'] as num?)?.toInt() ?? 0,
         days: (m['days'] as num?)?.toInt() ?? 0,
+        yearLabel: m['year_label'] as String? ?? '',
+        history: ((m['history'] as List?) ?? const [])
+            .map((e) => GrowthYear.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList(),
         missions: ((m['missions'] as List?) ?? const [])
             .map((e) =>
                 GrowthMission.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList(),
         activity: GrowthActivity.fromMap(
             Map<String, dynamic>.from((m['activity'] as Map?) ?? {})),
+      );
+}
+
+/// 지난 학년도의 최고 기록. 리셋되어도 이건 남는다.
+class GrowthYear {
+  GrowthYear({required this.year, required this.level, required this.score});
+  final String year; // '2026학년도'
+  final int level;
+  final int score;
+
+  String get emoji =>
+      GrowthStatus.levelEmojis[(level - 1).clamp(0, GrowthStatus.levelEmojis.length - 1)];
+  String get name =>
+      GrowthStatus.levelNames[(level - 1).clamp(0, GrowthStatus.levelNames.length - 1)];
+
+  factory GrowthYear.fromMap(Map<String, dynamic> m) => GrowthYear(
+        year: m['year'] as String? ?? '',
+        level: (m['level'] as num?)?.toInt() ?? 1,
+        score: (m['score'] as num?)?.toInt() ?? 0,
       );
 }
 

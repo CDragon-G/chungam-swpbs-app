@@ -18,7 +18,8 @@ Future<void> maybeShowLevelUp(BuildContext context, WidgetRef ref) async {
     if (growth == null) return;
 
     final res = await SupabaseService.client
-        .rpc('check_growth_level', params: {'p_level': growth.level});
+        .rpc('check_growth_level',
+            params: {'p_level': growth.level, 'p_score': growth.score});
     final m = Map<String, dynamic>.from(res as Map);
     if (m['leveled_up'] != true) return;
 

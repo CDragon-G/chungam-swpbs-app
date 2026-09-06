@@ -140,7 +140,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                         fontSize: 20, fontWeight: FontWeight.w900),
                   ),
                   Text(
-                    'Lv.${g.level} ${g.levelName} · ${g.score}점 · 함께한 지 ${g.days}일',
+                    'Lv.${g.level} ${g.levelName} · ${g.score}점 · ${g.yearLabel} ${g.days}일째',
                     style: GoogleFonts.notoSansKr(
                         fontSize: 12, color: AppColors.textSecondary),
                   ),
@@ -148,6 +148,23 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
               ),
             ),
             const SizedBox(height: AppSizes.md),
+
+            // 새 학년도 안내 — 왜 나무가 작아졌는지 먼저 말해준다
+            if (g.isNewYear)
+              PbsCard(
+                color: const Color(0xFFFEF3C7),
+                child: Text(
+                  '🌱 ${g.yearLabel}가 시작됐어요.\n'
+                  '새 친구들과 다시 씨앗부터 함께 키웁니다. '
+                  '지난 학년도 기록은 아래에 그대로 남아 있어요.',
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 12,
+                      height: 1.6,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF92400E)),
+                ),
+              ),
+            if (g.isNewYear) const SizedBox(height: AppSizes.md),
 
             // 성장 로드맵
             PbsCard(
@@ -233,7 +250,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   ),
                 )),
 
-            const SectionHeader(title: '💧 매일 주는 양분 (활동 점수)'),
+            SectionHeader(title: '💧 ${g.yearLabel} 양분 (활동 점수)'),
             PbsCard(
               child: Column(
                 children: [
@@ -246,7 +263,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   ),
                   _ActivityRow(
                     icon: '💚',
-                    label: '누적 칭찬 ${g.activity.praiseTotal}회',
+                    label: '칭찬 ${g.activity.praiseTotal}회',
                     value: '',
                     pts: g.activity.praisePts,
                     max: 25,
@@ -303,6 +320,37 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                 ],
               ),
             ),
+
+            if (g.history.isNotEmpty) ...[
+              const SectionHeader(title: '🏅 지난 학년도 기록'),
+              PbsCard(
+                child: Column(
+                  children: g.history
+                      .map((y) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 5),
+                            child: Row(
+                              children: [
+                                Image.asset(GrowthStatus.assetFor(y.level),
+                                    width: 34, height: 34),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(y.year,
+                                      style: GoogleFonts.notoSansKr(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700)),
+                                ),
+                                Text('Lv.${y.level} ${y.name} · ${y.score}점',
+                                    style: GoogleFonts.notoSansKr(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.studentGreen)),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ),
+            ],
 
             const SizedBox(height: AppSizes.sm),
             Text(
