@@ -11,7 +11,7 @@ class AppNotification {
   });
 
   final String id;
-  final String type; // praise|store_item|rule|growth|exchange|lounge|notice
+  final String type; // praise|praise_sent|store_item|rule|growth|exchange|lounge|notice
   final String title;
   final String? body;
   final String? route;
@@ -36,6 +36,7 @@ class AppNotification {
 
   String get emoji => switch (type) {
         'praise' => '💚',
+        'praise_sent' => '💚',
         'store_item' => '🎁',
         'rule' => '📖',
         'growth' => '🌱',
@@ -47,6 +48,7 @@ class AppNotification {
   /// 역할에 맞는 이동 경로 (없으면 null).
   String? routeFor({required bool isTeacher}) => switch (type) {
         'praise' => isTeacher ? null : '/student/mypage',
+        'praise_sent' => isTeacher ? '/teacher/praise-sent' : null,
         'store_item' => isTeacher ? '/teacher/store' : '/student/store',
         'rule' => isTeacher ? '/teacher/rules' : null,
         'exchange' => isTeacher ? '/teacher/store' : null,

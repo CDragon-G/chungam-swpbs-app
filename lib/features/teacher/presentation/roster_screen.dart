@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -158,6 +159,42 @@ class _AddOneTabState extends ConsumerState<_AddOneTab> {
     return ListView(
       padding: const EdgeInsets.all(AppSizes.lg),
       children: [
+        // 3월에 오는 길. 새 명렬표를 그냥 올리면 진급이 반영되지 않고
+        // 신입생은 잠긴 자리 때문에 가입조차 못 한다.
+        PbsCard(
+          color: const Color(0xFFFEF3C7),
+          onTap: () => context.go('/teacher/promotion'),
+          child: Row(
+            children: [
+              const Text('🎓', style: TextStyle(fontSize: 24)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('새 학년도 진급 처리',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF92400E))),
+                    const SizedBox(height: 2),
+                    Text(
+                      '학년이 바뀌었다면 여기로. 그냥 명단을 다시 올리면 '
+                      '진급이 반영되지 않고 신입생이 가입하지 못합니다.',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 11.5,
+                          height: 1.5,
+                          color: const Color(0xFF92400E)),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: Color(0xFF92400E)),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSizes.md),
         PbsCard(
           color: AppColors.teacherNavyLight,
           child: Text(

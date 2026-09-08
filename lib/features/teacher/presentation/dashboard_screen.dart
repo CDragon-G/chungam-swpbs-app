@@ -139,6 +139,19 @@ class _OverallTab extends ConsumerWidget {
             const SectionHeader(title: '카테고리 평균'),
             PbsCard(child: CategoryRadarChart(scores: o.categoryAverages)),
             const SizedBox(height: AppSizes.lg),
+            // 내가 보낸 칭찬 — 스낵바로만 스쳐가던 것을 다시 확인하는 자리
+            OutlinedButton.icon(
+              onPressed: () => context.go('/teacher/praise-sent'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.teacherNavy,
+                side: const BorderSide(color: AppColors.teacherNavy),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.favorite_rounded, size: 18),
+              label: Text('내가 보낸 칭찬',
+                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: AppSizes.sm),
             // 규칙별 O/X 통계와 학생 건의함으로 가는 길
             OutlinedButton.icon(
               onPressed: () => context.go('/teacher/rule-stats'),

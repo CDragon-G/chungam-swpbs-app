@@ -23,6 +23,8 @@ import '../../features/calendar/presentation/school_calendar_screen.dart';
 import '../../features/homeroom/presentation/homeroom_screen.dart';
 import '../../features/quiz/quiz_admin_screen.dart';
 import '../../features/suggestions/suggestion_screens.dart';
+import '../../features/teacher/presentation/praise_sent_screen.dart';
+import '../../features/teacher/presentation/roster_promotion_screen.dart';
 import '../../features/teacher/presentation/rule_stats_screen.dart';
 import '../../features/teacher/presentation/teacher_admin_screen.dart';
 import '../../features/lounge/presentation/teacher_lounge_screen.dart';
@@ -146,6 +148,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/teacher/homeroom', builder: (_, __) => const HomeroomScreen()),
           GoRoute(path: '/teacher/suggestions', builder: (_, __) => const SuggestionAdminScreen()),
           GoRoute(path: '/teacher/rule-stats', builder: (_, __) => const RuleStatsScreen()),
+          GoRoute(path: '/teacher/praise-sent', builder: (_, __) => const PraiseSentScreen()),
+          GoRoute(path: '/teacher/promotion', builder: (_, __) => const RosterPromotionScreen()),
           GoRoute(path: '/teacher/accounts', builder: (_, __) => const TeacherAdminScreen()),
           GoRoute(path: '/teacher/quiz-admin', builder: (_, __) => const QuizAdminScreen()),
         ],
