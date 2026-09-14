@@ -8,14 +8,27 @@
 1. 054_praise_sent_notice.sql    앱 배포 전에 (구버전도 문제없이 동작)
 2. 055_roster_promotion.sql      앱 배포 전에
 3. 0.24.0 을 스토어에 올리고 출시 완료까지 기다린다
-4. select set_version_gate(null, '0.24.0');   ← 출시가 끝난 뒤에만
+4. 버전 게이트 올리기                         ← 출시가 끝난 뒤에만
 ```
+
+4번은 두 컬럼을 같이 올려야 합니다.
+
+```sql
+update app_releases
+   set latest_version = '0.24.0', min_version = '0.24.0', updated_at = now()
+ where platform in ('android', 'ios');
+```
+
+`set_version_gate()` 는 `min_version` 만 바꿉니다. 그것만 쓰면 `latest_version`
+이 옛 값에 남아서, 막힌 사용자가 "지금 0.23.0 → 최신 0.23.0" 이라는 앞뒤 안 맞는
+안내를 봅니다. `set_version_gate()` 는 **잠금을 풀 때만** 쓰세요.
 
 054·055 는 먼저 실행해도 구버전 앱이 그대로 동작합니다. 추가된 알림과
 함수를 구버전이 무시할 뿐입니다.
 
 **4번은 SQL 파일이 아닙니다.** 스토어에 0.24.0 이 실제로 올라간 것을 확인한
-뒤에 저 한 줄만 실행하세요.
+뒤에만 실행하세요. 한쪽 스토어만 끝났으면 `where platform = 'android'` 처럼
+끝난 쪽만 올리세요.
 
 ## Google Play — 새로운 기능 (500자 제한)
 
