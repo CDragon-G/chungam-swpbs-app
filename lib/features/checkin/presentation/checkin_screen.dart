@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../honor/weekly_honor_marquee.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
@@ -151,6 +152,8 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
       ref.invalidate(checkinHistoryProvider);
       ref.invalidate(myPointsProvider);
       ref.invalidate(myPointsHistoryProvider);
+      ref.invalidate(weeklyHonorProvider);
+      ref.invalidate(myWeeklyHonorProvider);
       await evaluateAndAwardBadges(ref);
       if (!mounted) return;
       celebrateGrowth(context, ref, headline: '오늘의 자기점검 완료! ✅');

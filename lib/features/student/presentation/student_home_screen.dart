@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../honor/weekly_honor_marquee.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../shared/providers/profile_provider.dart';
@@ -81,6 +82,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         ref.invalidate(voteHintProvider);
         ref.invalidate(unreadNotificationCountProvider);
         ref.invalidate(todaySchoolStatusProvider);
+        ref.invalidate(weeklyHonorProvider);
       },
       // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
       child: MediaQuery.withClampedTextScaling(
@@ -124,6 +126,15 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                 onTap: () => _showNoticeSheet(context),
               ),
             ),
+
+          // ── 공지 아래: 이 주의 명예 식집사 (좌→우로 흐름) ──
+          //    좌우 메뉴를 피해 공지 배너와 같은 폭에 둔다.
+          Positioned(
+            top: (latestNotice != null ? 142 : 102) * fs,
+            left: 62 * fs,
+            right: 62 * fs,
+            child: const WeeklyHonorMarquee(),
+          ),
 
           // ── 좌상단: 인사 + 스트릭 ──
           Positioned(
