@@ -37,6 +37,8 @@ class AppNotification {
   String get emoji => switch (type) {
         'praise' => '💚',
         'praise_sent' => '💚',
+        'praise_mail' => '💌',
+        'praise_mail_report' => '💌',
         'store_item' => '🎁',
         'rule' => '📖',
         'growth' => '🌱',
@@ -49,6 +51,8 @@ class AppNotification {
   String? routeFor({required bool isTeacher}) => switch (type) {
         'praise' => isTeacher ? null : '/student/mypage',
         'praise_sent' => isTeacher ? '/teacher/praise-sent' : null,
+        'praise_mail' => isTeacher ? null : '/student/praise-mail',
+        'praise_mail_report' => isTeacher ? '/teacher/praise-mail' : null,
         'store_item' => isTeacher ? '/teacher/store' : '/student/store',
         'rule' => isTeacher ? '/teacher/rules' : null,
         'exchange' => isTeacher ? '/teacher/store' : null,

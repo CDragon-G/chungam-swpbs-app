@@ -152,6 +152,18 @@ class _OverallTab extends ConsumerWidget {
                   style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
             ),
             const SizedBox(height: AppSizes.sm),
+            OutlinedButton.icon(
+              onPressed: () => context.go('/teacher/praise-mail'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.teacherNavy,
+                side: const BorderSide(color: AppColors.teacherNavy),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.markunread_mailbox_rounded, size: 18),
+              label: Text('학급 칭찬 우체통',
+                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: AppSizes.sm),
             // 규칙별 O/X 통계와 학생 건의함으로 가는 길
             OutlinedButton.icon(
               onPressed: () => context.go('/teacher/rule-stats'),

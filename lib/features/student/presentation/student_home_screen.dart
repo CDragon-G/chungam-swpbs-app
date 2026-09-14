@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../praise_mail/praise_mail_screens.dart';
 import '../../honor/weekly_honor_marquee.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -63,6 +64,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
     final stats = ref.watch(studentStatsProvider).value;
     final todayDone = ref.watch(todayCheckinProvider).value != null;
     final hasCico = ref.watch(myCicoProvider).value != null;
+    final unreadMail = ref.watch(unreadPraiseMailProvider).value ?? 0;
     final voteHint = ref.watch(voteHintProvider).value;
     final schoolDay = ref.watch(todaySchoolStatusProvider).value;
     final isRestDay = schoolDay != null && !schoolDay.isSchoolDay;
@@ -83,6 +85,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         ref.invalidate(unreadNotificationCountProvider);
         ref.invalidate(todaySchoolStatusProvider);
         ref.invalidate(weeklyHonorProvider);
+        ref.invalidate(unreadPraiseMailProvider);
       },
       // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
       child: MediaQuery.withClampedTextScaling(
@@ -222,6 +225,13 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                   asset: 'assets/icons/menu_fame.png',
                   label: '명예의 전당',
                   onTap: () => context.go('/student/hall-of-fame'),
+                ),
+                FarmMenuButton(
+                  scale: fs,
+                  asset: 'assets/icons/menu_mailbox.png',
+                  label: '칭찬 우체통',
+                  badge: unreadMail > 0 ? '$unreadMail' : null,
+                  onTap: () => context.go('/student/praise-mail'),
                 ),
                 if (hasCico)
                   FarmMenuButton(
