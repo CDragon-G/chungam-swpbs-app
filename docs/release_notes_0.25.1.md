@@ -136,15 +136,18 @@ update app_releases
 학교마다 따로 정할 수 있습니다. 단축수업이나 시험 기간에 쓰세요.
 
 ```sql
--- 확인
-select name, checkin_open_time from schools;
+-- 1) 우리 학교 id 확인 (학교가 여러 개 등록되어 있어서 이름으로 지정하면 위험)
+select id, name, checkin_open_time, created_at from schools order by created_at;
 
--- 바꾸기 (예: 12시 30분)
-update schools set checkin_open_time = '12:30' where name = '충암중학교';
+-- 2) 바꾸기 (예: 12시 30분)
+update schools set checkin_open_time = '12:30' where id = '<우리 학교 id>';
 
--- 되돌리기
-update schools set checkin_open_time = '13:00' where name = '충암중학교';
+-- 3) 되돌리기
+update schools set checkin_open_time = '13:00' where id = '<우리 학교 id>';
 ```
+
+**이름으로 지정하지 마세요.** 자람에는 여러 학교가 등록되어 있고, 같은 이름의 학교가
+둘 이상이면 모두 바뀝니다.
 
 앱 안내 문구("오후 12시 30분부터")는 이 값을 따라 바뀝니다. 다만 **점검 알림의 최소
 시각은 앱에 오후 1시로 고정**되어 있어서, 여는 시각을 1시보다 늦추시면 알림이 여는
