@@ -44,6 +44,8 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
       if (!mounted) return;
       ref.invalidate(schoolRulesProvider);
       ref.invalidate(todayCheckinProvider);
+      // 오전에 받아둔 '아직 안 열림' 상태가 남아 있지 않도록 다시 묻는다
+      ref.invalidate(todaySchoolStatusProvider);
     });
   }
 
@@ -228,6 +230,60 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
                         color: AppColors.textSecondary,
                         height: 1.5,
                       ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        // 하교 전에는 열지 않는다 — 오늘을 돌아보는 점검이라서
+        if (schoolDay != null && schoolDay.isBeforeOpen) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(
+              backgroundColor: AppColors.background,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => context.go('/student/home'),
+              ),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🕐', style: TextStyle(fontSize: 52)),
+                    const SizedBox(height: AppSizes.lg),
+                    Text(
+                      '자기점검은 ${schoolDay.opensText}부터 열려요',
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.sm),
+                    Text(
+                      '하루를 다 보낸 뒤에 돌아봐야\n오늘의 나를 정확하게 점검할 수 있어요.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.lg),
+                    OutlinedButton(
+                      onPressed: () => ref.invalidate(todaySchoolStatusProvider),
+                      child: Text('다시 확인하기',
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w700)),
                     ),
                   ],
                 ),

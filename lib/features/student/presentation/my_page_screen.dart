@@ -547,10 +547,21 @@ class _ReminderSettingsState extends State<_ReminderSettings> {
       initialTime: TimeOfDay(hour: _hour, minute: _minute),
     );
     if (picked == null) return;
+    final t = ReminderPrefs.clamp(picked.hour, picked.minute);
     setState(() {
-      _hour = picked.hour;
-      _minute = picked.minute;
+      _hour = t.hour;
+      _minute = t.minute;
     });
+    if (ReminderPrefs.isTooEarly(picked.hour, picked.minute) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '자기점검은 오후 1시부터 열려서 알림도 1시로 맞췄어요',
+            style: GoogleFonts.notoSansKr(),
+          ),
+        ),
+      );
+    }
     await _apply();
   }
 
@@ -578,7 +589,7 @@ class _ReminderSettingsState extends State<_ReminderSettings> {
                   fontWeight: FontWeight.w700, fontSize: 14),
             ),
             subtitle: Text(
-              '정해진 시간에 자기점검을 잊지 않게 알려드려요',
+              '하교 후 정해진 시간에 잊지 않게 알려드려요 (오후 1시 이후)',
               style: GoogleFonts.notoSansKr(
                   fontSize: 11, color: AppColors.textTertiary),
             ),

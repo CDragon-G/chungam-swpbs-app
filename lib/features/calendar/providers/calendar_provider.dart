@@ -9,11 +9,47 @@ class SchoolDayStatus {
     required this.isSchoolDay,
     this.reason,
     this.label,
+    this.checkinOpen = true,
+    this.opensAt,
+    this.opensLabel,
   });
 
   final bool isSchoolDay;
   final String? reason; // weekend | holiday | closure
   final String? label; // '토요일' · '추석' · '여름방학'
+
+  /// 서버가 확인한 순간 자기점검이 열려 있었는가 (하교 후에만 열린다).
+  final bool checkinOpen;
+
+  /// 여는 시각 'HH:MM' (한국 시간). 서버가 알려준다.
+  final String? opensAt;
+
+  /// '오후 1시'
+  final String? opensLabel;
+
+  /// 지금 점검 버튼을 열어줄지.
+  ///
+  /// 판단은 서버가 한다 — 실제로 막는 곳은 submit_checkin 과 RLS 다.
+  /// 여기서는 화면만 정한다. 오전에 받아둔 상태로 화면을 계속 켜두면
+  /// 1시가 지나도 잠겨 보이므로, 기기 시계가 여는 시각을 넘었으면 열어준다.
+  /// 기기 시계를 조작해도 버튼만 열릴 뿐 서버가 거절한다.
+  bool get isCheckinOpenNow {
+    if (!isSchoolDay) return false;
+    if (checkinOpen) return true;
+    final at = opensAt;
+    if (at == null) return false;
+    final parts = at.split(':');
+    if (parts.length != 2) return false;
+    final h = int.tryParse(parts[0]) ?? 13;
+    final m = int.tryParse(parts[1]) ?? 0;
+    final kst = DateTime.now().toUtc().add(const Duration(hours: 9));
+    return kst.hour > h || (kst.hour == h && kst.minute >= m);
+  }
+
+  /// 수업일인데 아직 열리기 전인가 (오전).
+  bool get isBeforeOpen => isSchoolDay && !isCheckinOpenNow;
+
+  String get opensText => opensLabel ?? '오후 1시';
 
   /// 학생에게 보여줄 한 줄 안내.
   String get message => switch (reason) {
@@ -35,6 +71,10 @@ class SchoolDayStatus {
         isSchoolDay: m['is_school_day'] as bool? ?? true,
         reason: m['reason'] as String?,
         label: m['label'] as String?,
+        // 058 이전 서버에는 이 값이 없다 → 막지 않는다
+        checkinOpen: m['checkin_open'] as bool? ?? true,
+        opensAt: m['opens_at'] as String?,
+        opensLabel: m['opens_label'] as String?,
       );
 }
 

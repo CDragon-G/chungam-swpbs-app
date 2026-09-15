@@ -11,12 +11,27 @@ class ReminderPrefs {
   static const _kHour = 'reminder_hour';
   static const _kMinute = 'reminder_minute';
 
+  /// 자기점검은 하교 후(오후 1시)부터 열린다. 그 전에 알림이 오면
+  /// 눌러봐야 잠겨 있으니, 알림은 이 시각보다 이르게 잡지 않는다.
+  /// 예전에 오전으로 맞춰둔 학생도 앱을 열면 다시 예약되며 여기로 올라온다.
+  static const earliestHour = 13;
+  static const earliestMinute = 0;
+
+  static bool isTooEarly(int hour, int minute) =>
+      hour < earliestHour || (hour == earliestHour && minute < earliestMinute);
+
+  static ({int hour, int minute}) clamp(int hour, int minute) =>
+      isTooEarly(hour, minute)
+          ? (hour: earliestHour, minute: earliestMinute)
+          : (hour: hour, minute: minute);
+
   static Future<({bool enabled, int hour, int minute})> load() async {
     final p = await SharedPreferences.getInstance();
+    final t = clamp(p.getInt(_kHour) ?? 17, p.getInt(_kMinute) ?? 0);
     return (
       enabled: p.getBool(_kEnabled) ?? false,
-      hour: p.getInt(_kHour) ?? 17,
-      minute: p.getInt(_kMinute) ?? 0,
+      hour: t.hour,
+      minute: t.minute,
     );
   }
 
@@ -26,12 +41,13 @@ class ReminderPrefs {
     required int hour,
     required int minute,
   }) async {
+    final t = clamp(hour, minute);
     final p = await SharedPreferences.getInstance();
     await p.setBool(_kEnabled, enabled);
-    await p.setInt(_kHour, hour);
-    await p.setInt(_kMinute, minute);
+    await p.setInt(_kHour, t.hour);
+    await p.setInt(_kMinute, t.minute);
     if (enabled) {
-      await _scheduleSchoolDaysOnly(hour, minute);
+      await _scheduleSchoolDaysOnly(t.hour, t.minute);
     } else {
       await NotificationsService.cancelReminder();
     }

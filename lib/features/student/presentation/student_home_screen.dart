@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -37,9 +39,24 @@ class StudentHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
+  // 오전에 홈을 켜둔 채 1시가 지나면 점검 버튼이 저절로 열리도록
+  Timer? _openTick;
+
+  @override
+  void dispose() {
+    _openTick?.cancel();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _openTick = Timer.periodic(const Duration(minutes: 1), (_) {
+      final st = ref.read(todaySchoolStatusProvider).value;
+      if (mounted && st != null && st.isSchoolDay && !st.checkinOpen) {
+        setState(() {});
+      }
+    });
     // 학생 첫 진입 시 일일 리마인더 기본 ON (한 번도 설정 안 했을 때만)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // 첫 실행 알림 권한 안내 (동의 시 일일 리마인더도 함께 켜짐)
@@ -68,6 +85,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
     final voteHint = ref.watch(voteHintProvider).value;
     final schoolDay = ref.watch(todaySchoolStatusProvider).value;
     final isRestDay = schoolDay != null && !schoolDay.isSchoolDay;
+    final beforeOpen = schoolDay != null && schoolDay.isBeforeOpen;
     final announcements = ref.watch(announcementsProvider).value;
     final latestNotice =
         (announcements != null && announcements.isNotEmpty)
@@ -217,7 +235,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                   scale: fs,
                   asset: 'assets/icons/info_status.png',
                   label: '오늘 점검',
-                  badge: (todayDone || isRestDay) ? null : '!',
+                  badge: (todayDone || isRestDay || beforeOpen) ? null : '!',
                   onTap: () => context.go('/student/checkin'),
                 ),
                 FarmMenuButton(
@@ -325,7 +343,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                 SizedBox(
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: (todayDone || isRestDay)
+                    onPressed: (todayDone || isRestDay || beforeOpen)
                         ? null
                         : () => context.go('/student/checkin'),
                     style: ElevatedButton.styleFrom(
@@ -342,7 +360,9 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                     child: Text(
                       isRestDay
                           ? schoolDay.message
-                          : todayDone
+                          : beforeOpen
+                              ? '🕐 자기점검은 ${schoolDay.opensText}부터 열려요'
+                              : todayDone
                               ? '오늘 점검 완료! 새싹이 자랐어요 🌱'
                               : '✅ 오늘 자기점검 하러 가기',
                       style: GoogleFonts.notoSansKr(
