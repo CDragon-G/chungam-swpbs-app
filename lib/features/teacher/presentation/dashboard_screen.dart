@@ -178,6 +178,17 @@ class _OverallTab extends ConsumerWidget {
             ),
             if (ref.watch(profileProvider).value?.isAdminTeacher ?? false) ...[
               const SizedBox(height: AppSizes.sm),
+              FilledButton.icon(
+                onPressed: () => context.go('/teacher/support'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFB91C1C),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                icon: const Text('🧩', style: TextStyle(fontSize: 16)),
+                label: Text('학맞통 연계 안건',
+                    style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(height: AppSizes.sm),
               OutlinedButton.icon(
                 onPressed: () => context.go('/teacher/suggestions'),
                 style: OutlinedButton.styleFrom(

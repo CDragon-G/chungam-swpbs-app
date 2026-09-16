@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/supabase/supabase_client.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
@@ -264,6 +265,45 @@ class _SummaryTab extends ConsumerWidget {
     );
   }
 
+  Future<void> _referToSupport(BuildContext context, KodrSummaryEntry e) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('학맞통 안건으로 올릴까요?',
+            style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+        content: Text(
+          '${e.nickname} (${e.classLabel})\n'
+          '기준에 닿지 않았더라도 리더십팀 판단으로 올릴 수 있어요.',
+          style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('올리기')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final res = await SupabaseService.client
+          .rpc('create_support_referral', params: {'p_student': e.studentId});
+      final m = Map<String, dynamic>.from(res as Map);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(m['ok'] == true
+              ? '학맞통 안건에 올렸어요'
+              : (m['error'] as String? ?? '올리지 못했어요'))));
+    } catch (err) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(translateError(err))));
+      }
+    }
+  }
+
   Widget _row(BuildContext context, WidgetRef ref, KodrSummaryEntry e,
           {bool highlight = false}) =>
       Padding(
@@ -304,6 +344,24 @@ class _SummaryTab extends ConsumerWidget {
                           color: AppColors.teacherNavy)),
                 ],
               ),
+              // 리더십팀 판단으로 학맞통 안건에 바로 올리기 (기준 미달이어도)
+              if (ref.read(profileProvider).value?.isAdminTeacher ?? false)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _referToSupport(context, e),
+                    icon: const Text('🧩', style: TextStyle(fontSize: 13)),
+                    label: Text('학맞통 안건으로 올리기',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFB91C1C))),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+                ),
               if (highlight)
                 Align(
                   alignment: Alignment.centerRight,

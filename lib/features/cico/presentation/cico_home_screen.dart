@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../support/support_referral_screen.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/date_utils.dart';
@@ -231,9 +232,9 @@ class _EnrollmentCard extends ConsumerWidget {
 }
 
 
-/// CICO 시작 권장 후보 카드 — 이달 K-ODR이 학교 기준 이상인 학생.
+/// CICO 시작 권장 후보 카드 — 최근 N일 K-ODR이 학교 기준 이상인 학생.
 /// 담임 반 학생은 '우리 반' 배지로 강조, 바로 CICO 시작 가능.
-/// 관리자는 기준(월 N건)을 조정할 수 있다.
+/// 관리자는 기준(최근 N일 M건)을 조정할 수 있다.
 class _CandidatesCard extends ConsumerWidget {
   const _CandidatesCard();
 
@@ -261,7 +262,7 @@ class _CandidatesCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  '🔔 CICO 시작을 권장해요 (이달 K-ODR $threshold건 이상)',
+                  '🔔 CICO 시작을 권장해요 (최근 ${ref.watch(supportSettingsProvider).value?.windowDays ?? 30}일 K-ODR $threshold건 이상)',
                   style: GoogleFonts.notoSansKr(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
@@ -348,7 +349,7 @@ class _CandidatesCard extends ConsumerWidget {
     );
   }
 
-  /// (관리자) 학교 기준 조정 — 연구상 월 2~5건이 Tier 2 검토 권장 범위.
+  /// (관리자) 학교 기준 조정. PBIS(SWIS) 기준은 한 해 2~5건 Tier 2, 6건 이상 Tier 3.
   void _editThreshold(BuildContext context, WidgetRef ref, int current) {
     int value = current;
     showDialog(
@@ -362,9 +363,9 @@ class _CandidatesCard extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '이달 K-ODR이 몇 건 이상이면 CICO를 권장할까요?\n'
-                '연구에서는 월 2~5건을 Tier 2 검토 기준으로 권장해요.\n'
-                '(2건 = 민감하게 · 3건 = 균형(기본) · 5건 = 보수적으로)',
+                '최근 기간 K-ODR이 몇 건 이상이면 CICO를 권장할까요?\n'
+                'PBIS(SWIS) 기준은 한 해 2~5건이면 Tier 2 검토예요.\n'
+                '기간과 학맞통 기준은 [학맞통 연계 안건] 화면에서 함께 조정해요.',
                 style: GoogleFonts.notoSansKr(
                     fontSize: 12.5,
                     color: AppColors.textSecondary,
@@ -397,10 +398,18 @@ class _CandidatesCard extends ConsumerWidget {
                 child: const Text('취소')),
             FilledButton(
               onPressed: () async {
-                await SupabaseService.client
+                final res = await SupabaseService.client
                     .rpc('set_kodr_cico_threshold', params: {'p_value': value});
                 ref.invalidate(cicoCandidatesProvider);
-                if (ctx.mounted) Navigator.pop(ctx);
+                ref.invalidate(supportSettingsProvider);
+                final m = Map<String, dynamic>.from(res as Map);
+                if (!ctx.mounted) return;
+                if (m['ok'] != true) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                      content: Text(m['error'] as String? ?? '저장하지 못했어요')));
+                  return;
+                }
+                Navigator.pop(ctx);
               },
               child: const Text('저장'),
             ),
