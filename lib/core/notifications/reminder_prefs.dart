@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../supabase/supabase_client.dart';
@@ -10,6 +12,20 @@ class ReminderPrefs {
   static const _kEnabled = 'reminder_enabled';
   static const _kHour = 'reminder_hour';
   static const _kMinute = 'reminder_minute';
+  static const _kJitter = 'reminder_jitter_min';
+  static const _kSpread = 'reminder_spread_done';
+
+  /// 기본 알림 시각에 더하는 기기별 0~29분.
+  /// 전교생 알림이 17:00 정각에 한꺼번에 울리면 모두 같은 순간 앱을 열어
+  /// 서버가 몰린다. 학교가 많아질수록 커지는 문제라 기기마다 조금씩 흩어 둔다.
+  /// 한 번 정해지면 그 기기에서는 바뀌지 않는다.
+  static int _jitter(SharedPreferences p) {
+    final saved = p.getInt(_kJitter);
+    if (saved != null) return saved;
+    final j = Random().nextInt(30);
+    p.setInt(_kJitter, j);
+    return j;
+  }
 
   /// 자기점검은 하교 후(오후 1시)부터 열린다. 그 전에 알림이 오면
   /// 눌러봐야 잠겨 있으니, 알림은 이 시각보다 이르게 잡지 않는다.
@@ -55,10 +71,30 @@ class ReminderPrefs {
 
   /// 앱 시작 시 재예약 보정 (켜져 있으면 다시 예약).
   static Future<void> reschedule() async {
+    await _spreadDefaultTimeOnce();
     final s = await load();
     if (s.enabled) {
       await _scheduleSchoolDaysOnly(s.hour, s.minute);
     }
+  }
+
+  /// 이미 켜둔 학생도 한 번만 흩어 둔다.
+  /// 기본값 17:00 그대로이거나, 오전으로 맞춰 13:00 으로 올라간 경우만 옮긴다.
+  /// 학생이 직접 고른 다른 시각은 건드리지 않는다.
+  static Future<void> _spreadDefaultTimeOnce() async {
+    final p = await SharedPreferences.getInstance();
+    if (p.getBool(_kSpread) == true) return;
+    final h = p.getInt(_kHour);
+    final m = p.getInt(_kMinute);
+    if (h != null && m != null) {
+      if (h == 17 && m == 0) {
+        await p.setInt(_kMinute, _jitter(p));
+      } else if (isTooEarly(h, m)) {
+        await p.setInt(_kHour, earliestHour);
+        await p.setInt(_kMinute, earliestMinute + _jitter(p));
+      }
+    }
+    await p.setBool(_kSpread, true);
   }
 
   /// 주말·공휴일·방학·재량휴업일을 뺀 '수업일'에만 알림을 예약한다.
@@ -101,6 +137,7 @@ class ReminderPrefs {
     final p = await SharedPreferences.getInstance();
     if (p.containsKey(_kEnabled)) return; // 이미 사용자가 선택함
     final granted = await NotificationsService.requestPermission();
-    await save(enabled: granted, hour: 17, minute: 0);
+    await p.setBool(_kSpread, true);
+    await save(enabled: granted, hour: 17, minute: _jitter(p));
   }
 }

@@ -98,6 +98,8 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         ref.invalidate(schoolGrowthProvider);
         ref.invalidate(todayCheckinProvider);
         ref.invalidate(studentStatsProvider);
+        ref.invalidate(checkinHistoryProvider(60));
+        ref.invalidate(totalCheckinCountProvider);
         ref.invalidate(announcementsProvider);
         ref.invalidate(voteHintProvider);
         ref.invalidate(unreadNotificationCountProvider);

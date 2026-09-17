@@ -35,7 +35,7 @@ Future<List<BadgeDef>> evaluateAndAwardBadges(WidgetRef ref) async {
       .toSet();
 
   final history = await ref.read(checkinHistoryProvider(60).future);
-  final total = await ref.read(checkinRepositoryProvider).totalCount();
+  final total = await ref.read(totalCheckinCountProvider.future);
   final streak = calculateStreak(history);
   final todayMax = history.isEmpty ? 0 : history.first.scorePct.round();
   final hasFullWeek = _hasFullWeek(history);

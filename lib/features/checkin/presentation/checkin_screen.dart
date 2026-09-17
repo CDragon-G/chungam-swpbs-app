@@ -152,6 +152,7 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
       ref.invalidate(todayCheckinProvider);
       ref.invalidate(studentStatsProvider);
       ref.invalidate(checkinHistoryProvider);
+      ref.invalidate(totalCheckinCountProvider);
       ref.invalidate(myPointsProvider);
       ref.invalidate(myPointsHistoryProvider);
       ref.invalidate(weeklyHonorProvider);

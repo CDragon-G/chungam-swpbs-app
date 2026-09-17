@@ -144,15 +144,15 @@ final studentStatsProvider = FutureProvider<StudentStats>((ref) async {
       lastWeekAvg: 0,
     );
   }
-  final repo = ref.read(checkinRepositoryProvider);
   final rules = ref.watch(schoolRulesProvider).value ?? const [];
-  final history = await repo.fetchHistory(days: 60);
+  // 뱃지 화면과 같은 60일 기록을 나눠 쓴다 (따로 두 번 내려받지 않게)
+  final history = await ref.watch(checkinHistoryProvider(60).future);
   final last30 = history.where((c) {
     final cutoff = KstDate.today().subtract(const Duration(days: 29));
     return !c.checkinDate.isBefore(cutoff);
   }).toList();
 
-  final total = await repo.totalCount();
+  final total = await ref.watch(totalCheckinCountProvider.future);
   final categoryAverages = _aggregateCategoryAverages(last30);
   final (best: best, worst: worst) = _bestWorstRule(last30, rules);
 

@@ -60,20 +60,6 @@ class CheckinRepository {
     return rows.map((m) => DailyCheckin.fromMap(m as Map<String, dynamic>)).toList();
   }
 
-  Future<List<DailyCheckin>> fetchSchoolHistory({
-    required String schoolId,
-    required int days,
-  }) async {
-    final since = KstDate.today().subtract(Duration(days: days - 1));
-    final rows = await _c
-        .from('daily_checkins')
-        .select()
-        .eq('school_id', schoolId)
-        .gte('checkin_date', KstDate.formatYmd(since))
-        .order('checkin_date', ascending: false);
-    return rows.map((m) => DailyCheckin.fromMap(m as Map<String, dynamic>)).toList();
-  }
-
   /// 오늘 점검을 제출한다.
   ///
   /// 날짜·점수·포인트를 모두 서버가 정한다. 예전에는 앱이 기기 시간으로
@@ -109,11 +95,19 @@ class CheckinRepository {
     );
   }
 
+  /// 지금까지의 점검 횟수 (학기 정리로 원본이 지워진 학기 요약까지 포함).
+  /// 예전에는 점검 id 를 전부 내려받아 개수를 셌다.
   Future<int> totalCount() async {
-    final rows = await _c
-        .from('daily_checkins')
-        .select('id')
-        .eq('user_id', _myUserId());
-    return rows.length;
+    try {
+      final n = await _c.rpc('my_total_checkins');
+      return (n as num).toInt();
+    } catch (_) {
+      // 서버에 아직 061 이 없을 때
+      final rows = await _c
+          .from('daily_checkins')
+          .select('id')
+          .eq('user_id', _myUserId());
+      return rows.length;
+    }
   }
 }

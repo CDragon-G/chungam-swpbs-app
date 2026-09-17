@@ -1,11 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/supabase_client.dart';
-import '../../../core/utils/date_utils.dart';
 import '../../../shared/providers/profile_provider.dart';
-import '../../checkin/models/daily_checkin.dart';
-import '../../checkin/providers/checkin_provider.dart';
-import '../../school/providers/school_provider.dart';
 
 class SchoolOverview {
   SchoolOverview({
@@ -32,112 +28,52 @@ class SchoolOverview {
   double get weekDelta => weeklyAvg - lastWeekAvg;
 }
 
+/// 교사 홈 · 대시보드 요약 — 합계는 서버(RPC)에서 낸다.
+/// 예전에는 전교 14일치 점검 원본(규칙별 O/X 포함)을 통째로 내려받아 앱에서
+/// 계산했다. 1,500명 학교면 홈을 열 때마다 약 1만 건이라 서버 집계로 옮겼다.
 final schoolOverviewProvider = FutureProvider<SchoolOverview>((ref) async {
   final profile = ref.watch(profileProvider).value;
-  if (profile == null || profile.schoolId == null) {
-    return SchoolOverview(
-      todayParticipationPct: 0,
-      totalStudents: 0,
-      todayParticipants: 0,
-      weeklyAvg: 0,
-      lastWeekAvg: 0,
-      last14Days: const [],
-      classParticipation: const {},
-      categoryAverages: const {},
-    );
-  }
-  final schoolId = profile.schoolId!;
-  final students = await ref.read(schoolStudentsProvider.future);
-  final repo = ref.read(checkinRepositoryProvider);
-  final history = await repo.fetchSchoolHistory(schoolId: schoolId, days: 14);
+  final empty = SchoolOverview(
+    todayParticipationPct: 0,
+    totalStudents: 0,
+    todayParticipants: 0,
+    weeklyAvg: 0,
+    lastWeekAvg: 0,
+    last14Days: const [],
+    classParticipation: const {},
+    categoryAverages: const {},
+  );
+  if (profile == null || profile.schoolId == null) return empty;
 
-  final today = KstDate.today();
-  bool isSameDate(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
-  // Today
-  final todayCheckins =
-      history.where((c) => isSameDate(c.checkinDate, today)).toList();
-  final todayParticipants = todayCheckins.map((c) => c.userId).toSet().length;
-  final totalStudents = students.length;
-  final todayPct =
-      totalStudents == 0 ? 0.0 : (todayParticipants / totalStudents) * 100;
-
-  // 14-day trend
-  final last14 = <({DateTime date, double avg, int participants})>[];
-  for (var i = 13; i >= 0; i--) {
-    final d = today.subtract(Duration(days: i));
-    final dayCh = history.where((c) => isSameDate(c.checkinDate, d)).toList();
-    final avg = dayCh.isEmpty
-        ? 0.0
-        : dayCh.map((c) => c.scorePct).reduce((a, b) => a + b) / dayCh.length;
-    last14.add((date: d, avg: avg, participants: dayCh.length));
-  }
-
-  // Class participation (today)
-  final classMap = <String, ({int students, Set<String> participants})>{};
-  for (final s in students) {
-    final key = '${s['grade']}-${s['class_num']}';
-    classMap.putIfAbsent(
-      key,
-      () => (students: 0, participants: <String>{}),
-    );
-    final cur = classMap[key]!;
-    classMap[key] = (
-      students: cur.students + 1,
-      participants: cur.participants,
-    );
-  }
-  for (final c in todayCheckins) {
-    final s = students.firstWhere(
-      (st) => st['user_id'] == c.userId,
-      orElse: () => <String, dynamic>{},
-    );
-    if (s.isEmpty) continue;
-    final key = '${s['grade']}-${s['class_num']}';
-    classMap[key]?.participants.add(c.userId);
-  }
-  final classPct = <String, double>{
-    for (final e in classMap.entries)
-      e.key: e.value.students == 0
-          ? 0
-          : (e.value.participants.length / e.value.students) * 100,
-  };
-
-  // Category averages (last 14 days)
-  final perCat = <String, List<double>>{};
-  for (final c in history) {
-    for (final entry in c.categoryScores.entries) {
-      perCat.putIfAbsent(entry.key, () => []).add(entry.value);
-    }
-  }
-  final catAvg = <String, double>{
-    for (final e in perCat.entries)
-      e.key: e.value.reduce((a, b) => a + b) / e.value.length,
-  };
-
-  double avgInRange(DateTime start, DateTime endExclusive) {
-    final scores = history
-        .where((c) =>
-            !c.checkinDate.isBefore(start) && c.checkinDate.isBefore(endExclusive))
-        .map((c) => c.scorePct);
-    return scores.isEmpty ? 0 : scores.reduce((a, b) => a + b) / scores.length;
-  }
-
-  final weekStart = KstDate.startOfWeek();
-  final lastWeekStart = weekStart.subtract(const Duration(days: 7));
+  final res = await SupabaseService.client.rpc('teacher_school_overview');
+  final m = Map<String, dynamic>.from(res as Map);
+  if (m['ok'] != true) return empty;
 
   return SchoolOverview(
-    todayParticipationPct: todayPct,
-    totalStudents: totalStudents,
-    todayParticipants: todayParticipants,
-    weeklyAvg: avgInRange(weekStart, weekStart.add(const Duration(days: 7))),
-    lastWeekAvg: avgInRange(lastWeekStart, weekStart),
-    last14Days: last14,
-    classParticipation: classPct,
-    categoryAverages: catAvg,
+    todayParticipationPct: _d(m['today_pct']),
+    totalStudents: _i(m['total_students']),
+    todayParticipants: _i(m['today_participants']),
+    weeklyAvg: _d(m['weekly_avg']),
+    lastWeekAvg: _d(m['last_week_avg']),
+    last14Days: [
+      for (final r in (m['last14'] as List? ?? const []))
+        (
+          date: DateTime.parse((r as Map)['date'] as String),
+          avg: _d(r['avg']),
+          participants: _i(r['participants']),
+        ),
+    ],
+    classParticipation: _doubleMap(m['class_participation']),
+    categoryAverages: _doubleMap(m['category_averages']),
   );
 });
+
+double _d(Object? v) => (v as num?)?.toDouble() ?? 0;
+int _i(Object? v) => (v as num?)?.toInt() ?? 0;
+Map<String, double> _doubleMap(Object? v) => {
+      for (final e in (v as Map? ?? const {}).entries)
+        e.key as String: _d(e.value),
+    };
 
 class ClassStats {
   ClassStats({
@@ -160,108 +96,62 @@ class ClassStats {
 
 final selectedClassProvider = StateProvider<String?>((_) => null);
 
+/// 반별 통계 — 이 반 학생 것만 서버에서 합쳐 온다.
+/// 예전에는 반 하나를 열 때도 전교 14일치 원본을 다시 내려받았다.
 final classStatsProvider =
     FutureProvider.family<ClassStats, String>((ref, classKey) async {
   final parts = classKey.split('-');
   final grade = int.tryParse(parts[0]);
   final classNum = parts.length > 1 ? int.tryParse(parts[1]) : null;
   final profile = ref.watch(profileProvider).value;
-  if (profile?.schoolId == null) {
-    return ClassStats(
-      classKey: classKey,
-      studentCount: 0,
-      participationByDay: const [],
-      categoryAverages: const {},
-      weakestRules: const [],
-      nonParticipantsToday: const [],
-    );
+  final empty = ClassStats(
+    classKey: classKey,
+    studentCount: 0,
+    participationByDay: const [],
+    categoryAverages: const {},
+    weakestRules: const [],
+    nonParticipantsToday: const [],
+  );
+  if (profile?.schoolId == null || grade == null || classNum == null) {
+    return empty;
   }
 
-  final schoolId = profile!.schoolId!;
-  final allStudents = await ref.read(schoolStudentsProvider.future);
-  final classStudents = allStudents
-      .where((s) => s['grade'] == grade && s['class_num'] == classNum)
-      .toList();
-  final classUserIds = classStudents.map((s) => s['user_id'] as String).toSet();
-
-  final repo = ref.read(checkinRepositoryProvider);
-  final history = (await repo.fetchSchoolHistory(schoolId: schoolId, days: 14))
-      .where((c) => classUserIds.contains(c.userId))
-      .toList();
-  final rules = await ref.read(schoolRulesProvider.future);
-
-  final today = KstDate.today();
-  bool same(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
-  final byDay = <({DateTime date, int participants, int total})>[];
-  for (var i = 13; i >= 0; i--) {
-    final d = today.subtract(Duration(days: i));
-    final p = history
-        .where((c) => same(c.checkinDate, d))
-        .map((c) => c.userId)
-        .toSet()
-        .length;
-    byDay.add((date: d, participants: p, total: classStudents.length));
-  }
-
-  // Category avgs
-  final perCat = <String, List<double>>{};
-  for (final c in history) {
-    for (final e in c.categoryScores.entries) {
-      perCat.putIfAbsent(e.key, () => []).add(e.value);
-    }
-  }
-  final catAvg = <String, double>{
-    for (final e in perCat.entries)
-      e.key: e.value.reduce((a, b) => a + b) / e.value.length,
-  };
-
-  // Weakest rules
-  final perRule = <String, List<int>>{};
-  for (final c in history) {
-    for (final e in c.answers.entries) {
-      perRule.putIfAbsent(e.key, () => []).add(e.value ? 1 : 0);
-    }
-  }
-  final rates = perRule.entries
-      .map((e) => (
-            ruleId: e.key,
-            text: rules
-                .firstWhere(
-                  (r) => r.id == e.key,
-                  orElse: () => rules.isNotEmpty
-                      ? rules.first
-                      : throw StateError('no rule'),
-                )
-                .ruleText,
-            avgOk: e.value.reduce((a, b) => a + b) / e.value.length,
-          ))
-      .toList()
-    ..sort((a, b) => a.avgOk.compareTo(b.avgOk));
-
-  // Today non-participants
-  final participantsToday = history
-      .where((c) => same(c.checkinDate, today))
-      .map((c) => c.userId)
-      .toSet();
-  final nonP = classStudents
-      .where((s) => !participantsToday.contains(s['user_id']))
-      .map((s) => (
-            nickname: s['nickname'] as String,
-            grade: (s['grade'] as int?) ?? 0,
-            classNum: (s['class_num'] as int?) ?? 0,
-            studentNum: (s['student_num'] as int?) ?? 0,
-          ))
-      .toList();
+  final res = await SupabaseService.client.rpc(
+    'teacher_class_stats',
+    params: {'p_grade': grade, 'p_class': classNum},
+  );
+  final m = Map<String, dynamic>.from(res as Map);
+  if (m['ok'] != true) return empty;
 
   return ClassStats(
     classKey: classKey,
-    studentCount: classStudents.length,
-    participationByDay: byDay,
-    categoryAverages: catAvg,
-    weakestRules: rates.take(3).toList(),
-    nonParticipantsToday: nonP,
+    studentCount: _i(m['student_count']),
+    participationByDay: [
+      for (final r in (m['by_day'] as List? ?? const []))
+        (
+          date: DateTime.parse((r as Map)['date'] as String),
+          participants: _i(r['participants']),
+          total: _i(r['total']),
+        ),
+    ],
+    categoryAverages: _doubleMap(m['category_averages']),
+    weakestRules: [
+      for (final r in (m['weakest_rules'] as List? ?? const []))
+        (
+          ruleId: (r as Map)['rule_id'] as String,
+          text: (r['text'] as String?) ?? '',
+          avgOk: _d(r['avg_ok']),
+        ),
+    ],
+    nonParticipantsToday: [
+      for (final r in (m['non_participants_today'] as List? ?? const []))
+        (
+          nickname: ((r as Map)['nickname'] as String?) ?? '',
+          grade: _i(r['grade']),
+          classNum: _i(r['class_num']),
+          studentNum: _i(r['student_num']),
+        ),
+    ],
   );
 });
 

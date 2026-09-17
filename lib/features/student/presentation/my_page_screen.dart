@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../checkin/providers/checkin_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/notifications/notifications_service.dart';
@@ -32,6 +33,8 @@ class MyPageScreen extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(studentStatsProvider);
+        ref.invalidate(checkinHistoryProvider(60));
+        ref.invalidate(totalCheckinCountProvider);
         ref.invalidate(myPointsProvider);
       },
       child: ListView(

@@ -22,6 +22,13 @@ final checkinHistoryProvider =
   return repo.fetchHistory(days: days);
 });
 
+/// 지금까지의 점검 횟수. 내 기록 화면과 뱃지가 함께 쓴다.
+final totalCheckinCountProvider = FutureProvider<int>((ref) async {
+  final profile = ref.watch(profileProvider).value;
+  if (profile?.schoolId == null) return 0;
+  return ref.read(checkinRepositoryProvider).totalCount();
+});
+
 /// In-progress answers being collected on the check-in screen.
 /// Map<ruleId, bool?>  — null = not answered yet.
 final checkinAnswersProvider =
