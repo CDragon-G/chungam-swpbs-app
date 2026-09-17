@@ -45,8 +45,7 @@ class PointsRepository {
     String schoolId, {
     bool onlyActive = false,
   }) async {
-    var query =
-        _c.from('point_store_items').select().eq('school_id', schoolId);
+    var query = _c.from('point_store_items').select().eq('school_id', schoolId);
     if (onlyActive) query = query.eq('is_active', true);
     final rows = await query.order('order_index');
     return rows
@@ -134,8 +133,7 @@ class PointsRepository {
     for (var i = 0; i < items.length; i++) {
       await _c
           .from('point_store_items')
-          .update({'order_index': i})
-          .eq('id', items[i].id);
+          .update({'order_index': i}).eq('id', items[i].id);
     }
   }
 
@@ -183,8 +181,7 @@ class PointsRepository {
 
   // ── Exchanges ──────────────────────────────────────────────
   Future<String> requestExchange(String itemId) async {
-    final res =
-        await _c.rpc('request_exchange', params: {'p_item_id': itemId});
+    final res = await _c.rpc('request_exchange', params: {'p_item_id': itemId});
     return res as String;
   }
 
@@ -207,10 +204,7 @@ class PointsRepository {
     String? status,
     int limit = 200,
   }) async {
-    var query = _c
-        .from('point_exchanges')
-        .select()
-        .eq('school_id', schoolId);
+    var query = _c.from('point_exchanges').select().eq('school_id', schoolId);
     if (status != null) query = query.eq('status', status);
     final rows =
         await query.order('requested_at', ascending: false).limit(limit);
@@ -239,6 +233,50 @@ class PointsRepository {
       if (profile != null) {
         row['profiles'] = profile; // PointExchange.fromMap reads this key
       }
+      return PointExchange.fromMap(row);
+    }).toList();
+  }
+
+  /// 교환 요청을 학생으로 찾는다. 이름 일부, 학년·반·번호로 찾을 수 있다.
+  /// 목록은 최근 것만 보여줘서 오래된 요청은 스크롤로 찾기 어려웠다.
+  /// 담임에게는 본인이 등록한 강화물의 요청만 보인다 (표 권한 그대로).
+  Future<List<PointExchange>> searchSchoolExchanges(
+    String schoolId, {
+    String? nickname,
+    int? grade,
+    int? classNum,
+    int? studentNum,
+    int limit = 100,
+  }) async {
+    var pq = _c
+        .from('profiles')
+        .select('user_id, nickname, grade, class_num, student_num')
+        .eq('school_id', schoolId)
+        .eq('role', 'student');
+    if (nickname != null && nickname.isNotEmpty) {
+      final safe = nickname.replaceAll(RegExp(r'[%_,()*\\]'), '');
+      pq = pq.ilike('nickname', '%$safe%');
+    }
+    if (grade != null) pq = pq.eq('grade', grade);
+    if (classNum != null) pq = pq.eq('class_num', classNum);
+    if (studentNum != null) pq = pq.eq('student_num', studentNum);
+    final profileRows = await pq.limit(60);
+    if (profileRows.isEmpty) return [];
+
+    final byId = <String, Map<String, dynamic>>{
+      for (final p in profileRows)
+        p['user_id'] as String: Map<String, dynamic>.from(p),
+    };
+    final rows = await _c
+        .from('point_exchanges')
+        .select()
+        .eq('school_id', schoolId)
+        .inFilter('user_id', byId.keys.toList())
+        .order('requested_at', ascending: false)
+        .limit(limit);
+    return rows.map((m) {
+      final row = Map<String, dynamic>.from(m as Map);
+      row['profiles'] = byId[row['user_id']];
       return PointExchange.fromMap(row);
     }).toList();
   }

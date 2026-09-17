@@ -36,15 +36,13 @@ final activeStoreItemsProvider =
       );
 });
 
-final myExchangesProvider =
-    FutureProvider<List<PointExchange>>((ref) async {
+final myExchangesProvider = FutureProvider<List<PointExchange>>((ref) async {
   ref.watch(profileProvider);
   return ref.read(pointsRepositoryProvider).myExchanges();
 });
 
 // ── Teacher-side ─────────────────────────────────────────────
-final allStoreItemsProvider =
-    FutureProvider<List<PointStoreItem>>((ref) async {
+final allStoreItemsProvider = FutureProvider<List<PointStoreItem>>((ref) async {
   final profile = ref.watch(profileProvider).value;
   if (profile?.schoolId == null) return [];
   return ref.read(pointsRepositoryProvider).fetchItems(profile!.schoolId!);
@@ -59,13 +57,59 @@ final pendingExchangesProvider =
       .fetchSchoolExchanges(profile!.schoolId!, status: 'pending');
 });
 
-final allExchangesProvider =
-    FutureProvider<List<PointExchange>>((ref) async {
+final allExchangesProvider = FutureProvider<List<PointExchange>>((ref) async {
   final profile = ref.watch(profileProvider).value;
   if (profile?.schoolId == null) return [];
   return ref
       .read(pointsRepositoryProvider)
       .fetchSchoolExchanges(profile!.schoolId!);
+});
+
+/// 교환 요청 검색어 해석.
+///   "김민"        → 이름에 '김민' 포함
+///   "2-3"         → 2학년 3반 (2 3, 2학년 3반 도 같음)
+///   "2-3-15"      → 2학년 3반 15번
+///   "20315"       → 학번 (2학년 03반 15번), 4자리면 2315
+typedef ExchangeQuery = ({String? name, int? grade, int? classNum, int? num});
+
+ExchangeQuery? parseExchangeQuery(String raw) {
+  final q = raw.trim();
+  if (q.isEmpty) return null;
+  final nums = RegExp(r'\d+').allMatches(q).map((m) => m.group(0)!).toList();
+  final letters = q.replaceAll(RegExp(r'[\d\s\-./학년반번]'), '');
+  if (letters.isEmpty && nums.isNotEmpty) {
+    if (nums.length == 1 && (nums[0].length == 4 || nums[0].length == 5)) {
+      final d = nums[0];
+      final c = d.length == 5 ? d.substring(1, 3) : d.substring(1, 2);
+      return (
+        name: null,
+        grade: int.parse(d[0]),
+        classNum: int.parse(c),
+        num: int.parse(d.substring(d.length - 2)),
+      );
+    }
+    return (
+      name: null,
+      grade: int.parse(nums[0]),
+      classNum: nums.length > 1 ? int.parse(nums[1]) : null,
+      num: nums.length > 2 ? int.parse(nums[2]) : null,
+    );
+  }
+  return (name: q, grade: null, classNum: null, num: null);
+}
+
+final exchangeSearchProvider = FutureProvider.autoDispose
+    .family<List<PointExchange>, String>((ref, raw) async {
+  final profile = ref.watch(profileProvider).value;
+  final q = parseExchangeQuery(raw);
+  if (profile?.schoolId == null || q == null) return [];
+  return ref.read(pointsRepositoryProvider).searchSchoolExchanges(
+        profile!.schoolId!,
+        nickname: q.name,
+        grade: q.grade,
+        classNum: q.classNum,
+        studentNum: q.num,
+      );
 });
 
 // ── School Leaderboard (national) ────────────────────────────
@@ -81,10 +125,8 @@ final mySchoolEntryProvider =
   return ref.read(pointsRepositoryProvider).fetchMySchool(profile!.schoolId!);
 });
 
-
 /// 🪙 우리 학교 포인트 경제 통계 (관리자용 — 인플레이션 점검).
-final pointEconomyProvider =
-    FutureProvider<Map<String, dynamic>>((ref) async {
+final pointEconomyProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final res = await SupabaseService.client.rpc('point_economy_stats');
   return Map<String, dynamic>.from(res as Map);
 });
@@ -93,7 +135,6 @@ final pointEconomyProvider =
 /// 프로필에 학년·반이 없으면 ok:false 로 돌아온다.
 final classPointEconomyProvider =
     FutureProvider<Map<String, dynamic>>((ref) async {
-  final res =
-      await SupabaseService.client.rpc('class_point_economy_stats');
+  final res = await SupabaseService.client.rpc('class_point_economy_stats');
   return Map<String, dynamic>.from(res as Map);
 });

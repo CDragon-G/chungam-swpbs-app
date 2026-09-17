@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/date_utils.dart';
 import '../../../shared/providers/profile_provider.dart';
-import '../../checkin/data/checkin_repository.dart';
 import '../../checkin/models/daily_checkin.dart';
 import '../../checkin/providers/checkin_provider.dart';
 import '../../school/models/school_rule.dart';

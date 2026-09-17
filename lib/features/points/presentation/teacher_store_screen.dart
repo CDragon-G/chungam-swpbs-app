@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -189,7 +190,8 @@ class _ItemRow extends ConsumerWidget {
                     color: item.isActive
                         ? AppColors.textPrimary
                         : AppColors.textTertiary,
-                    decoration: item.isActive ? null : TextDecoration.lineThrough,
+                    decoration:
+                        item.isActive ? null : TextDecoration.lineThrough,
                   ),
                 ),
                 Text(
@@ -249,35 +251,114 @@ class _ItemRow extends ConsumerWidget {
               ),
             ),
           if (canManage) ...[
-          Switch.adaptive(
-            value: item.isActive,
-            onChanged: (v) async {
-              await ref
-                  .read(pointsRepositoryProvider)
-                  .updateItem(item.id, {'is_active': v});
-              ref.invalidate(allStoreItemsProvider);
-              ref.invalidate(activeStoreItemsProvider);
-            },
-          ),
-          // 편집·삭제를 하나의 메뉴로 통합 (규칙 탭과 동일 방식) → 공간 확보
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded,
-                size: 20, color: AppColors.textSecondary),
-            padding: EdgeInsets.zero,
-            onSelected: (v) async {
-              if (v == 'edit') {
-                _showEditSheet(context, item);
-                return;
-              }
-              // 함께 키우기 — 지급 완료
-              if (v == 'fulfill') {
+            Switch.adaptive(
+              value: item.isActive,
+              onChanged: (v) async {
+                await ref
+                    .read(pointsRepositoryProvider)
+                    .updateItem(item.id, {'is_active': v});
+                ref.invalidate(allStoreItemsProvider);
+                ref.invalidate(activeStoreItemsProvider);
+              },
+            ),
+            // 편집·삭제를 하나의 메뉴로 통합 (규칙 탭과 동일 방식) → 공간 확보
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded,
+                  size: 20, color: AppColors.textSecondary),
+              padding: EdgeInsets.zero,
+              onSelected: (v) async {
+                if (v == 'edit') {
+                  _showEditSheet(context, item);
+                  return;
+                }
+                // 함께 키우기 — 지급 완료
+                if (v == 'fulfill') {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('지급 완료 처리'),
+                      content: Text('${item.name} 을(를) 학급에 지급하셨나요?\n'
+                          '처리하면 학생들에게 알림이 가고 목록에서 내려갑니다.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('취소'),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.studentGreen),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('지급 완료'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok != true) return;
+                  try {
+                    await ref
+                        .read(pointsRepositoryProvider)
+                        .fulfillGroupItem(item.id);
+                    ref.invalidate(allStoreItemsProvider);
+                    ref.invalidate(activeStoreItemsProvider);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(translateError(e))),
+                      );
+                    }
+                  }
+                  return;
+                }
+                // 함께 키우기 — 취소하고 전액 환불
+                if (v == 'refund') {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('취소하고 환불'),
+                      content: Text('${item.name} 을(를) 취소할까요?\n'
+                          '학생들이 보탠 포인트를 전액 돌려드립니다.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('그만두기'),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.danger),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('취소하고 환불'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok != true) return;
+                  try {
+                    final n = await ref
+                        .read(pointsRepositoryProvider)
+                        .cancelGroupItem(item.id);
+                    ref.invalidate(allStoreItemsProvider);
+                    ref.invalidate(activeStoreItemsProvider);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('$n명에게 포인트를 돌려드렸어요.')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(translateError(e))),
+                      );
+                    }
+                  }
+                  return;
+                }
+                // 삭제
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('지급 완료 처리'),
+                    title: const Text('강화물 삭제'),
                     content: Text(
-                        '${item.name} 을(를) 학급에 지급하셨나요?\n'
-                        '처리하면 학생들에게 알림이 가고 목록에서 내려갑니다.'),
+                        '${item.name} 강화물을 삭제하시겠어요?\n이미 교환된 기록은 그대로 유지됩니다.'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, false),
@@ -285,141 +366,61 @@ class _ItemRow extends ConsumerWidget {
                       ),
                       FilledButton(
                         style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.studentGreen),
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('지급 완료'),
-                      ),
-                    ],
-                  ),
-                );
-                if (ok != true) return;
-                try {
-                  await ref
-                      .read(pointsRepositoryProvider)
-                      .fulfillGroupItem(item.id);
-                  ref.invalidate(allStoreItemsProvider);
-                  ref.invalidate(activeStoreItemsProvider);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(translateError(e))),
-                    );
-                  }
-                }
-                return;
-              }
-              // 함께 키우기 — 취소하고 전액 환불
-              if (v == 'refund') {
-                final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('취소하고 환불'),
-                    content: Text(
-                        '${item.name} 을(를) 취소할까요?\n'
-                        '학생들이 보탠 포인트를 전액 돌려드립니다.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('그만두기'),
-                      ),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
                             backgroundColor: AppColors.danger),
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('취소하고 환불'),
+                        child: const Text('삭제'),
                       ),
                     ],
                   ),
                 );
-                if (ok != true) return;
-                try {
-                  final n = await ref
-                      .read(pointsRepositoryProvider)
-                      .cancelGroupItem(item.id);
+                if (ok == true) {
+                  await ref.read(pointsRepositoryProvider).deleteItem(item.id);
                   ref.invalidate(allStoreItemsProvider);
                   ref.invalidate(activeStoreItemsProvider);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$n명에게 포인트를 돌려드렸어요.')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(translateError(e))),
-                    );
-                  }
                 }
-                return;
-              }
-              // 삭제
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('강화물 삭제'),
-                  content: Text(
-                      '${item.name} 강화물을 삭제하시겠어요?\n이미 교환된 기록은 그대로 유지됩니다.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('취소'),
-                    ),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.danger),
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('삭제'),
-                    ),
-                  ],
-                ),
-              );
-              if (ok == true) {
-                await ref.read(pointsRepositoryProvider).deleteItem(item.id);
-                ref.invalidate(allStoreItemsProvider);
-                ref.invalidate(activeStoreItemsProvider);
-              }
-            },
-            itemBuilder: (_) => [
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(children: [
-                  Icon(Icons.edit_outlined, size: 18),
-                  SizedBox(width: 8),
-                  Text('편집'),
-                ]),
-              ),
-              if (item.isGroup && item.isAchieved && !item.isClosed)
+              },
+              itemBuilder: (_) => [
                 const PopupMenuItem(
-                  value: 'fulfill',
+                  value: 'edit',
                   child: Row(children: [
-                    Icon(Icons.check_circle_outline_rounded,
-                        size: 18, color: AppColors.studentGreen),
+                    Icon(Icons.edit_outlined, size: 18),
                     SizedBox(width: 8),
-                    Text('지급 완료',
-                        style: TextStyle(color: AppColors.studentGreen)),
+                    Text('편집'),
                   ]),
                 ),
-              if (item.isGroup && !item.isClosed)
+                if (item.isGroup && item.isAchieved && !item.isClosed)
+                  const PopupMenuItem(
+                    value: 'fulfill',
+                    child: Row(children: [
+                      Icon(Icons.check_circle_outline_rounded,
+                          size: 18, color: AppColors.studentGreen),
+                      SizedBox(width: 8),
+                      Text('지급 완료',
+                          style: TextStyle(color: AppColors.studentGreen)),
+                    ]),
+                  ),
+                if (item.isGroup && !item.isClosed)
+                  const PopupMenuItem(
+                    value: 'refund',
+                    child: Row(children: [
+                      Icon(Icons.undo_rounded,
+                          size: 18, color: AppColors.warning),
+                      SizedBox(width: 8),
+                      Text('취소하고 환불',
+                          style: TextStyle(color: AppColors.warning)),
+                    ]),
+                  ),
                 const PopupMenuItem(
-                  value: 'refund',
+                  value: 'delete',
                   child: Row(children: [
-                    Icon(Icons.undo_rounded, size: 18, color: AppColors.warning),
+                    Icon(Icons.delete_outline_rounded,
+                        size: 18, color: AppColors.danger),
                     SizedBox(width: 8),
-                    Text('취소하고 환불',
-                        style: TextStyle(color: AppColors.warning)),
+                    Text('삭제', style: TextStyle(color: AppColors.danger)),
                   ]),
                 ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(children: [
-                  Icon(Icons.delete_outline_rounded,
-                      size: 18, color: AppColors.danger),
-                  SizedBox(width: 8),
-                  Text('삭제', style: TextStyle(color: AppColors.danger)),
-                ]),
-              ),
-            ],
-          ),
+              ],
+            ),
           ],
         ],
       ),
@@ -442,8 +443,7 @@ class _ItemRow extends ConsumerWidget {
                       child: Container(
                         width: 100,
                         alignment: Alignment.center,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 2.5),
+                        padding: const EdgeInsets.symmetric(vertical: 2.5),
                         color: item.isClassItem
                             ? AppColors.studentGreen
                             : AppColors.teacherNavy,
@@ -495,10 +495,38 @@ class _AddItemSheet extends ConsumerStatefulWidget {
 
 /// 강화물 아이콘 후보 — 간식·문구·쿠폰·특권·놀이 등 학교 보상에 인기 있는 이모지.
 const kStoreEmojis = [
-  '🎁', '🍫', '🍬', '🍭', '🍪', '🥤', '🧃', '🍦',
-  '🍜', '🍕', '🍔', '🍩', '✏️', '📓', '🖊️', '📚',
-  '🎟️', '🎫', '🎧', '🎵', '🎮', '⚽', '🏀', '🎲',
-  '🪑', '⏰', '🏆', '⭐', '👑', '💝', '🍀', '📸',
+  '🎁',
+  '🍫',
+  '🍬',
+  '🍭',
+  '🍪',
+  '🥤',
+  '🧃',
+  '🍦',
+  '🍜',
+  '🍕',
+  '🍔',
+  '🍩',
+  '✏️',
+  '📓',
+  '🖊️',
+  '📚',
+  '🎟️',
+  '🎫',
+  '🎧',
+  '🎵',
+  '🎮',
+  '⚽',
+  '🏀',
+  '🎲',
+  '🪑',
+  '⏰',
+  '🏆',
+  '⭐',
+  '👑',
+  '💝',
+  '🍀',
+  '📸',
 ];
 
 class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
@@ -507,7 +535,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
   late final TextEditingController _cost;
   late final TextEditingController _stock;
   late final TextEditingController _maxPer;
-  bool _isGroup = false;      // 함께 키우기 여부
+  bool _isGroup = false; // 함께 키우기 여부
   bool _capPerStudent = true; // 1인 한도를 둘 것인가
   bool _unlimited = true;
   bool _saving = false;
@@ -556,7 +584,8 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
       return;
     }
     // 함께 키우기는 재고 개념이 없다
-    final stock = _isGroup ? null : (_unlimited ? null : int.tryParse(_stock.text));
+    final stock =
+        _isGroup ? null : (_unlimited ? null : int.tryParse(_stock.text));
     if (!_isGroup && !_unlimited && (stock == null || stock < 0)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('재고는 0 이상의 숫자여야 해요.')),
@@ -598,8 +627,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
         await repo.createItem(
           schoolId: profile.schoolId!,
           name: _name.text.trim(),
-          description:
-              _desc.text.trim().isEmpty ? null : _desc.text.trim(),
+          description: _desc.text.trim().isEmpty ? null : _desc.text.trim(),
           costPoints: cost,
           stock: stock,
           orderIndex: existing.length,
@@ -613,8 +641,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
       } else {
         await repo.updateItem(widget.existing!.id, {
           'name': _name.text.trim(),
-          'description':
-              _desc.text.trim().isEmpty ? null : _desc.text.trim(),
+          'description': _desc.text.trim().isEmpty ? null : _desc.text.trim(),
           'cost_points': cost,
           'stock': stock,
           'emoji': _emoji,
@@ -827,8 +854,8 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 9),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: AppColors.studentGreenLight,
                   borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -892,34 +919,34 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
             ],
           ],
           if (!_isGroup) ...[
-          const SizedBox(height: AppSizes.md),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '재고 무제한',
-                  style: GoogleFonts.notoSansKr(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+            const SizedBox(height: AppSizes.md),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '재고 무제한',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
-              ),
-              Switch.adaptive(
-                value: _unlimited,
-                onChanged: (v) => setState(() => _unlimited = v),
+                Switch.adaptive(
+                  value: _unlimited,
+                  onChanged: (v) => setState(() => _unlimited = v),
+                ),
+              ],
+            ),
+            if (!_unlimited) ...[
+              const SizedBox(height: AppSizes.sm),
+              PbsTextField(
+                controller: _stock,
+                label: '재고 수량',
+                keyboardType: TextInputType.number,
+                hint: '예: 30',
               ),
             ],
-          ),
-          if (!_unlimited) ...[
-            const SizedBox(height: AppSizes.sm),
-            PbsTextField(
-              controller: _stock,
-              label: '재고 수량',
-              keyboardType: TextInputType.number,
-              hint: '예: 30',
-            ),
-          ],
           ],
           const SizedBox(height: AppSizes.lg),
           PbsPrimaryButton(
@@ -974,9 +1001,8 @@ class _TypeChip extends StatelessWidget {
                       ? Icons.radio_button_checked_rounded
                       : Icons.radio_button_unchecked_rounded,
                   size: 17,
-                  color: selected
-                      ? AppColors.teacherNavy
-                      : AppColors.textTertiary,
+                  color:
+                      selected ? AppColors.teacherNavy : AppColors.textTertiary,
                 ),
                 const SizedBox(width: 5),
                 Text(
@@ -1007,11 +1033,41 @@ class _TypeChip extends StatelessWidget {
   }
 }
 
-class _ExchangesTab extends ConsumerWidget {
+class _ExchangesTab extends ConsumerStatefulWidget {
   const _ExchangesTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ExchangesTab> createState() => _ExchangesTabState();
+}
+
+class _ExchangesTabState extends ConsumerState<_ExchangesTab> {
+  final _search = TextEditingController();
+  Timer? _debounce;
+  String _query = '';
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (mounted) setState(() => _query = v.trim());
+    });
+  }
+
+  void _clear() {
+    _debounce?.cancel();
+    _search.clear();
+    FocusScope.of(context).unfocus();
+    setState(() => _query = '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pending = ref.watch(pendingExchangesProvider);
     final all = ref.watch(allExchangesProvider);
 
@@ -1019,66 +1075,185 @@ class _ExchangesTab extends ConsumerWidget {
       onRefresh: () async {
         ref.invalidate(pendingExchangesProvider);
         ref.invalidate(allExchangesProvider);
+        ref.invalidate(exchangeSearchProvider);
       },
       child: ListView(
         padding: const EdgeInsets.all(AppSizes.lg),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
           const _ScopeNotice(),
-          const SectionHeader(title: '🔔 처리 대기'),
-          pending.when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text(translateError(e)),
-            data: (list) {
-              if (list.isEmpty) {
-                return PbsCard(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      '🎉 모두 처리되었어요',
-                      style: GoogleFonts.notoSansKr(
-                        color: AppColors.success,
-                        fontWeight: FontWeight.w800,
+          const SizedBox(height: AppSizes.sm),
+          _ExchangeSearchField(
+            controller: _search,
+            onChanged: _onChanged,
+            onClear: _clear,
+          ),
+          if (_query.isNotEmpty)
+            _ExchangeSearchResults(query: _query)
+          else ...[
+            const SectionHeader(title: '🔔 처리 대기'),
+            pending.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Text(translateError(e)),
+              data: (list) {
+                if (list.isEmpty) {
+                  return PbsCard(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        '🎉 모두 처리되었어요',
+                        style: GoogleFonts.notoSansKr(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                  ),
+                  );
+                }
+                return Column(
+                  children: list.map((e) => _ExchangeTile(ex: e)).toList(),
                 );
-              }
-              return Column(
-                children: list.map((e) => _ExchangeTile(ex: e)).toList(),
-              );
-            },
-          ),
-          const SectionHeader(title: '📜 전체 내역'),
-          all.when(
-            loading: () => const SizedBox.shrink(),
-            error: (e, _) => Text(translateError(e)),
-            data: (list) {
-              final history =
-                  list.where((e) => e.status != 'pending').toList();
-              if (history.isEmpty) {
-                return PbsCard(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      '아직 처리된 내역이 없어요.',
-                      style: GoogleFonts.notoSansKr(
-                          color: AppColors.textTertiary, fontSize: 12),
+              },
+            ),
+            const SectionHeader(title: '📜 전체 내역'),
+            all.when(
+              loading: () => const SizedBox.shrink(),
+              error: (e, _) => Text(translateError(e)),
+              data: (list) {
+                final history =
+                    list.where((e) => e.status != 'pending').toList();
+                if (history.isEmpty) {
+                  return PbsCard(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        '아직 처리된 내역이 없어요.',
+                        style: GoogleFonts.notoSansKr(
+                            color: AppColors.textTertiary, fontSize: 12),
+                      ),
                     ),
-                  ),
+                  );
+                }
+                return Column(
+                  children: history
+                      .take(30)
+                      .map((e) => _ExchangeTile(ex: e, readOnly: true))
+                      .toList(),
                 );
-              }
-              return Column(
-                children: history
-                    .take(30)
-                    .map((e) => _ExchangeTile(ex: e, readOnly: true))
-                    .toList(),
-              );
-            },
-          ),
+              },
+            ),
+          ],
           const SizedBox(height: AppSizes.xxxl),
         ],
       ),
+    );
+  }
+}
+
+/// 교환 요청 학생 검색창.
+class _ExchangeSearchField extends StatelessWidget {
+  const _ExchangeSearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) => TextField(
+        controller: controller,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        style: GoogleFonts.notoSansKr(fontSize: 14),
+        decoration: InputDecoration(
+          hintText: '학생 이름 · 2-3 · 2-3-15 · 20315',
+          hintMaxLines: 1,
+          hintStyle: GoogleFonts.notoSansKr(
+              fontSize: 13, color: AppColors.textTertiary),
+          prefixIcon:
+              const Icon(Icons.search_rounded, color: AppColors.textSecondary),
+          suffixIcon: value.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: '지우기',
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: onClear,
+                ),
+          isDense: true,
+          filled: true,
+          fillColor: AppColors.surface,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            borderSide: BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            borderSide: BorderSide(color: AppColors.border),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 검색 결과 — 처리 대기를 위에, 지난 내역을 아래에.
+class _ExchangeSearchResults extends ConsumerWidget {
+  const _ExchangeSearchResults({required this.query});
+  final String query;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(exchangeSearchProvider(query));
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.only(top: AppSizes.md),
+        child: Text(translateError(e)),
+      ),
+      data: (list) {
+        if (list.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.only(top: AppSizes.md),
+            child: PbsCard(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  '찾는 학생의 교환 요청이 없어요.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.notoSansKr(
+                      color: AppColors.textTertiary, fontSize: 12),
+                ),
+              ),
+            ),
+          );
+        }
+        final pending = list.where((e) => e.isPending).toList();
+        final done = list.where((e) => !e.isPending).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (pending.isNotEmpty) ...[
+              SectionHeader(title: '🔔 처리 대기 ${pending.length}건'),
+              for (final e in pending) _ExchangeTile(ex: e),
+            ],
+            if (done.isNotEmpty) ...[
+              SectionHeader(title: '📜 지난 내역 ${done.length}건'),
+              for (final e in done) _ExchangeTile(ex: e, readOnly: true),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -1173,9 +1348,11 @@ class _ExchangeTile extends ConsumerWidget {
                               .cancelExchange(ex.id);
                           ref.invalidate(pendingExchangesProvider);
                           ref.invalidate(allExchangesProvider);
+                          ref.invalidate(exchangeSearchProvider);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('취소했어요. 포인트는 환불됩니다.')),
+                              const SnackBar(
+                                  content: Text('취소했어요. 포인트는 환불됩니다.')),
                             );
                           }
                         } catch (e) {
@@ -1203,6 +1380,7 @@ class _ExchangeTile extends ConsumerWidget {
                               .fulfillExchange(ex.id);
                           ref.invalidate(pendingExchangesProvider);
                           ref.invalidate(allExchangesProvider);
+                          ref.invalidate(exchangeSearchProvider);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('수령 처리 완료!')),
@@ -1231,7 +1409,6 @@ class _ExchangeTile extends ConsumerWidget {
     );
   }
 }
-
 
 /// 🔔 교환 요청 가시성 안내 — 담임은 본인이 등록한 강화물의 요청만 본다.
 class _ScopeNotice extends ConsumerWidget {
@@ -1305,22 +1482,21 @@ class _EconomyPanel extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                    isClass ? '🪙 우리 반 포인트 현황' : '🪙 우리 학교 포인트 현황',
+                child: Text(isClass ? '🪙 우리 반 포인트 현황' : '🪙 우리 학교 포인트 현황',
                     style: GoogleFonts.notoSansKr(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w900,
                         color: AppColors.teacherNavy)),
               ),
               if (isAdmin)
-              GestureDetector(
-                onTap: () => _showSeasonDialog(context, ref),
-                child: Text('학기 마감 →',
-                    style: GoogleFonts.notoSansKr(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.teacherNavy)),
-              ),
+                GestureDetector(
+                  onTap: () => _showSeasonDialog(context, ref),
+                  child: Text('학기 마감 →',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.teacherNavy)),
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1389,8 +1565,8 @@ class _EconomyPanel extends ConsumerWidget {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () async {
-              final res = await SupabaseService.client
-                  .rpc('close_point_season');
+              final res =
+                  await SupabaseService.client.rpc('close_point_season');
               final m = Map<String, dynamic>.from(res as Map);
               ref.invalidate(pointEconomyProvider);
               if (!ctx.mounted) return;
