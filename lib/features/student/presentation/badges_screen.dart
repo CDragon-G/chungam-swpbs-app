@@ -37,7 +37,8 @@ class BadgesScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('오류: $e')),
         data: (defs) {
           final earnedMap = <String, UserBadge>{
-            for (final ub in earned.value ?? const <UserBadge>[]) ub.badgeId: ub,
+            for (final ub in earned.value ?? const <UserBadge>[])
+              ub.badgeId: ub,
           };
           return GridView.builder(
             padding: const EdgeInsets.all(AppSizes.lg),
@@ -146,7 +147,8 @@ class BadgesScreen extends ConsumerWidget {
             const SizedBox(height: AppSizes.lg),
             if (ub != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight,
                   borderRadius: BorderRadius.circular(999),

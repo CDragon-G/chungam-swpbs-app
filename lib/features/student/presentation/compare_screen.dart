@@ -51,10 +51,20 @@ class CompareScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: AppSizes.lg),
-                    _BarLine(label: '나', value: s.myAvg, color: AppColors.primary),
-                    _BarLine(label: '우리 반', value: s.classAvg, color: AppColors.studentGreen),
-                    _BarLine(label: '학년', value: s.gradeAvg, color: AppColors.colorR),
-                    _BarLine(label: '전교생', value: s.schoolAvg, color: AppColors.teacherNavy),
+                    _BarLine(
+                        label: '나', value: s.myAvg, color: AppColors.primary),
+                    _BarLine(
+                        label: '우리 반',
+                        value: s.classAvg,
+                        color: AppColors.studentGreen),
+                    _BarLine(
+                        label: '학년',
+                        value: s.gradeAvg,
+                        color: AppColors.colorR),
+                    _BarLine(
+                        label: '전교생',
+                        value: s.schoolAvg,
+                        color: AppColors.teacherNavy),
                   ],
                 ),
               ),
@@ -72,9 +82,7 @@ class CompareScreen extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      s.myRank > 0
-                          ? '전교 ${s.myRank}위'
-                          : '아직 데이터가 충분하지 않아요',
+                      s.myRank > 0 ? '전교 ${s.myRank}위' : '아직 데이터가 충분하지 않아요',
                       style: GoogleFonts.notoSansKr(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -120,7 +128,8 @@ class CompareScreen extends ConsumerWidget {
 }
 
 class _BarLine extends StatelessWidget {
-  const _BarLine({required this.label, required this.value, required this.color});
+  const _BarLine(
+      {required this.label, required this.value, required this.color});
   final String label;
   final double value;
   final Color color;
@@ -360,7 +369,10 @@ class _SchoolLeaderboard extends ConsumerWidget {
               child: Column(
                 children: [
                   for (var i = 0; i < list.length && i < 30; i++)
-                    _LeaderRow(rank: i + 1, entry: list[i], isMine: list[i].id == myId),
+                    _LeaderRow(
+                        rank: i + 1,
+                        entry: list[i],
+                        isMine: list[i].id == myId),
                 ],
               ),
             );
@@ -372,7 +384,8 @@ class _SchoolLeaderboard extends ConsumerWidget {
 }
 
 class _LeaderRow extends StatelessWidget {
-  const _LeaderRow({required this.rank, required this.entry, required this.isMine});
+  const _LeaderRow(
+      {required this.rank, required this.entry, required this.isMine});
   final int rank;
   final dynamic entry;
   final bool isMine;
@@ -386,7 +399,8 @@ class _LeaderRow extends StatelessWidget {
           _ => '$rank',
         };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 10),
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 10),
       decoration: BoxDecoration(
         color: isMine ? AppColors.primaryLight : null,
         border: Border(bottom: BorderSide(color: AppColors.borderLight)),
@@ -418,14 +432,18 @@ class _LeaderRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.notoSansKr(
                           fontSize: 13,
-                          fontWeight: isMine ? FontWeight.w900 : FontWeight.w700,
-                          color: isMine ? AppColors.primary : AppColors.textPrimary,
+                          fontWeight:
+                              isMine ? FontWeight.w900 : FontWeight.w700,
+                          color: isMine
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
                         ),
                       ),
                     ),
                     if (isMine) ...[
                       const SizedBox(width: 4),
-                      const Icon(Icons.star_rounded, size: 14, color: AppColors.primary),
+                      const Icon(Icons.star_rounded,
+                          size: 14, color: AppColors.primary),
                     ],
                   ],
                 ),

@@ -96,14 +96,12 @@ final compareStatsProvider = FutureProvider<CompareStats>((ref) async {
       : ((myRank / sortedDesc.length) * 100).clamp(1, 100).round();
 
   // Anonymous class ranking
-  final classEntries = perUser.entries
-      .where((e) {
-        final m = classByUser[e.key];
-        return m != null &&
-            m.grade == profile.grade &&
-            m.classNum == profile.classNum;
-      })
-      .toList()
+  final classEntries = perUser.entries.where((e) {
+    final m = classByUser[e.key];
+    return m != null &&
+        m.grade == profile.grade &&
+        m.classNum == profile.classNum;
+  }).toList()
     ..sort((a, b) => avg(b.value).compareTo(avg(a.value)));
 
   var counter = 1;

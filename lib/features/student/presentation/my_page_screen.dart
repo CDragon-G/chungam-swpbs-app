@@ -15,6 +15,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/category_radar_chart.dart';
 import '../../../shared/widgets/monthly_participation_calendar.dart';
+import '../../../shared/widgets/flame_streak.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../points/providers/points_provider.dart';
@@ -32,6 +33,7 @@ class MyPageScreen extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: () async {
+        ref.invalidate(myStreakProvider);
         ref.invalidate(studentStatsProvider);
         ref.invalidate(checkinHistoryProvider(60));
         ref.invalidate(totalCheckinCountProvider);
@@ -39,13 +41,17 @@ class MyPageScreen extends ConsumerWidget {
       },
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSizes.lg, AppSizes.lg, AppSizes.lg, AppSizes.xxxl,
+          AppSizes.lg,
+          AppSizes.lg,
+          AppSizes.lg,
+          AppSizes.xxxl,
         ),
         children: [
           // Profile card
           PbsCard(
             color: AppColors.studentGreenLight,
-            border: Border.all(color: AppColors.studentGreen.withValues(alpha: 0.2)),
+            border: Border.all(
+                color: AppColors.studentGreen.withValues(alpha: 0.2)),
             child: Row(
               children: [
                 CircleAvatar(
@@ -86,13 +92,15 @@ class MyPageScreen extends ConsumerWidget {
                   data: (s) => Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('🔥 ${s.streak}일',
-                          style: GoogleFonts.notoSansKr(
-                              fontWeight: FontWeight.w800)),
+                      if (s.streak > 0)
+                        FlameStreak(days: s.streak, size: 20, fontSize: 14)
+                      else
+                        Text('연속 0일',
+                            style: GoogleFonts.notoSansKr(
+                                fontSize: 12, color: AppColors.textSecondary)),
                       Text('총 ${s.totalCount}회',
                           style: GoogleFonts.notoSansKr(
-                              fontSize: 11,
-                              color: AppColors.textSecondary)),
+                              fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
                   orElse: () => const SizedBox.shrink(),
@@ -226,13 +234,11 @@ class MyPageScreen extends ConsumerWidget {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('💬',
-                                  style: TextStyle(fontSize: 18)),
+                              const Text('💬', style: TextStyle(fontSize: 18)),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       p.message,
@@ -265,7 +271,9 @@ class MyPageScreen extends ConsumerWidget {
               ),
 
           const SectionHeader(title: '📈 최근 30일 점수 추이'),
-          PbsCard(child: SizedBox(height: 200, child: _ScoreTrend(stats: statsAsync))),
+          PbsCard(
+              child:
+                  SizedBox(height: 200, child: _ScoreTrend(stats: statsAsync))),
 
           const SectionHeader(title: '🎯 카테고리 평균'),
           PbsCard(
@@ -339,7 +347,7 @@ class MyPageScreen extends ConsumerWidget {
                     _AnalysisLine(
                       icon: '🏅',
                       label: '최장 연속 기록',
-                      value: '${s.longestStreak}일',
+                      value: '수업일 ${s.longestStreak}일',
                     ),
                   ],
                 );

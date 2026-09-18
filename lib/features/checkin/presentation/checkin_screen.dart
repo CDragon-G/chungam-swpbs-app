@@ -150,6 +150,7 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
           );
       // 포인트는 서버가 제출과 함께 지급한다 (앱에서 따로 부르지 않는다)
       ref.invalidate(todayCheckinProvider);
+      ref.invalidate(myStreakProvider);
       ref.invalidate(studentStatsProvider);
       ref.invalidate(checkinHistoryProvider);
       ref.invalidate(totalCheckinCountProvider);
@@ -281,7 +282,8 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
                     ),
                     const SizedBox(height: AppSizes.lg),
                     OutlinedButton(
-                      onPressed: () => ref.invalidate(todaySchoolStatusProvider),
+                      onPressed: () =>
+                          ref.invalidate(todaySchoolStatusProvider),
                       child: Text('다시 확인하기',
                           style: GoogleFonts.notoSansKr(
                               fontWeight: FontWeight.w700)),

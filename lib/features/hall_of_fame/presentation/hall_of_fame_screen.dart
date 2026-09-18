@@ -8,6 +8,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../models/hof_entry.dart';
 import '../providers/hof_provider.dart';
+import 'streak_leaders_section.dart';
 
 /// 명예의 전당 — 이달의 학생 (전교 / 학년 / 학급).
 class HallOfFameScreen extends ConsumerWidget {
@@ -45,7 +46,10 @@ class HallOfFameScreen extends ConsumerWidget {
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(hallOfFameProvider),
+        onRefresh: () async {
+          ref.invalidate(hallOfFameProvider);
+          ref.invalidate(streakLeadersProvider);
+        },
         child: hofAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ListView(children: [
@@ -68,6 +72,11 @@ class HallOfFameScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSizes.lg),
+                  child: StreakLeadersSection(),
+                ),
+                const SizedBox(height: 40),
               ]);
             }
             final school = entries.where((e) => e.scope == 'school').toList();
@@ -89,13 +98,13 @@ class HallOfFameScreen extends ConsumerWidget {
                 if (school.isNotEmpty) _TopCard(entry: school.first),
                 if (grades.isNotEmpty) ...[
                   const SectionHeader(title: '🌿 학년 대표 식집사'),
-                  ...grades.map((e) => _RankRow(
-                      entry: e, title: '학년 대표 식집사', emoji: '🌿')),
+                  ...grades.map((e) =>
+                      _RankRow(entry: e, title: '학년 대표 식집사', emoji: '🌿')),
                 ],
                 if (classes.isNotEmpty) ...[
                   const SectionHeader(title: '💧 우리 반 새싹 지킴이'),
-                  ...classes.map((e) => _RankRow(
-                      entry: e, title: '새싹 지킴이', emoji: '💧')),
+                  ...classes.map(
+                      (e) => _RankRow(entry: e, title: '새싹 지킴이', emoji: '💧')),
                 ],
                 const SizedBox(height: 12),
                 Text(
@@ -104,6 +113,8 @@ class HallOfFameScreen extends ConsumerWidget {
                   style: GoogleFonts.notoSansKr(
                       fontSize: 11, color: AppColors.textTertiary),
                 ),
+                const SizedBox(height: 8),
+                const StreakLeadersSection(),
                 const SizedBox(height: 40),
               ],
             );
@@ -134,7 +145,8 @@ class _TopCard extends StatelessWidget {
       child: Column(
         children: [
           Image.asset('assets/growth/stage7.png',
-              width: 64, height: 64,
+              width: 64,
+              height: 64,
               errorBuilder: (_, __, ___) =>
                   const Text('👑', style: TextStyle(fontSize: 44))),
           const SizedBox(height: 6),
@@ -158,14 +170,12 @@ class _TopCard extends StatelessWidget {
           ),
           Text(
             entry.classLabel,
-            style: GoogleFonts.notoSansKr(
-                fontSize: 14, color: Colors.white70),
+            style: GoogleFonts.notoSansKr(fontSize: 14, color: Colors.white70),
           ),
           const SizedBox(height: 4),
           Text(
             '우리 학교 새싹에 가장 많은 양분을 준 주인공! 🌱',
-            style: GoogleFonts.notoSansKr(
-                fontSize: 12, color: Colors.white70),
+            style: GoogleFonts.notoSansKr(fontSize: 12, color: Colors.white70),
           ),
           const SizedBox(height: 16),
           Row(
@@ -191,8 +201,8 @@ class _TopCard extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                   color: Colors.white)),
           Text(label,
-              style: GoogleFonts.notoSansKr(
-                  fontSize: 11, color: Colors.white70)),
+              style:
+                  GoogleFonts.notoSansKr(fontSize: 11, color: Colors.white70)),
         ],
       );
 

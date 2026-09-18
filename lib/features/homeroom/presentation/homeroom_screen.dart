@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
+import '../../../shared/widgets/flame_streak.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../providers/homeroom_provider.dart';
 import 'weekly_checkin_grid.dart';
@@ -484,11 +485,11 @@ class _StudentTile extends StatelessWidget {
                           ),
                           if (s.streak >= 3) ...[
                             const SizedBox(width: 5),
-                            Text('🔥${s.streak}',
-                                style: GoogleFonts.notoSansKr(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.warning)),
+                            FlameStreak(
+                                days: s.streak,
+                                size: 15,
+                                fontSize: 11.5,
+                                label: '${s.streak}'),
                           ],
                         ],
                       ),

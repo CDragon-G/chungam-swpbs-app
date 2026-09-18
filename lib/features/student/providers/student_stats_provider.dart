@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/supabase/supabase_client.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../checkin/models/daily_checkin.dart';
@@ -33,13 +34,38 @@ class StudentStats {
   double get weekDelta => thisWeekAvg - lastWeekAvg;
 }
 
+/// 수업일 기준 연속 참여 (서버 checkin_streaks).
+/// 주말·공휴일·휴업일·방학은 건너뛰므로 금요일 → 월요일도 이어진다.
+class StreakInfo {
+  const StreakInfo({required this.current, required this.best});
+  final int current;
+  final int best;
+}
+
+final myStreakProvider = FutureProvider<StreakInfo?>((ref) async {
+  final profile = ref.watch(profileProvider).value;
+  if (profile?.schoolId == null) return null;
+  try {
+    final res = await SupabaseService.client.rpc('my_streak');
+    final m = Map<String, dynamic>.from(res as Map);
+    return StreakInfo(
+      current: (m['current'] as num?)?.toInt() ?? 0,
+      best: (m['best'] as num?)?.toInt() ?? 0,
+    );
+  } catch (_) {
+    return null; // 서버에 아직 063 이 없으면 아래 달력 계산으로
+  }
+});
+
+/// (예전 방식) 달력 날짜로 센 연속 — 서버 값을 못 받을 때만 쓴다.
 /// Returns 0 if no checkins.
 /// Streak counts consecutive days back from today (or yesterday if today missed).
 int calculateStreak(List<DailyCheckin> checkins) {
   if (checkins.isEmpty) return 0;
   final today = KstDate.today();
   final dates = checkins
-      .map((c) => DateTime(c.checkinDate.year, c.checkinDate.month, c.checkinDate.day))
+      .map((c) =>
+          DateTime(c.checkinDate.year, c.checkinDate.month, c.checkinDate.day))
       .toSet();
 
   var probe = today;
@@ -58,7 +84,8 @@ int calculateStreak(List<DailyCheckin> checkins) {
 int calculateLongestStreak(List<DailyCheckin> checkins) {
   if (checkins.isEmpty) return 0;
   final dates = checkins
-      .map((c) => DateTime(c.checkinDate.year, c.checkinDate.month, c.checkinDate.day))
+      .map((c) =>
+          DateTime(c.checkinDate.year, c.checkinDate.month, c.checkinDate.day))
       .toSet()
       .toList()
     ..sort();
@@ -107,11 +134,22 @@ Map<String, double> _aggregateCategoryAverages(List<DailyCheckin> ch) {
   };
   final sortedAsc = rates.entries.toList()
     ..sort((a, b) => a.value.compareTo(b.value));
-  String? lookup(String id) =>
-      rules.firstWhere((r) => r.id == id, orElse: () => SchoolRule(
-        id: '', schoolId: '', space: '', category: '', ruleText: '',
-        orderIndex: 0, isActive: false, createdAt: DateTime.now(),
-      )).ruleText.isEmpty ? null : rules.firstWhere((r) => r.id == id).ruleText;
+  String? lookup(String id) => rules
+          .firstWhere((r) => r.id == id,
+              orElse: () => SchoolRule(
+                    id: '',
+                    schoolId: '',
+                    space: '',
+                    category: '',
+                    ruleText: '',
+                    orderIndex: 0,
+                    isActive: false,
+                    createdAt: DateTime.now(),
+                  ))
+          .ruleText
+          .isEmpty
+      ? null
+      : rules.firstWhere((r) => r.id == id).ruleText;
   return (
     best: lookup(sortedAsc.last.key),
     worst: lookup(sortedAsc.first.key),
@@ -119,11 +157,14 @@ Map<String, double> _aggregateCategoryAverages(List<DailyCheckin> ch) {
 }
 
 double _avgInRange(
-  List<DailyCheckin> ch, DateTime start, DateTime endExclusive,
+  List<DailyCheckin> ch,
+  DateTime start,
+  DateTime endExclusive,
 ) {
   final inRange = ch
       .where((c) =>
-          !c.checkinDate.isBefore(start) && c.checkinDate.isBefore(endExclusive))
+          !c.checkinDate.isBefore(start) &&
+          c.checkinDate.isBefore(endExclusive))
       .map((c) => c.scorePct);
   return _avg(inRange);
 }
@@ -152,17 +193,19 @@ final studentStatsProvider = FutureProvider<StudentStats>((ref) async {
   }).toList();
 
   final total = await ref.watch(totalCheckinCountProvider.future);
+  final streakInfo = await ref.watch(myStreakProvider.future);
   final categoryAverages = _aggregateCategoryAverages(last30);
   final (best: best, worst: worst) = _bestWorstRule(last30, rules);
 
   final weekStart = KstDate.startOfWeek();
   final lastWeekStart = weekStart.subtract(const Duration(days: 7));
-  final thisWeekAvg = _avgInRange(history, weekStart, weekStart.add(const Duration(days: 7)));
+  final thisWeekAvg =
+      _avgInRange(history, weekStart, weekStart.add(const Duration(days: 7)));
   final lastWeekAvg = _avgInRange(history, lastWeekStart, weekStart);
 
   return StudentStats(
-    streak: calculateStreak(history),
-    longestStreak: calculateLongestStreak(history),
+    streak: streakInfo?.current ?? calculateStreak(history),
+    longestStreak: streakInfo?.best ?? calculateLongestStreak(history),
     totalCount: total,
     last30: last30,
     categoryAverages: categoryAverages,

@@ -10,6 +10,7 @@ import '../../honor/weekly_honor_marquee.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/update/update_service.dart';
+import '../../../shared/widgets/flame_streak.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../calendar/providers/calendar_provider.dart';
@@ -98,6 +99,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
       onRefresh: () async {
         ref.invalidate(schoolGrowthProvider);
         ref.invalidate(todayCheckinProvider);
+        ref.invalidate(myStreakProvider);
         ref.invalidate(studentStatsProvider);
         ref.invalidate(checkinHistoryProvider(60));
         ref.invalidate(totalCheckinCountProvider);
@@ -193,12 +195,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                         color: const Color(0xFFFFF7ED).withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Text(
-                        '🔥 ${stats!.streak}일 연속',
-                        style: GoogleFonts.notoSansKr(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFB45309)),
+                      child: FlameStreak(
+                        days: stats!.streak,
+                        size: 15,
+                        fontSize: 11,
+                        label: '${stats.streak}일 연속',
                       ),
                     ),
                 ],

@@ -9,7 +9,10 @@ import '../../checkin/providers/checkin_provider.dart';
 import 'student_stats_provider.dart';
 
 final allBadgesProvider = FutureProvider<List<BadgeDef>>((ref) async {
-  final rows = await SupabaseService.client.from('badges').select().order('condition_value');
+  final rows = await SupabaseService.client
+      .from('badges')
+      .select()
+      .order('condition_value');
   return rows.map((m) => BadgeDef.fromMap(m as Map<String, dynamic>)).toList();
 });
 
@@ -30,13 +33,15 @@ Future<List<BadgeDef>> evaluateAndAwardBadges(WidgetRef ref) async {
   final user = SupabaseService.auth.currentUser;
   if (user == null) return [];
   final badges = await ref.read(allBadgesProvider.future);
-  final alreadyOwned = (await ref.read(userBadgesProvider.future))
-      .map((b) => b.badgeId)
-      .toSet();
+  final alreadyOwned =
+      (await ref.read(userBadgesProvider.future)).map((b) => b.badgeId).toSet();
 
   final history = await ref.read(checkinHistoryProvider(60).future);
   final total = await ref.read(totalCheckinCountProvider.future);
-  final streak = calculateStreak(history);
+  // 뱃지는 '지금까지 가장 길었던' 연속으로 판정한다.
+  // 이미 끊겼어도 한 번 도달했으면 받는다.
+  final streakInfo = await ref.read(myStreakProvider.future);
+  final streak = streakInfo?.best ?? calculateStreak(history);
   final todayMax = history.isEmpty ? 0 : history.first.scorePct.round();
   final hasFullWeek = _hasFullWeek(history);
   // 수확(보상 교환) 횟수 — 취소 제외
@@ -87,6 +92,8 @@ bool _earned(
       return streak >= 7;
     case 'streak_30':
       return streak >= 30;
+    case 'streak_days':
+      return streak >= b.conditionValue;
     case 'perfect_score':
       return todayMax >= 100;
     case 'full_week':
@@ -103,7 +110,8 @@ bool _hasFullWeek(List<DailyCheckin> ch) {
   final monday = KstDate.startOfWeek();
   final wanted = List.generate(5, (i) => monday.add(Duration(days: i)));
   final have = ch
-      .map((c) => DateTime(c.checkinDate.year, c.checkinDate.month, c.checkinDate.day))
+      .map((c) =>
+          DateTime(c.checkinDate.year, c.checkinDate.month, c.checkinDate.day))
       .toSet();
   return wanted.every(have.contains);
 }
