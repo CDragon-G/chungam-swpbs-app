@@ -242,7 +242,8 @@ class _PraiseMailScreenState extends ConsumerState<PraiseMailScreen> {
 class _Inbox extends ConsumerWidget {
   const _Inbox();
 
-  Future<void> _hide(BuildContext context, WidgetRef ref, ReceivedMail m) async {
+  Future<void> _hide(
+      BuildContext context, WidgetRef ref, ReceivedMail m) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -274,8 +275,8 @@ class _Inbox extends ConsumerWidget {
       _okOrThrow(res, '숨기지 못했어요');
       ref.invalidate(praiseMailboxProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('숨겼어요. 담임 선생님께 알렸어요.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('숨겼어요. 담임 선생님께 알렸어요.')));
       }
     } catch (e) {
       if (context.mounted) {
@@ -349,8 +350,7 @@ class _Inbox extends ConsumerWidget {
                                 m.sentence,
                                 maxLines: 1,
                                 style: GoogleFonts.notoSansKr(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800),
+                                    fontSize: 15, fontWeight: FontWeight.w800),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -361,8 +361,7 @@ class _Inbox extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.notoSansKr(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary),
+                                  fontSize: 12, color: AppColors.textSecondary),
                             ),
                           ],
                         ),
@@ -456,8 +455,8 @@ class _ComposeState extends ConsumerState<_Compose> {
         _anonymous = true;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('💌 ${friend.name}에게 칭찬을 보냈어요!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('💌 ${friend.name}에게 칭찬을 보냈어요!')));
       }
     } catch (e) {
       if (mounted) {
@@ -500,9 +499,8 @@ class _ComposeState extends ConsumerState<_Compose> {
           children: [
             // 이번 주 남은 횟수
             PbsCard(
-              color: noneLeft
-                  ? const Color(0xFFF1F5F9)
-                  : const Color(0xFFF0FDF4),
+              color:
+                  noneLeft ? const Color(0xFFF1F5F9) : const Color(0xFFF0FDF4),
               child: Row(
                 children: [
                   Text(noneLeft ? '📪' : '📮',
@@ -565,13 +563,11 @@ class _ComposeState extends ConsumerState<_Compose> {
                         selected: _friend?.userId == f.userId,
                         selectedColor: const Color(0xFFBBF7D0),
                         // 이번 주에 이미 보낸 친구는 고를 수 없다
-                        onSelected: f.sent
-                            ? null
-                            : (_) => setState(() => _friend = f),
+                        onSelected:
+                            f.sent ? null : (_) => setState(() => _friend = f),
                       ),
                   ],
                 ),
-
               const _Step(n: 2, title: '어떤 모습을 칭찬할까요?'),
               for (final entry in groups.entries) ...[
                 Padding(
@@ -592,7 +588,6 @@ class _ComposeState extends ConsumerState<_Compose> {
                     onTap: () => setState(() => _template = t),
                   ),
               ],
-
               const _Step(n: 3, title: '내 이름을 밝힐까요?'),
               SegmentedButton<bool>(
                 segments: [
@@ -618,15 +613,12 @@ class _ComposeState extends ConsumerState<_Compose> {
               ),
               const SizedBox(height: 6),
               Text(
-                _anonymous
-                    ? '친구에게는 누가 보냈는지 보이지 않아요'
-                    : '친구에게 내 이름이 함께 전해져요',
+                _anonymous ? '친구에게는 누가 보냈는지 보이지 않아요' : '친구에게 내 이름이 함께 전해져요',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.notoSansKr(
                     fontSize: 12, color: AppColors.textSecondary),
               ),
-
               const SizedBox(height: AppSizes.lg),
               if (_friend != null && _template != null)
                 _Preview(
@@ -737,9 +729,8 @@ class _SentenceTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                  color: selected
-                      ? AppColors.studentGreen
-                      : AppColors.borderLight,
+                  color:
+                      selected ? AppColors.studentGreen : AppColors.borderLight,
                   width: selected ? 1.5 : 1),
             ),
             child: Row(
@@ -942,6 +933,112 @@ final classPraiseMailProvider = FutureProvider.autoDispose
       .toList();
 });
 
+/// 칭찬 우체통 통계 — 선생님용. 숫자만 있고 이름은 없다.
+/// 숨김 처리된 편지는 세지 않는다.
+class PraiseMailStats {
+  const PraiseMailStats({
+    this.today = 0,
+    this.todaySenders = 0,
+    this.week = 0,
+    this.myClassToday,
+    this.myClassLabel,
+  });
+
+  final int today;
+  final int todaySenders;
+  final int week;
+  final int? myClassToday;
+  final String? myClassLabel;
+
+  factory PraiseMailStats.fromMap(Map<String, dynamic> m) => PraiseMailStats(
+        today: (m['today'] as num?)?.toInt() ?? 0,
+        todaySenders: (m['today_senders'] as num?)?.toInt() ?? 0,
+        week: (m['week'] as num?)?.toInt() ?? 0,
+        myClassToday: (m['my_class_today'] as num?)?.toInt(),
+        myClassLabel: m['my_class_label'] as String?,
+      );
+}
+
+final praiseMailStatsProvider =
+    FutureProvider.autoDispose<PraiseMailStats?>((ref) async {
+  final res = await SupabaseService.client.rpc('praise_mail_stats');
+  final m = Map<String, dynamic>.from(res as Map);
+  if (m['ok'] != true) return null;
+  return PraiseMailStats.fromMap(m);
+});
+
+/// 오늘 학생들 사이에 오간 칭찬 편지 수.
+class PraiseMailStatsCard extends ConsumerWidget {
+  const PraiseMailStatsCard({super.key, this.onTap});
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(praiseMailStatsProvider).value;
+    if (s == null) return const SizedBox.shrink();
+    Widget cell(String label, String value) => Expanded(
+          child: Column(
+            children: [
+              Text(value,
+                  maxLines: 1,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFFDB2777))),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 11.5, color: AppColors.textSecondary)),
+            ],
+          ),
+        );
+    return GestureDetector(
+      onTap: onTap,
+      child: PbsCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('💌 칭찬 우체통 · 오늘',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 13.5, fontWeight: FontWeight.w900)),
+                ),
+                if (onTap != null)
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 20, color: AppColors.textTertiary),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                cell('주고받은 편지', '${s.today}통'),
+                cell('보낸 학생', '${s.todaySenders}명'),
+                cell('이번 주', '${s.week}통'),
+              ],
+            ),
+            if (s.myClassToday != null && s.myClassLabel != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                '${s.myClassLabel} 학생이 오늘 받은 편지 ${s.myClassToday}통',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// 💌 학급 칭찬 우체통 — 담임·관리자용.
 ///
 /// 익명 편지도 보낸 학생 실명을 보여준다. 학생에게 익명이라는 약속은
@@ -1003,6 +1100,8 @@ class _TeacherPraiseMailScreenState
             ),
           ),
           const SizedBox(height: AppSizes.md),
+          const PraiseMailStatsCard(),
+          const SizedBox(height: AppSizes.md),
           if (isAdmin && classes.isNotEmpty)
             DropdownButtonFormField<_ClassKey>(
               initialValue: key == null
@@ -1031,9 +1130,7 @@ class _TeacherPraiseMailScreenState
             Padding(
               padding: const EdgeInsets.all(AppSizes.xl),
               child: Text(
-                isAdmin
-                    ? '학급을 골라주세요'
-                    : '담임 학급을 먼저 지정해 주세요 (담임반 관리)',
+                isAdmin ? '학급을 골라주세요' : '담임 학급을 먼저 지정해 주세요 (담임반 관리)',
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1069,7 +1166,8 @@ class _ClassMailList extends ConsumerWidget {
             style: GoogleFonts.notoSansKr(color: AppColors.textSecondary)),
       ),
       data: (items) {
-        final reported = items.where((m) => m.hiddenReason == 'not_true').length;
+        final reported =
+            items.where((m) => m.hiddenReason == 'not_true').length;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1094,8 +1192,8 @@ class _ClassMailList extends ConsumerWidget {
                 child: Text('아직 오간 칭찬이 없어요',
                     textAlign: TextAlign.center,
                     maxLines: 1,
-                    style: GoogleFonts.notoSansKr(
-                        color: AppColors.textSecondary)),
+                    style:
+                        GoogleFonts.notoSansKr(color: AppColors.textSecondary)),
               ),
             for (final m in items)
               Padding(
@@ -1141,8 +1239,7 @@ class _ClassMailList extends ConsumerWidget {
                           Text(_dateLabel(m.createdAt),
                               maxLines: 1,
                               style: GoogleFonts.notoSansKr(
-                                  fontSize: 11,
-                                  color: AppColors.textTertiary)),
+                                  fontSize: 11, color: AppColors.textTertiary)),
                           if (!m.hidden)
                             IconButton(
                               tooltip: '숨기기',

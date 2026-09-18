@@ -10,6 +10,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../providers/homeroom_provider.dart';
+import 'weekly_checkin_grid.dart';
 
 /// 🧑‍🏫 담임반 관리
 /// 담임은 해마다·학기 중에도 바뀌므로, 선생님이 직접 학급을 지정하고
@@ -58,16 +59,20 @@ class HomeroomScreen extends ConsumerWidget {
           ),
         ),
         data: (o) {
-          if (o.needsSetup) return _Setup(onPick: () => _pickClass(context, ref));
+          if (o.needsSetup)
+            return _Setup(onPick: () => _pickClass(context, ref));
           if (!o.ok) {
             return Center(
               child: Text('교사 계정으로 로그인해주세요.',
-                  style: GoogleFonts.notoSansKr(
-                      color: AppColors.textSecondary)),
+                  style:
+                      GoogleFonts.notoSansKr(color: AppColors.textSecondary)),
             );
           }
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(homeroomOverviewProvider),
+            onRefresh: () async {
+              ref.invalidate(homeroomOverviewProvider);
+              ref.invalidate(classWeekProvider);
+            },
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
                   AppSizes.lg, AppSizes.sm, AppSizes.lg, 90),
@@ -75,6 +80,10 @@ class HomeroomScreen extends ConsumerWidget {
                 _Summary(o: o),
                 const SizedBox(height: AppSizes.md),
                 _AttentionBanner(o: o),
+                if (o.grade != null && o.classNum != null) ...[
+                  WeeklyCheckinGrid(grade: o.grade!, classNum: o.classNum!),
+                  const SizedBox(height: AppSizes.md),
+                ],
                 Padding(
                   padding: const EdgeInsets.fromLTRB(2, 6, 2, 8),
                   child: Row(
@@ -85,8 +94,7 @@ class HomeroomScreen extends ConsumerWidget {
                       const Spacer(),
                       Text('최근 ${o.days}일 · 수업일 ${o.schoolDays}일 기준',
                           style: GoogleFonts.notoSansKr(
-                              fontSize: 11.5,
-                              color: AppColors.textTertiary)),
+                              fontSize: 11.5, color: AppColors.textTertiary)),
                     ],
                   ),
                 ),
@@ -130,9 +138,7 @@ class HomeroomScreen extends ConsumerWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (sheetCtx, setSheet) {
-          final classesOfGrade = classes
-              .where((c) => c.grade == grade)
-              .toList()
+          final classesOfGrade = classes.where((c) => c.grade == grade).toList()
             ..sort((a, b) => a.classNum.compareTo(b.classNum));
           return Padding(
             padding: EdgeInsets.fromLTRB(AppSizes.xl, AppSizes.xl, AppSizes.xl,
@@ -272,16 +278,14 @@ class _Setup extends StatelessWidget {
               '담임이 바뀌면 언제든 다시 선택하시면 됩니다.',
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSansKr(
-                  fontSize: 13.5,
-                  height: 1.6,
-                  color: AppColors.textSecondary),
+                  fontSize: 13.5, height: 1.6, color: AppColors.textSecondary),
             ),
             const SizedBox(height: AppSizes.xl),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.teacherNavy,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 28, vertical: 13),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 13),
               ),
               onPressed: onPick,
               child: Text('학급 선택하기',
@@ -341,8 +345,7 @@ class _Summary extends StatelessWidget {
               value: o.total == 0 ? 0 : o.todayDone / o.total,
               minHeight: 10,
               backgroundColor: Colors.white,
-              valueColor:
-                  const AlwaysStoppedAnimation(AppColors.studentGreen),
+              valueColor: const AlwaysStoppedAnimation(AppColors.studentGreen),
             ),
           ),
           const SizedBox(height: 4),
@@ -433,7 +436,8 @@ class _StudentTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.sm),
       child: PbsCard(
-        color: s.needsAttention ? AppColors.warning.withValues(alpha: 0.06) : null,
+        color:
+            s.needsAttention ? AppColors.warning.withValues(alpha: 0.06) : null,
         child: Column(
           children: [
             Row(
@@ -450,9 +454,7 @@ class _StudentTile extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    s.todayDone
-                        ? Icons.check_rounded
-                        : Icons.remove_rounded,
+                    s.todayDone ? Icons.check_rounded : Icons.remove_rounded,
                     size: 19,
                     color: s.todayDone
                         ? AppColors.studentGreen
@@ -477,8 +479,7 @@ class _StudentTile extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.notoSansKr(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800),
+                                  fontSize: 15, fontWeight: FontWeight.w800),
                             ),
                           ),
                           if (s.streak >= 3) ...[
@@ -500,8 +501,9 @@ class _StudentTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.notoSansKr(
                           fontSize: 11.5,
-                          fontWeight:
-                              s.needsAttention ? FontWeight.w700 : FontWeight.w400,
+                          fontWeight: s.needsAttention
+                              ? FontWeight.w700
+                              : FontWeight.w400,
                           color: s.needsAttention
                               ? AppColors.warning
                               : AppColors.textSecondary,
@@ -522,8 +524,7 @@ class _StudentTile extends StatelessWidget {
                     if (s.badges > 0)
                       Text('배지 ${s.badges}',
                           style: GoogleFonts.notoSansKr(
-                              fontSize: 10.5,
-                              color: AppColors.textTertiary)),
+                              fontSize: 10.5, color: AppColors.textTertiary)),
                   ],
                 ),
               ],

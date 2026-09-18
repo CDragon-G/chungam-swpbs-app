@@ -120,8 +120,7 @@ class SchoolSign extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 36 * scale),
+                  padding: EdgeInsets.symmetric(horizontal: 36 * scale),
                   child: Text(
                     name,
                     maxLines: 1,
@@ -130,8 +129,7 @@ class SchoolSign extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       color: const Color(0xFF5B3A1E),
                       shadows: const [
-                        Shadow(
-                            color: Color(0x55FFFFFF), offset: Offset(0, 1)),
+                        Shadow(color: Color(0x55FFFFFF), offset: Offset(0, 1)),
                       ],
                     ),
                   ),
@@ -142,8 +140,8 @@ class SchoolSign extends StatelessWidget {
               Align(
                 alignment: const Alignment(0, 0.18),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 1),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
                   decoration: BoxDecoration(
                     color: const Color(0xCC5B8C2A),
                     borderRadius: BorderRadius.circular(999),
@@ -208,8 +206,8 @@ class FarmMenuButton extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Image.asset(asset,
-                      filterQuality: FilterQuality.medium),
+                  child:
+                      Image.asset(asset, filterQuality: FilterQuality.medium),
                 ),
                 if (badge != null)
                   Positioned(
@@ -347,8 +345,7 @@ class GrowthProgressBar extends StatelessWidget {
         if (g.isGateLocked)
           Container(
             margin: const EdgeInsets.only(top: 6),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
               color: const Color(0xFFFFF7E6).withValues(alpha: 0.96),
               borderRadius: BorderRadius.circular(999),
@@ -418,16 +415,20 @@ class FarmNoticeBanner extends StatelessWidget {
 }
 
 /// 🌱 식물 말풍선 — 식물이 말을 건네는 연출.
-/// [pinned]가 있으면 항상 그 메시지(예: 관문 잠김 안내)를 보여주고,
-/// 없으면 [messages] 중 하나를 랜덤으로 골라 주기적으로 바꿔가며 응원한다.
+/// [pinned]가 있으면 항상 그 메시지(예: 관문 잠김 안내)를 보여준다.
+/// 없으면 [news](지금 알려줄 소식)를 먼저 하나씩 말하고, 그 뒤로는
+/// [messages] 중에서 골라 8초마다 바꿔 말한다. 소식은 세 번에 한 번꼴로 다시 말한다.
+/// 새 소식이 생기면(예: 새 강화물 알림) 바로 그 말로 바꾼다.
 class PlantSpeechBubble extends StatefulWidget {
   const PlantSpeechBubble({
     super.key,
     this.pinned,
+    this.news = const [],
     this.messages = const [],
     this.scale = 1,
   });
   final String? pinned;
+  final List<String> news;
   final List<String> messages;
   final double scale;
 
@@ -437,25 +438,74 @@ class PlantSpeechBubble extends StatefulWidget {
 
 class _PlantSpeechBubbleState extends State<PlantSpeechBubble> {
   final _rand = math.Random();
-  int _idx = 0;
+  String _text = '';
+  int _tick = 0;
+  int _newsShown = 0; // 처음 한 바퀴에서 소식을 몇 개 말했나
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    if (widget.messages.isNotEmpty) {
-      _idx = _rand.nextInt(widget.messages.length);
+    _text = _first();
+    _syncTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlantSpeechBubble old) {
+    super.didUpdateWidget(old);
+    final fresh =
+        widget.news.where((n) => !old.news.contains(n)).toList(growable: false);
+    if (fresh.isNotEmpty) {
+      // 새 소식은 기다리지 않고 바로 말한다
+      _text = fresh.first;
+      _newsShown = 0;
+    } else if (_text.isEmpty ||
+        (!widget.news.contains(_text) && !widget.messages.contains(_text))) {
+      _text = _first();
     }
-    // 고정 메시지가 없을 때만 9초마다 다른 응원 멘트로 교체
-    if (widget.pinned == null && widget.messages.length > 1) {
-      _timer = Timer.periodic(const Duration(seconds: 9), (_) {
-        if (!mounted) return;
-        setState(() {
-          _idx = (_idx + 1 + _rand.nextInt(widget.messages.length - 1)) %
-              widget.messages.length;
-        });
-      });
+    _syncTimer();
+  }
+
+  String _first() {
+    if (widget.news.isNotEmpty) {
+      _newsShown = 1;
+      return widget.news.first;
     }
+    return _randomMessage();
+  }
+
+  String _randomMessage() {
+    final pool = widget.messages.where((m) => m != _text).toList();
+    if (pool.isEmpty) {
+      return widget.messages.isEmpty ? '' : widget.messages.first;
+    }
+    return pool[_rand.nextInt(pool.length)];
+  }
+
+  String _next() {
+    _tick++;
+    final news = widget.news;
+    if (news.isNotEmpty && _newsShown < news.length) {
+      return news[_newsShown++];
+    }
+    if (news.isNotEmpty && (_tick % 3 == 0 || widget.messages.isEmpty)) {
+      return news[_rand.nextInt(news.length)];
+    }
+    return _randomMessage();
+  }
+
+  void _syncTimer() {
+    final canRotate = widget.pinned == null &&
+        widget.news.length + widget.messages.length > 1;
+    if (!canRotate) {
+      _timer?.cancel();
+      _timer = null;
+      return;
+    }
+    _timer ??= Timer.periodic(const Duration(seconds: 8), (_) {
+      if (!mounted) return;
+      setState(() => _text = _next());
+    });
   }
 
   @override
@@ -467,8 +517,7 @@ class _PlantSpeechBubbleState extends State<PlantSpeechBubble> {
   @override
   Widget build(BuildContext context) {
     final isPinned = widget.pinned != null;
-    final text = widget.pinned ??
-        (widget.messages.isEmpty ? '' : widget.messages[_idx]);
+    final text = widget.pinned ?? _text;
     if (text.isEmpty) return const SizedBox.shrink();
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -505,9 +554,8 @@ class _PlantSpeechBubbleState extends State<PlantSpeechBubble> {
                 fontSize: 11.5 * widget.scale,
                 fontWeight: FontWeight.w700,
                 height: 1.4,
-                color: isPinned
-                    ? const Color(0xFF9A6A0B)
-                    : AppColors.textPrimary,
+                color:
+                    isPinned ? const Color(0xFF9A6A0B) : AppColors.textPrimary,
               ),
             ),
           ),
@@ -524,10 +572,9 @@ class _PlantSpeechBubbleState extends State<PlantSpeechBubble> {
                 color: Colors.white.withValues(alpha: 0.96),
                 border: isPinned
                     ? const Border(
-                        right: BorderSide(
-                            color: Color(0xFFF5D08C), width: 1.4),
-                        bottom: BorderSide(
-                            color: Color(0xFFF5D08C), width: 1.4),
+                        right: BorderSide(color: Color(0xFFF5D08C), width: 1.4),
+                        bottom:
+                            BorderSide(color: Color(0xFFF5D08C), width: 1.4),
                       )
                     : null,
               ),

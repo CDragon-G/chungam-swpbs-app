@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/supabase/supabase_client.dart';
 
 /// 우리 학교에 있는 학급 목록 (담임 학급을 고를 때 사용).
-final schoolClassListProvider =
-    FutureProvider<List<ClassOption>>((ref) async {
+final schoolClassListProvider = FutureProvider<List<ClassOption>>((ref) async {
   final rows = await SupabaseService.client.rpc('school_class_list') as List;
   return rows
       .map((r) => ClassOption.fromMap(Map<String, dynamic>.from(r as Map)))
@@ -12,8 +11,7 @@ final schoolClassListProvider =
 });
 
 /// 우리 반 현황 — 요약과 학생 목록을 한 번에 받는다.
-final homeroomOverviewProvider =
-    FutureProvider<HomeroomOverview>((ref) async {
+final homeroomOverviewProvider = FutureProvider<HomeroomOverview>((ref) async {
   final res = await SupabaseService.client
       .rpc('homeroom_overview', params: {'p_days': 30});
   return HomeroomOverview.fromMap(Map<String, dynamic>.from(res as Map));
@@ -78,8 +76,8 @@ class HomeroomOverview {
   final String? reason; // not_teacher | no_homeroom
   final int? grade;
   final int? classNum;
-  final int days;        // 조회 기간
-  final int schoolDays;  // 그중 수업일 수 (참여율 분모)
+  final int days; // 조회 기간
+  final int schoolDays; // 그중 수업일 수 (참여율 분모)
   final int total;
   final int todayDone;
   final int todayPct;
@@ -135,14 +133,14 @@ class HomeroomStudent {
   final String profileId;
   final String nickname;
   final int studentNum;
-  final int days;      // 기간 내 참여 일수
-  final int partPct;   // 참여율 %
-  final int avgScore;  // 평균 점수 %
+  final int days; // 기간 내 참여 일수
+  final int partPct; // 참여율 %
+  final int avgScore; // 평균 점수 %
   final bool todayDone;
   final int streak;
   final int points;
   final int badges;
-  final int missed;    // 마지막 점검 이후 지난 날
+  final int missed; // 마지막 점검 이후 지난 날
   final DateTime? lastDate;
 
   /// 한 번도 점검하지 않았는가.

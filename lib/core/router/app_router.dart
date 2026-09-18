@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../notifications/fcm_service.dart';
+import 'root_navigator.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/cico/presentation/cico_home_screen.dart';
 import '../../features/cico/presentation/student_cico_screen.dart';
@@ -49,6 +50,7 @@ import '../../shared/widgets/pbs_bottom_nav.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefresh(ref);
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: refresh,
     redirect: (context, state) {
@@ -103,28 +105,60 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordScreen()),
-      GoRoute(path: '/signup-select', builder: (_, __) => const SignupSelectScreen()),
-      GoRoute(path: '/signup/teacher', builder: (_, __) => const TeacherSignupScreen()),
-      GoRoute(path: '/signup/student', builder: (_, __) => const StudentSignupScreen()),
+      GoRoute(
+          path: '/signup-select',
+          builder: (_, __) => const SignupSelectScreen()),
+      GoRoute(
+          path: '/signup/teacher',
+          builder: (_, __) => const TeacherSignupScreen()),
+      GoRoute(
+          path: '/signup/student',
+          builder: (_, __) => const StudentSignupScreen()),
 
       // Student shell
       ShellRoute(
         builder: (context, state, child) =>
             StudentShell(location: state.matchedLocation, child: child),
         routes: [
-          GoRoute(path: '/student/home', builder: (_, __) => const StudentHomeScreen()),
-          GoRoute(path: '/student/checkin', builder: (_, __) => const CheckinScreen()),
-          GoRoute(path: '/student/checkin/result', builder: (_, __) => const CheckinResultScreen()),
-          GoRoute(path: '/student/mypage', builder: (_, __) => const MyPageScreen()),
-          GoRoute(path: '/student/badges', builder: (_, __) => const BadgesScreen()),
-          GoRoute(path: '/student/store', builder: (_, __) => const StudentStoreScreen()),
-          GoRoute(path: '/student/points-history', builder: (_, __) => const StudentStoreScreen()),
-          GoRoute(path: '/student/compare', builder: (_, __) => const CompareScreen()),
-          GoRoute(path: '/student/hall-of-fame', builder: (_, __) => const HallOfFameScreen()),
-          GoRoute(path: '/student/cico', builder: (_, __) => const StudentCicoScreen()),
-          GoRoute(path: '/student/notifications', builder: (_, __) => const NotificationCenterScreen()),
-          GoRoute(path: '/student/suggest', builder: (_, __) => const SuggestionBoxScreen()),
-          GoRoute(path: '/student/praise-mail', builder: (_, __) => const PraiseMailScreen()),
+          GoRoute(
+              path: '/student/home',
+              builder: (_, __) => const StudentHomeScreen()),
+          GoRoute(
+              path: '/student/checkin',
+              builder: (_, __) => const CheckinScreen()),
+          GoRoute(
+              path: '/student/checkin/result',
+              builder: (_, __) => const CheckinResultScreen()),
+          GoRoute(
+              path: '/student/mypage',
+              builder: (_, __) => const MyPageScreen()),
+          GoRoute(
+              path: '/student/badges',
+              builder: (_, __) => const BadgesScreen()),
+          GoRoute(
+              path: '/student/store',
+              builder: (_, __) => const StudentStoreScreen()),
+          GoRoute(
+              path: '/student/points-history',
+              builder: (_, __) => const StudentStoreScreen()),
+          GoRoute(
+              path: '/student/compare',
+              builder: (_, __) => const CompareScreen()),
+          GoRoute(
+              path: '/student/hall-of-fame',
+              builder: (_, __) => const HallOfFameScreen()),
+          GoRoute(
+              path: '/student/cico',
+              builder: (_, __) => const StudentCicoScreen()),
+          GoRoute(
+              path: '/student/notifications',
+              builder: (_, __) => const NotificationCenterScreen()),
+          GoRoute(
+              path: '/student/suggest',
+              builder: (_, __) => const SuggestionBoxScreen()),
+          GoRoute(
+              path: '/student/praise-mail',
+              builder: (_, __) => const PraiseMailScreen()),
         ],
       ),
 
@@ -133,30 +167,77 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) =>
             TeacherShell(location: state.matchedLocation, child: child),
         routes: [
-          GoRoute(path: '/teacher/home', builder: (_, __) => const TeacherHomeScreen()),
-          GoRoute(path: '/teacher/dashboard', builder: (_, __) => const DashboardScreen()),
-          GoRoute(path: '/teacher/students', builder: (_, __) => const StudentListScreen()),
-          GoRoute(path: '/teacher/rules', builder: (_, __) => const RuleEditorScreen()),
-          GoRoute(path: '/teacher/roster', builder: (_, __) => const RosterScreen()),
-          GoRoute(path: '/teacher/store', builder: (_, __) => const TeacherStoreScreen()),
-          GoRoute(path: '/teacher/vote', builder: (_, __) => const ClassVoteScreen()),
-          GoRoute(path: '/teacher/announce', builder: (_, __) => const AnnouncementScreen()),
-          GoRoute(path: '/teacher/permissions', builder: (_, __) => const TeacherManagementScreen()),
-          GoRoute(path: '/teacher/hall-of-fame', builder: (_, __) => const HallOfFameScreen()),
-          GoRoute(path: '/teacher/kodr', builder: (_, __) => const KodrScreen()),
-          GoRoute(path: '/teacher/cico', builder: (_, __) => const CicoHomeScreen()),
-          GoRoute(path: '/teacher/lounge', builder: (_, __) => const TeacherLoungeScreen()),
-          GoRoute(path: '/teacher/notifications', builder: (_, __) => const NotificationCenterScreen()),
-          GoRoute(path: '/teacher/calendar', builder: (_, __) => const SchoolCalendarScreen()),
-          GoRoute(path: '/teacher/homeroom', builder: (_, __) => const HomeroomScreen()),
-          GoRoute(path: '/teacher/suggestions', builder: (_, __) => const SuggestionAdminScreen()),
-          GoRoute(path: '/teacher/rule-stats', builder: (_, __) => const RuleStatsScreen()),
-          GoRoute(path: '/teacher/praise-sent', builder: (_, __) => const PraiseSentScreen()),
-          GoRoute(path: '/teacher/promotion', builder: (_, __) => const RosterPromotionScreen()),
-          GoRoute(path: '/teacher/praise-mail', builder: (_, __) => const TeacherPraiseMailScreen()),
-          GoRoute(path: '/teacher/support', builder: (_, __) => const SupportReferralScreen()),
-          GoRoute(path: '/teacher/accounts', builder: (_, __) => const TeacherAdminScreen()),
-          GoRoute(path: '/teacher/quiz-admin', builder: (_, __) => const QuizAdminScreen()),
+          GoRoute(
+              path: '/teacher/home',
+              builder: (_, __) => const TeacherHomeScreen()),
+          GoRoute(
+              path: '/teacher/dashboard',
+              builder: (_, __) => const DashboardScreen()),
+          GoRoute(
+              path: '/teacher/students',
+              builder: (_, __) => const StudentListScreen()),
+          GoRoute(
+              path: '/teacher/rules',
+              builder: (_, __) => const RuleEditorScreen()),
+          GoRoute(
+              path: '/teacher/roster',
+              builder: (_, __) => const RosterScreen()),
+          GoRoute(
+              path: '/teacher/store',
+              builder: (_, __) => const TeacherStoreScreen()),
+          GoRoute(
+              path: '/teacher/vote',
+              builder: (_, __) => const ClassVoteScreen()),
+          GoRoute(
+              path: '/teacher/announce',
+              builder: (_, __) => const AnnouncementScreen()),
+          GoRoute(
+              path: '/teacher/permissions',
+              builder: (_, __) => const TeacherManagementScreen()),
+          GoRoute(
+              path: '/teacher/hall-of-fame',
+              builder: (_, __) => const HallOfFameScreen()),
+          GoRoute(
+              path: '/teacher/kodr', builder: (_, __) => const KodrScreen()),
+          GoRoute(
+              path: '/teacher/cico',
+              builder: (_, __) => const CicoHomeScreen()),
+          GoRoute(
+              path: '/teacher/lounge',
+              builder: (_, __) => const TeacherLoungeScreen()),
+          GoRoute(
+              path: '/teacher/notifications',
+              builder: (_, __) => const NotificationCenterScreen()),
+          GoRoute(
+              path: '/teacher/calendar',
+              builder: (_, __) => const SchoolCalendarScreen()),
+          GoRoute(
+              path: '/teacher/homeroom',
+              builder: (_, __) => const HomeroomScreen()),
+          GoRoute(
+              path: '/teacher/suggestions',
+              builder: (_, __) => const SuggestionAdminScreen()),
+          GoRoute(
+              path: '/teacher/rule-stats',
+              builder: (_, __) => const RuleStatsScreen()),
+          GoRoute(
+              path: '/teacher/praise-sent',
+              builder: (_, __) => const PraiseSentScreen()),
+          GoRoute(
+              path: '/teacher/promotion',
+              builder: (_, __) => const RosterPromotionScreen()),
+          GoRoute(
+              path: '/teacher/praise-mail',
+              builder: (_, __) => const TeacherPraiseMailScreen()),
+          GoRoute(
+              path: '/teacher/support',
+              builder: (_, __) => const SupportReferralScreen()),
+          GoRoute(
+              path: '/teacher/accounts',
+              builder: (_, __) => const TeacherAdminScreen()),
+          GoRoute(
+              path: '/teacher/quiz-admin',
+              builder: (_, __) => const QuizAdminScreen()),
         ],
       ),
     ],

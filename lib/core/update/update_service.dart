@@ -43,7 +43,18 @@ class UpdateInfo {
 class UpdateService {
   UpdateService._();
 
+  /// 마지막으로 확인한 결과. 식물 말풍선처럼 팝업 말고도
+  /// "새 버전이 나왔어요" 를 알려주고 싶은 곳에서 본다.
+  static final ValueNotifier<UpdateInfo> latest =
+      ValueNotifier<UpdateInfo>(UpdateInfo.none);
+
   static Future<UpdateInfo> check() async {
+    final info = await _check();
+    if (info.latest.isNotEmpty) latest.value = info;
+    return info;
+  }
+
+  static Future<UpdateInfo> _check() async {
     // 웹·데스크톱에는 스토어가 없다.
     if (kIsWeb) return UpdateInfo.none;
     final platform = Platform.isAndroid

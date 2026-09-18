@@ -3,10 +3,19 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/app_colors.dart';
+import '../router/root_navigator.dart';
 import 'update_service.dart';
 
-/// 앱을 켤 때 한 번, 최신 버전이 아니면 안내 팝업을 띄운다.
+/// 최신 버전이 아니면 업데이트 안내 팝업을 띄운다.
+///
+/// 앱을 켤 때, 그리고 다른 앱에 갔다가 돌아올 때마다 확인한다.
+/// 학생들은 앱을 끄지 않고 며칠씩 두기 때문에 켤 때 한 번만 보면
+/// 안내를 거의 보지 못한다. '나중에' 를 눌렀으면 30분 동안은 다시 띄우지 않는다.
 /// 최소 지원 버전보다 낮으면 닫을 수 없는 팝업으로 업데이트를 요구한다.
+///
+/// 이 위젯은 MaterialApp.builder 안, 즉 Navigator 보다 위에 있다.
+/// 그래서 팝업은 자기 context 가 아니라 [rootNavigatorKey] 의 context 로 띄운다.
+/// (예전에는 자기 context 로 띄워서 '새 버전이 나왔어요' 팝업이 한 번도 뜨지 못했다)
 class UpdateGate extends StatefulWidget {
   const UpdateGate({super.key, required this.child});
   final Widget child;
@@ -15,22 +24,51 @@ class UpdateGate extends StatefulWidget {
   State<UpdateGate> createState() => _UpdateGateState();
 }
 
-class _UpdateGateState extends State<UpdateGate> {
-  bool _checked = false;
+class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
+  static const _remindAfter = Duration(minutes: 30);
+
+  DateTime? _lastShown;
+  bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+    WidgetsBinding.instance.addObserver(this);
+    // 첫 화면(스플래시)이 로그인·홈으로 넘어간 뒤에 띄운다.
+    // 바로 띄우면 화면이 바뀌면서 팝업도 함께 닫힌다.
+    Future.delayed(const Duration(seconds: 3), _check);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _check();
   }
 
   Future<void> _check() async {
-    if (_checked) return;
-    _checked = true;
-    final info = await UpdateService.check();
-    if (!mounted || !info.updateAvailable) return;
-    // '나중에' 를 누른 뒤 같은 실행 중에 또 뜨지 않도록 한 번만 띄운다.
-    await showUpdateDialog(context, info);
+    if (!mounted || _busy) return;
+    _busy = true;
+    try {
+      final info = await UpdateService.check();
+      if (!mounted || !info.updateAvailable) return;
+      final last = _lastShown;
+      if (!info.force &&
+          last != null &&
+          DateTime.now().difference(last) < _remindAfter) {
+        return;
+      }
+      final ctx = rootNavigatorKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      _lastShown = DateTime.now();
+      await showUpdateDialog(ctx, info);
+    } finally {
+      _busy = false;
+    }
   }
 
   @override
@@ -86,8 +124,7 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo info) {
             ),
             const SizedBox(height: 12),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.borderLight,
                 borderRadius: BorderRadius.circular(8),
@@ -116,8 +153,7 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo info) {
             TextButton(
               onPressed: () => Navigator.pop(dialogCtx),
               child: Text('나중에',
-                  style: GoogleFonts.notoSansKr(
-                      color: AppColors.textTertiary)),
+                  style: GoogleFonts.notoSansKr(color: AppColors.textTertiary)),
             ),
           FilledButton(
             style:

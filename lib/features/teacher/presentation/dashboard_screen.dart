@@ -6,11 +6,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/category_radar_chart.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../honor/honor_gardener.dart';
+import '../../homeroom/presentation/weekly_checkin_grid.dart';
 import '../providers/dashboard_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -44,8 +46,7 @@ class _State extends ConsumerState<DashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
             child: Row(
               children: [
-                for (final (i, label)
-                    in const ['전체', '반별', '학생별'].indexed)
+                for (final (i, label) in const ['전체', '반별', '학생별'].indexed)
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _tab = i),
@@ -98,12 +99,20 @@ class _OverallTab extends ConsumerWidget {
       onRefresh: () async => ref.invalidate(schoolOverviewProvider),
       child: overview.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('오류: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.xl),
+            child: Text(translateError(e),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSansKr(color: AppColors.textSecondary)),
+          ),
+        ),
         data: (o) => ListView(
           padding: const EdgeInsets.all(AppSizes.lg),
           children: [
             HonorGardenerCard(
-                isAdmin: ref.watch(profileProvider).value?.isAdminTeacher ?? false),
+                isAdmin:
+                    ref.watch(profileProvider).value?.isAdminTeacher ?? false),
             PbsCard(
               color: AppColors.teacherNavyLight,
               child: Column(
@@ -132,7 +141,8 @@ class _OverallTab extends ConsumerWidget {
             ),
             const SectionHeader(title: '최근 2주 참여 추이'),
             PbsCard(
-              child: SizedBox(height: 200, child: _TrendLine(data: o.last14Days)),
+              child:
+                  SizedBox(height: 200, child: _TrendLine(data: o.last14Days)),
             ),
             const SectionHeader(title: '반별 참여율'),
             PbsCard(child: _ClassBars(data: o.classParticipation)),
@@ -331,7 +341,8 @@ class _ClassBars extends StatelessWidget {
       rows.add(_ClassBarRow(label: e.key, value: e.value));
     }
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
   }
 }
 
@@ -405,7 +416,14 @@ class _PerClassTab extends ConsumerWidget {
 
     return overview.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('오류: $e')),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.xl),
+          child: Text(translateError(e),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.notoSansKr(color: AppColors.textSecondary)),
+        ),
+      ),
       data: (o) {
         final keys = o.classParticipation.keys.toList()..sort();
         if (keys.isEmpty) {
@@ -472,9 +490,10 @@ class _ClassDetail extends ConsumerWidget {
     final statsAsync = ref.watch(classStatsProvider(classKey));
     return statsAsync.when(
       loading: () => const PbsCard(
-        child: SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+        child: SizedBox(
+            height: 200, child: Center(child: CircularProgressIndicator())),
       ),
-      error: (e, _) => PbsCard(child: Text('오류: $e')),
+      error: (e, _) => PbsCard(child: Text(translateError(e))),
       data: (s) => Column(
         children: [
           const SectionHeader(title: '최근 14일 참여'),
@@ -488,9 +507,7 @@ class _ClassDetail extends ConsumerWidget {
                         Container(
                           width: 14,
                           height: 50 *
-                              (d.total == 0
-                                  ? 0.0
-                                  : d.participants / d.total),
+                              (d.total == 0 ? 0.0 : d.participants / d.total),
                           decoration: BoxDecoration(
                             color: AppColors.scoreColor(d.total == 0
                                 ? 0
@@ -551,6 +568,10 @@ class _ClassDetail extends ConsumerWidget {
                     }).toList(),
             ),
           ),
+          if (_gradeClass(classKey) case (final g, final c)) ...[
+            const SectionHeader(title: '주간 점검표'),
+            WeeklyCheckinGrid(grade: g, classNum: c),
+          ],
           const SectionHeader(title: '오늘 미참여'),
           PbsCard(
             child: s.nonParticipantsToday.isEmpty
@@ -589,7 +610,14 @@ class _PerStudentTab extends ConsumerWidget {
     final rowsAsync = ref.watch(studentRowsProvider);
     return rowsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('오류: $e')),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.xl),
+          child: Text(translateError(e),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.notoSansKr(color: AppColors.textSecondary)),
+        ),
+      ),
       data: (rows) {
         if (rows.isEmpty) {
           return Center(
@@ -670,4 +698,13 @@ class _PerStudentTab extends ConsumerWidget {
       },
     );
   }
+}
+
+/// '2-3' → (2, 3). 형식이 다르면 null.
+(int, int)? _gradeClass(String classKey) {
+  final p = classKey.split('-');
+  if (p.length < 2) return null;
+  final g = int.tryParse(p[0]);
+  final c = int.tryParse(p[1]);
+  return (g == null || c == null) ? null : (g, c);
 }
