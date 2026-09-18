@@ -39,8 +39,15 @@ update app_releases
 ```
 
 **웹사이트도 다시 올려야 합니다.** 학맞통 연계 소개가 새로 들어갔고, 웹 점검에서
-포인트가 지급되지 않던 문제를 고쳤습니다. `jaram-web` 폴더(또는 `dist/`)를
-Netlify Drop 으로 다시 올려주세요.
+포인트가 지급되지 않던 문제를 고쳤습니다. jaramedu.kr 은 Cloudflare Pages 에서
+나갑니다 (2026년 7월 Netlify 에서 옮김). Netlify 에 올리면 jaramedu.kr 은 바뀌지 않습니다.
+
+```
+dash.cloudflare.com → Workers & Pages → odd-darkness-9a64
+  → Create deployment → C:\dev\jaram-web\dist 폴더를 통째로 끌어다 놓기
+```
+
+`guide-img` 폴더가 빠지면 가이드 이미지가 깨지니 `dist` 폴더째 올립니다.
 
 ## Google Play — 새로운 기능 (500자 제한)
 
