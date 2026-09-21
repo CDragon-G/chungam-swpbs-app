@@ -16,8 +16,8 @@
 ```
 1. 062_teacher_week_praise_stats.sql     (실행 완료)
 2. 063_school_day_streak.sql             (실행 완료)
-3. 064_point_rules_mailbox_hours.sql     앱 배포 전에
-4. 065_group_progress_for_teachers.sql   앱 배포 전에
+3. 064_point_rules_mailbox_hours.sql     (실행 완료)
+4. 065_group_progress_for_teachers.sql   (실행 완료)
 5. 0.28.0 을 스토어에 올리고 출시 완료까지 기다린다
 6. 버전 게이트 올리기                      ← 출시가 끝난 뒤에만
 ```
