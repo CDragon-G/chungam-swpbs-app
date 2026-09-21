@@ -104,6 +104,63 @@ class _State extends ConsumerState<TeacherStoreScreen>
   }
 }
 
+/// 함께 키우기 진행 상황 (선생님 목록용).
+class GroupProgress {
+  const GroupProgress({
+    required this.goal,
+    required this.raised,
+    required this.people,
+    required this.achieved,
+    required this.closed,
+    required this.top,
+  });
+
+  final int goal;
+  final int raised;
+  final int people;
+  final bool achieved;
+  final bool closed;
+
+  /// 많이 보탠 학생 3명 (이름, 포인트)
+  final List<({String name, int amount})> top;
+
+  int get remain => (goal - raised) < 0 ? 0 : goal - raised;
+  double get progress => goal <= 0 ? 0 : (raised / goal).clamp(0.0, 1.0);
+  int get percent => (progress * 100).round();
+
+  factory GroupProgress.fromMap(Map<String, dynamic> m) => GroupProgress(
+        goal: (m['goal'] as num?)?.toInt() ?? 0,
+        raised: (m['raised'] as num?)?.toInt() ?? 0,
+        people: (m['people'] as num?)?.toInt() ?? 0,
+        achieved: m['achieved'] == true,
+        closed: m['closed'] == true,
+        top: [
+          for (final e in (m['top'] as List?) ?? const [])
+            (
+              name: ((e as Map)['name'] as String?) ?? '',
+              amount: (e['amount'] as num?)?.toInt() ?? 0,
+            ),
+        ],
+      );
+}
+
+/// 강화물 id → 진행 상황. 목록 전체를 한 번에 받는다.
+final groupProgressProvider =
+    FutureProvider.autoDispose<Map<String, GroupProgress>>((ref) async {
+  try {
+    final res = await SupabaseService.client.rpc('group_items_progress');
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) return const {};
+    return {
+      for (final e in (m['items'] as List?) ?? const [])
+        (e as Map)['item_id'] as String:
+            GroupProgress.fromMap(Map<String, dynamic>.from(e)),
+    };
+  } catch (_) {
+    return const {}; // 서버에 아직 065 가 없으면 막대를 숨긴다
+  }
+});
+
 class _ItemsTab extends ConsumerWidget {
   const _ItemsTab();
 
@@ -111,7 +168,10 @@ class _ItemsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final itemsAsync = ref.watch(allStoreItemsProvider);
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(allStoreItemsProvider),
+      onRefresh: () async {
+        ref.invalidate(allStoreItemsProvider);
+        ref.invalidate(groupProgressProvider);
+      },
       child: itemsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(translateError(e))),
@@ -217,6 +277,7 @@ class _ItemRow extends ConsumerWidget {
                       color: AppColors.textTertiary,
                     ),
                   ),
+                if (item.isGroup) _GroupProgressBar(itemId: item.id),
                 if (item.isGroup && item.isAchieved && !item.isClosed)
                   Padding(
                     padding: const EdgeInsets.only(top: 5),
@@ -1405,6 +1466,54 @@ class _ExchangeTile extends ConsumerWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 함께 키우기 — 얼마나 모였는지 (선생님 목록).
+class _GroupProgressBar extends ConsumerWidget {
+  const _GroupProgressBar({required this.itemId});
+  final String itemId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = ref.watch(groupProgressProvider).value?[itemId];
+    if (p == null || p.closed) return const SizedBox.shrink();
+
+    final color = p.achieved ? AppColors.studentGreen : AppColors.teacherNavy;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, right: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: p.progress,
+              minHeight: 7,
+              backgroundColor: AppColors.borderLight,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${p.raised} / ${p.goal}P · ${p.percent}% · ${p.people}명 참여'
+            '${p.achieved ? '' : ' · 남은 ${p.remain}P'}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.notoSansKr(
+                fontSize: 11, fontWeight: FontWeight.w700, color: color),
+          ),
+          if (p.top.isNotEmpty)
+            Text(
+              '많이 보탠 학생: ${p.top.map((t) => '${t.name} ${t.amount}P').join(' · ')}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 10.5, color: AppColors.textTertiary),
+            ),
+        ],
       ),
     );
   }
