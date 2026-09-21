@@ -1,13 +1,16 @@
 name: pbs_plus
 description: "자람 - 함께 자라는 우리 학교 (SWPBS)."
 publish_to: 'none'
-version: 0.27.0+71
+version: 0.28.0+72
 
 environment:
   sdk: ^3.5.0
 
 dependencies:
   flutter:
+    sdk: flutter
+  # 길게 눌렀을 때 나오는 잘라내기·복사·붙여넣기 메뉴를 한국어로
+  flutter_localizations:
     sdk: flutter
   cupertino_icons: ^1.0.8
 
@@ -42,7 +45,7 @@ dependencies:
   # Storage / utils
   shared_preferences: ^2.2.3
   flutter_dotenv: ^5.1.0
-  intl: ^0.19.0
+  intl: ^0.20.2
   uuid: ^4.4.0
   collection: ^1.18.0
   firebase_core: ^4.11.0

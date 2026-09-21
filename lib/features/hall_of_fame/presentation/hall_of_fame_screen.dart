@@ -8,6 +8,7 @@ import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../models/hof_entry.dart';
 import '../providers/hof_provider.dart';
+import 'exchange_leaders_section.dart';
 import 'streak_leaders_section.dart';
 
 /// 명예의 전당 — 이달의 학생 (전교 / 학년 / 학급).
@@ -49,6 +50,7 @@ class HallOfFameScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(hallOfFameProvider);
           ref.invalidate(streakLeadersProvider);
+          ref.invalidate(exchangeLeadersProvider);
         },
         child: hofAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -74,7 +76,13 @@ class HallOfFameScreen extends ConsumerWidget {
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: AppSizes.lg),
-                  child: StreakLeadersSection(),
+                  child: Column(
+                    children: [
+                      StreakLeadersSection(),
+                      SizedBox(height: 8),
+                      ExchangeLeadersSection(),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 40),
               ]);
@@ -108,13 +116,16 @@ class HallOfFameScreen extends ConsumerWidget {
                 ],
                 const SizedBox(height: 12),
                 Text(
-                  '🌱 양분 점수 = 칭찬 40% + 꾸준한 참여 30% + 점검 점수 30%',
+                  '🌱 양분 점수 = 칭찬 40% + 꾸준한 참여 30% + 점검 점수 30%\n'
+                  '이 칸은 한 달 기준이에요. 매주 뽑는 "이 주의 명예 식집사"와는 다릅니다.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.notoSansKr(
                       fontSize: 11, color: AppColors.textTertiary),
                 ),
                 const SizedBox(height: 8),
                 const StreakLeadersSection(),
+                const SizedBox(height: 8),
+                const ExchangeLeadersSection(),
                 const SizedBox(height: 40),
               ],
             );
@@ -156,7 +167,7 @@ class _TopCard extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Text('🏆 이달의 명예 식집사',
+            child: Text('🏆 이달의 으뜸 식집사',
                 style: GoogleFonts.notoSansKr(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,

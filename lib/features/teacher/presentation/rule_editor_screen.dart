@@ -293,9 +293,7 @@ class _SpaceGroupState extends ConsumerState<_SpaceGroup> {
                           ),
                           const Spacer(),
                           Icon(
-                            _expanded
-                                ? Icons.expand_less
-                                : Icons.expand_more,
+                            _expanded ? Icons.expand_less : Icons.expand_more,
                             color: AppColors.textSecondary,
                           ),
                         ],
@@ -369,8 +367,7 @@ class _RuleTile extends ConsumerWidget {
       style: GoogleFonts.notoSansKr(
         fontSize: 13,
         height: 1.4,
-        color:
-            rule.isActive ? AppColors.textPrimary : AppColors.textTertiary,
+        color: rule.isActive ? AppColors.textPrimary : AppColors.textTertiary,
         decoration: rule.isActive ? null : TextDecoration.lineThrough,
       ),
     );
@@ -465,8 +462,7 @@ class _RuleTile extends ConsumerWidget {
                           Icon(Icons.delete_outline_rounded,
                               size: 18, color: AppColors.danger),
                           SizedBox(width: 8),
-                          Text('삭제',
-                              style: TextStyle(color: AppColors.danger)),
+                          Text('삭제', style: TextStyle(color: AppColors.danger)),
                         ],
                       ),
                     ),
@@ -657,8 +653,7 @@ class _AddRuleSheetState extends ConsumerState<_AddRuleSheet> {
                 labelStyle: GoogleFonts.notoSansKr(
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
-                  color:
-                      _useCustomSpace ? Colors.white : AppColors.textPrimary,
+                  color: _useCustomSpace ? Colors.white : AppColors.textPrimary,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),

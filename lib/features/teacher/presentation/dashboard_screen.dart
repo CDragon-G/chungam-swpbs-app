@@ -1,7 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -13,6 +12,7 @@ import '../../../shared/widgets/category_radar_chart.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../honor/honor_gardener.dart';
 import '../../homeroom/presentation/weekly_checkin_grid.dart';
+import 'dashboard_quick_menu.dart';
 import '../providers/dashboard_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -110,6 +110,8 @@ class _OverallTab extends ConsumerWidget {
         data: (o) => ListView(
           padding: const EdgeInsets.all(AppSizes.lg),
           children: [
+            const DashboardQuickMenu(),
+            const SizedBox(height: AppSizes.lg),
             HonorGardenerCard(
                 isAdmin:
                     ref.watch(profileProvider).value?.isAdminTeacher ?? false),
@@ -148,69 +150,6 @@ class _OverallTab extends ConsumerWidget {
             PbsCard(child: _ClassBars(data: o.classParticipation)),
             const SectionHeader(title: '카테고리 평균'),
             PbsCard(child: CategoryRadarChart(scores: o.categoryAverages)),
-            const SizedBox(height: AppSizes.lg),
-            // 내가 보낸 칭찬 — 스낵바로만 스쳐가던 것을 다시 확인하는 자리
-            OutlinedButton.icon(
-              onPressed: () => context.go('/teacher/praise-sent'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.teacherNavy,
-                side: const BorderSide(color: AppColors.teacherNavy),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              icon: const Icon(Icons.favorite_rounded, size: 18),
-              label: Text('내가 보낸 칭찬',
-                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
-            ),
-            const SizedBox(height: AppSizes.sm),
-            OutlinedButton.icon(
-              onPressed: () => context.go('/teacher/praise-mail'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.teacherNavy,
-                side: const BorderSide(color: AppColors.teacherNavy),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              icon: const Icon(Icons.markunread_mailbox_rounded, size: 18),
-              label: Text('학급 칭찬 우체통',
-                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
-            ),
-            const SizedBox(height: AppSizes.sm),
-            // 규칙별 O/X 통계와 학생 건의함으로 가는 길
-            OutlinedButton.icon(
-              onPressed: () => context.go('/teacher/rule-stats'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.teacherNavy,
-                side: const BorderSide(color: AppColors.teacherNavy),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              icon: const Icon(Icons.rule_rounded, size: 18),
-              label: Text('규칙별 실천 현황 보기',
-                  style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
-            ),
-            if (ref.watch(profileProvider).value?.isAdminTeacher ?? false) ...[
-              const SizedBox(height: AppSizes.sm),
-              FilledButton.icon(
-                onPressed: () => context.go('/teacher/support'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFB91C1C),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                icon: const Text('🧩', style: TextStyle(fontSize: 16)),
-                label: Text('학맞통 연계 안건',
-                    style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
-              ),
-              const SizedBox(height: AppSizes.sm),
-              OutlinedButton.icon(
-                onPressed: () => context.go('/teacher/suggestions'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.teacherNavy,
-                  side: const BorderSide(color: AppColors.teacherNavy),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                icon: const Icon(Icons.mark_email_unread_rounded, size: 18),
-                label: Text('학생 규칙 건의함',
-                    style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
-              ),
-            ],
             const SizedBox(height: AppSizes.xxxl),
           ],
         ),

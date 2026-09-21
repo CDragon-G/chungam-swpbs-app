@@ -190,8 +190,7 @@ class PraiseSentScreen extends ConsumerWidget {
                             Text(
                               p.whenLabel,
                               style: GoogleFonts.notoSansKr(
-                                  fontSize: 11,
-                                  color: AppColors.textTertiary),
+                                  fontSize: 11, color: AppColors.textTertiary),
                             ),
                           ],
                         ),

@@ -145,7 +145,9 @@ class _TeacherTile extends ConsumerWidget {
                 pw,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.robotoMono(
-                    fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 2),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2),
               ),
             ),
             const SizedBox(height: 10),
@@ -262,8 +264,8 @@ class _TeacherTile extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.teacherNavy
-                                .withValues(alpha: 0.12),
+                            color:
+                                AppColors.teacherNavy.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text('관리자',
@@ -297,8 +299,7 @@ class _TeacherTile extends ConsumerWidget {
                   if (v == 'delete') _delete(context, ref);
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
-                      value: 'reset', child: Text('비밀번호 초기화')),
+                  const PopupMenuItem(value: 'reset', child: Text('비밀번호 초기화')),
                   const PopupMenuItem(
                     value: 'delete',
                     child: Text('계정 삭제',

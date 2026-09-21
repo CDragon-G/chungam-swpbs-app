@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -42,6 +43,15 @@ class _PbsPlusAppState extends ConsumerState<PbsPlusApp> {
     return MaterialApp.router(
       title: '자람',
       debugShowCheckedModeBanner: false,
+      // 글자를 길게 눌렀을 때 나오는 메뉴(잘라내기·복사·붙여넣기)와
+      // 날짜 선택기 같은 기본 위젯을 한국어로 보여준다.
+      locale: const Locale('ko'),
+      supportedLocales: const [Locale('ko'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       scaffoldMessengerKey: BackHandlerKey.scaffoldMessengerKey,
       theme: ThemeData(
         useMaterial3: true,

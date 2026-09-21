@@ -10,8 +10,12 @@ import '../../core/supabase/supabase_client.dart';
 import '../../core/utils/error_messages.dart';
 import '../../shared/widgets/pbs_card.dart';
 
-/// 🌿 명예 식집사 — 2주에 한 명.
-/// 지난 2주 동안 자기점검을 가장 꾸준히 한 학생에게 500P.
+/// 🌿 2주 꾸준 식집사 — 2주에 전교 한 명, 관리자 선생님이 선정한다.
+///
+/// 이름이 비슷한 것이 세 가지라 헷갈리기 쉬워 여기에 정리해 둔다.
+///   · 이 주의 명예 식집사 — 매주, 반마다 1명, 자동 (학생 홈 띠)
+///   · 2주 꾸준 식집사     — 2주, 전교 1명, 관리자가 선정, 포인트 지급 (이 카드)
+///   · 이달의 으뜸 식집사   — 한 달, 전교 1명, 칭찬·참여·점수 종합 (명예의 전당)
 class HonorStatus {
   const HonorStatus({
     required this.ok,
@@ -97,8 +101,7 @@ class _HonorCardState extends ConsumerState<HonorGardenerCard> {
 
   Future<void> _select() async {
     try {
-      final res =
-          await SupabaseService.client.rpc('select_honor_gardener');
+      final res = await SupabaseService.client.rpc('select_honor_gardener');
       final m = Map<String, dynamic>.from(res as Map);
       if (m['ok'] != true) throw StateError(m['error'] as String? ?? '실패');
       ref.invalidate(honorStatusProvider);
@@ -126,7 +129,8 @@ class _HonorCardState extends ConsumerState<HonorGardenerCard> {
       padding: const EdgeInsets.only(bottom: AppSizes.md),
       child: PbsCard(
         color: const Color(0xFFF3F9F0),
-        border: Border.all(color: AppColors.studentGreen.withValues(alpha: 0.3)),
+        border:
+            Border.all(color: AppColors.studentGreen.withValues(alpha: 0.3)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -135,7 +139,7 @@ class _HonorCardState extends ConsumerState<HonorGardenerCard> {
                 const Text('🌿', style: TextStyle(fontSize: 20)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('명예 식집사',
+                  child: Text('2주 꾸준 식집사',
                       style: GoogleFonts.notoSansKr(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
@@ -160,14 +164,15 @@ class _HonorCardState extends ConsumerState<HonorGardenerCard> {
             if (st.winner != null)
               Text(
                 st.isMe
-                    ? '이번 회차 명예 식집사는 나예요! 🎉 500P를 받았어요.'
-                    : '이번 회차 명예 식집사는 ${st.winner} 학생이에요. '
+                    ? '이번 회차 2주 꾸준 식집사는 나예요! 🎉'
+                    : '이번 회차는 ${st.winner} 학생이에요. '
                         '(${st.winnerDays}일 점검 · 평균 ${st.winnerAvg}점)',
                 style: GoogleFonts.notoSansKr(fontSize: 12.5, height: 1.5),
               )
             else
               Text(
-                '2주 동안 자기점검을 가장 꾸준히 한 학생 한 명에게 500P를 드려요.',
+                '2주 동안 자기점검을 가장 꾸준히 한 전교 한 명에게 포인트를 드려요.\n'
+                '(포인트는 관리자 → 포인트 설정에서 정합니다)',
                 style: GoogleFonts.notoSansKr(fontSize: 12.5, height: 1.5),
               ),
             if (widget.isAdmin && st.pending) ...[
@@ -179,11 +184,10 @@ class _HonorCardState extends ConsumerState<HonorGardenerCard> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.studentGreen,
                     side: BorderSide(
-                        color:
-                            AppColors.studentGreen.withValues(alpha: 0.5)),
+                        color: AppColors.studentGreen.withValues(alpha: 0.5)),
                   ),
                   icon: const Icon(Icons.emoji_events_rounded, size: 18),
-                  label: Text('지난 회차 명예 식집사 선정하기',
+                  label: Text('지난 회차 꾸준 식집사 선정하기',
                       style:
                           GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
                 ),

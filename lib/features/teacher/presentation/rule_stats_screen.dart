@@ -136,8 +136,7 @@ class RuleStatsScreen extends ConsumerWidget {
                     child: Text(
                       '아직 집계할 기록이 부족해요.\n'
                       '규칙마다 5회 이상 점검돼야 통계가 나옵니다.',
-                      style:
-                          GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+                      style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
                     ),
                   );
                 }
@@ -259,8 +258,8 @@ class _RuleRow extends StatelessWidget {
                 if (stat.space.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(right: 6, top: 1),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.borderLight,
                       borderRadius: BorderRadius.circular(999),
@@ -273,8 +272,8 @@ class _RuleRow extends StatelessWidget {
                   ),
                 Expanded(
                   child: Text(stat.ruleText,
-                      style: GoogleFonts.notoSansKr(
-                          fontSize: 13, height: 1.45)),
+                      style:
+                          GoogleFonts.notoSansKr(fontSize: 13, height: 1.45)),
                 ),
                 const SizedBox(width: 8),
                 Text('${stat.keptPct}%',

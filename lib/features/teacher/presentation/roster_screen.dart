@@ -189,8 +189,7 @@ class _AddOneTabState extends ConsumerState<_AddOneTab> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: Color(0xFF92400E)),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF92400E)),
             ],
           ),
         ),
@@ -402,8 +401,7 @@ class _UploadTabState extends ConsumerState<_UploadTab> {
             const SizedBox(width: AppSizes.sm),
             Expanded(
               child: ElevatedButton(
-                onPressed:
-                    (_parsed.isEmpty || _uploading) ? null : _upload,
+                onPressed: (_parsed.isEmpty || _uploading) ? null : _upload,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.teacherNavy,
                   foregroundColor: Colors.white,
@@ -416,8 +414,8 @@ class _UploadTabState extends ConsumerState<_UploadTab> {
                         child: CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2))
                     : Text('명단 등록 (${_parsed.length}명)',
-                        style:
-                            GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+                        style: GoogleFonts.notoSansKr(
+                            fontWeight: FontWeight.w800)),
               ),
             ),
           ],

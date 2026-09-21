@@ -8,6 +8,7 @@ import '../../core/supabase/supabase_client.dart';
 import '../../core/utils/error_messages.dart';
 import '../../shared/providers/profile_provider.dart';
 import '../../shared/widgets/pbs_card.dart';
+import '../calendar/providers/calendar_provider.dart';
 import '../homeroom/providers/homeroom_provider.dart';
 
 // ══════════════════ 모델 ══════════════════
@@ -484,6 +485,24 @@ class _ComposeState extends ConsumerState<_Compose> {
         ),
       ),
       data: (home) {
+        // 칭찬 우체통도 자기점검과 같은 시간에 연다 (수업일 · 하교 후).
+        // 서버도 같은 기준으로 막지만, 고르고 나서 거절당하지 않도록 먼저 안내한다.
+        final today = ref.watch(todaySchoolStatusProvider).value;
+        if (today != null && !today.isSchoolDay) {
+          return const _ClosedNotice(
+            emoji: '🌙',
+            title: '오늘은 쉬는 날이에요',
+            body: '칭찬 우체통은 수업일에 열려요.\n다음 수업일에 친구를 칭찬해봐요!',
+          );
+        }
+        if (today != null && today.isBeforeOpen) {
+          return _ClosedNotice(
+            emoji: '🕐',
+            title: '${today.opensText}부터 열려요',
+            body: '자기점검과 같은 시간에 열어요.\n수업 끝나고 다시 와줘!',
+          );
+        }
+
         final noneLeft = home.remaining <= 0;
         final canSend =
             !noneLeft && _friend != null && _template != null && !_sending;
@@ -663,6 +682,43 @@ class _ComposeState extends ConsumerState<_Compose> {
           ],
         );
       },
+    );
+  }
+}
+
+/// 아직 열리지 않았을 때 보여주는 안내.
+class _ClosedNotice extends StatelessWidget {
+  const _ClosedNotice({
+    required this.emoji,
+    required this.title,
+    required this.body,
+  });
+
+  final String emoji;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSizes.xl),
+      children: [
+        const SizedBox(height: 40),
+        Text(emoji,
+            textAlign: TextAlign.center, style: const TextStyle(fontSize: 52)),
+        const SizedBox(height: 12),
+        Text(title,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.notoSansKr(
+                fontSize: 17, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        Text(body,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.notoSansKr(
+                fontSize: 13, height: 1.7, color: AppColors.textSecondary)),
+      ],
     );
   }
 }

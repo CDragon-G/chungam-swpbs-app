@@ -40,7 +40,8 @@ class WeeklyHonor {
       );
 }
 
-final weeklyHonorProvider = FutureProvider.autoDispose<WeeklyHonor?>((ref) async {
+final weeklyHonorProvider =
+    FutureProvider.autoDispose<WeeklyHonor?>((ref) async {
   final res = await SupabaseService.client.rpc('weekly_honor_gardeners');
   final m = Map<String, dynamic>.from(res as Map);
   if (m['ok'] != true) return null;
@@ -193,7 +194,8 @@ class _Chip extends StatelessWidget {
             style: GoogleFonts.notoSansKr(
               fontSize: 12,
               fontWeight: item.isMe ? FontWeight.w900 : FontWeight.w700,
-              color: item.isMe ? const Color(0xFFB45309) : AppColors.textPrimary,
+              color:
+                  item.isMe ? const Color(0xFFB45309) : AppColors.textPrimary,
             ),
           ),
           if (item.isMe) ...[
@@ -357,11 +359,17 @@ class _WeeklyHonorSheet extends ConsumerWidget {
                   fontSize: 12.5, height: 1.6, color: AppColors.textSecondary),
             ),
             const SizedBox(height: AppSizes.md),
-            const _Rule(emoji: '📅', label: '꾸준함', pts: 40,
+            const _Rule(
+                emoji: '📅',
+                label: '꾸준함',
+                pts: 40,
                 desc: '이번 주 수업일에 빠짐없이 점검하기'),
-            const _Rule(emoji: '✅', label: '실천', pts: 30,
-                desc: '자기점검 O/X 평균 점수'),
-            const _Rule(emoji: '💚', label: '칭찬', pts: 30,
+            const _Rule(
+                emoji: '✅', label: '실천', pts: 30, desc: '자기점검 O/X 평균 점수'),
+            const _Rule(
+                emoji: '💚',
+                label: '칭찬',
+                pts: 30,
                 desc: '선생님께 받은 칭찬 1번에 10점 (3번까지)'),
             const SizedBox(height: AppSizes.md),
             if (me != null) _MyScore(me: me),

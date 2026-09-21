@@ -41,7 +41,9 @@ class _State extends ConsumerState<StudentListScreen> {
     if (_query.trim().isEmpty) return true;
     final q = _query.toLowerCase().replaceAll(' ', '');
     final name = (s['nickname'] as String? ?? '').toLowerCase();
-    final g = '${s['grade']}', c = '${s['class_num']}', n = '${s['student_num']}';
+    final g = '${s['grade']}',
+        c = '${s['class_num']}',
+        n = '${s['student_num']}';
     return [name, '$g-$c-$n', '$g학년$c반$n번', '$g$c$n', n]
         .any((x) => x.contains(q));
   }
@@ -76,9 +78,7 @@ class _State extends ConsumerState<StudentListScreen> {
               ),
             ),
             Text(
-              _multi
-                  ? '여러 명을 골라 한 번에 칭찬해요'
-                  : '학생을 검색해 칭찬 한마디 + 50P + 배지',
+              _multi ? '여러 명을 골라 한 번에 칭찬해요' : '학생을 검색해 칭찬 한마디 + 50P + 배지',
               style: GoogleFonts.notoSansKr(
                 fontSize: 11,
                 color: AppColors.textSecondary,
@@ -89,12 +89,8 @@ class _State extends ConsumerState<StudentListScreen> {
         actions: [
           TextButton.icon(
             onPressed: _toggleMulti,
-            icon: Icon(
-                _multi
-                    ? Icons.close_rounded
-                    : Icons.checklist_rounded,
-                size: 19,
-                color: AppColors.teacherNavy),
+            icon: Icon(_multi ? Icons.close_rounded : Icons.checklist_rounded,
+                size: 19, color: AppColors.teacherNavy),
             label: Text(_multi ? '취소' : '여러 명',
                 style: GoogleFonts.notoSansKr(
                     fontSize: 13,
@@ -112,14 +108,12 @@ class _State extends ConsumerState<StudentListScreen> {
           final classes = <String>{
             '전체',
             for (final s in students)
-              if (_filterGrade == '전체' ||
-                  '${s['grade']}학년' == _filterGrade)
+              if (_filterGrade == '전체' || '${s['grade']}학년' == _filterGrade)
                 '${s['class_num']}반',
           };
           final filtered = students
               .where((s) =>
-                  (_filterGrade == '전체' ||
-                      '${s['grade']}학년' == _filterGrade) &&
+                  (_filterGrade == '전체' || '${s['grade']}학년' == _filterGrade) &&
                   (_filterClass == '전체' ||
                       '${s['class_num']}반' == _filterClass) &&
                   _matchesQuery(s))
@@ -187,8 +181,7 @@ class _State extends ConsumerState<StudentListScreen> {
                       return ChoiceChip(
                         label: Text(c),
                         selected: selected,
-                        onSelected: (_) =>
-                            setState(() => _filterClass = c),
+                        onSelected: (_) => setState(() => _filterClass = c),
                         selectedColor: AppColors.studentGreen,
                         labelStyle: GoogleFonts.notoSansKr(
                           fontSize: 12,
@@ -211,24 +204,23 @@ class _State extends ConsumerState<StudentListScreen> {
                   padding: const EdgeInsets.fromLTRB(
                       AppSizes.lg, AppSizes.sm, AppSizes.lg, 0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.teacherNavyLight,
-                      borderRadius:
-                          BorderRadius.circular(AppSizes.radiusMd),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: Row(
                       children: [
                         Checkbox(
                           value: filtered.isNotEmpty &&
-                              filtered.every((s) =>
-                                  _selected.contains(s['user_id'])),
+                              filtered.every(
+                                  (s) => _selected.contains(s['user_id'])),
                           tristate: false,
                           activeColor: AppColors.teacherNavy,
                           onChanged: (v) => setState(() {
-                            final ids = filtered
-                                .map((s) => s['user_id'] as String);
+                            final ids =
+                                filtered.map((s) => s['user_id'] as String);
                             if (v == true) {
                               _selected.addAll(ids);
                             } else {
@@ -303,7 +295,9 @@ class _State extends ConsumerState<StudentListScreen> {
                               child: Text(
                                 ((s['nickname'] as String).characters.isEmpty
                                     ? '?'
-                                    : (s['nickname'] as String).characters.first),
+                                    : (s['nickname'] as String)
+                                        .characters
+                                        .first),
                                 style: GoogleFonts.notoSansKr(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800,
@@ -563,8 +557,7 @@ class _State extends ConsumerState<StudentListScreen> {
                   children: [
                     Text('선택한 학생 모두에게 같은 한마디가 전달돼요.',
                         style: GoogleFonts.notoSansKr(
-                            fontSize: 12.5,
-                            color: AppColors.textSecondary)),
+                            fontSize: 12.5, color: AppColors.textSecondary)),
                     const SizedBox(height: AppSizes.md),
                     Wrap(
                       spacing: 6,
@@ -604,19 +597,17 @@ class _State extends ConsumerState<StudentListScreen> {
             ),
             actions: [
               TextButton(
-                onPressed:
-                    sending ? null : () => Navigator.pop(dialogCtx),
+                onPressed: sending ? null : () => Navigator.pop(dialogCtx),
                 child: Text('취소',
-                    style: GoogleFonts.notoSansKr(
-                        color: AppColors.textTertiary)),
+                    style:
+                        GoogleFonts.notoSansKr(color: AppColors.textTertiary)),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
                     backgroundColor: AppColors.teacherNavy),
                 onPressed: sending ? null : submit,
                 child: Text(sending ? '보내는 중...' : '보내기',
-                    style: GoogleFonts.notoSansKr(
-                        fontWeight: FontWeight.w800)),
+                    style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
               ),
             ],
           );
@@ -662,8 +653,7 @@ class _State extends ConsumerState<StudentListScreen> {
               if (dialogCtx.mounted) Navigator.pop(dialogCtx); // 다이얼로그 닫기
               if (!mounted) return;
               celebrateGrowth(context, ref,
-                  headline:
-                      '$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)');
+                  headline: '$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)');
             } catch (e) {
               if (!dialogCtx.mounted) return;
               setSt(() => sending = false);
@@ -680,46 +670,47 @@ class _State extends ConsumerState<StudentListScreen> {
               width: double.maxFinite,
               child: SingleChildScrollView(
                 child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('칭찬 메시지를 입력하거나 아래에서 골라주세요.',
-                      style: GoogleFonts.notoSansKr(
-                          fontSize: 13, color: AppColors.textSecondary)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: controller,
-                    maxLines: 2,
-                    maxLength: 100,
-                    enabled: !sending,
-                    style: GoogleFonts.notoSansKr(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: '예: 오늘 발표를 정말 잘했어요!',
-                      hintStyle: GoogleFonts.notoSansKr(
-                          fontSize: 13, color: AppColors.textTertiary),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('칭찬 메시지를 입력하거나 아래에서 골라주세요.',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 13, color: AppColors.textSecondary)),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      maxLines: 2,
+                      maxLength: 100,
+                      enabled: !sending,
+                      style: GoogleFonts.notoSansKr(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: '예: 오늘 발표를 정말 잘했어요!',
+                        hintStyle: GoogleFonts.notoSansKr(
+                            fontSize: 13, color: AppColors.textTertiary),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusMd),
+                        ),
                       ),
                     ),
-                  ),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: presets
-                        .map((p) => ActionChip(
-                              label: Text(p,
-                                  style:
-                                      GoogleFonts.notoSansKr(fontSize: 11)),
-                              onPressed: sending
-                                  ? null
-                                  : () => setSt(() => controller.text = p),
-                              backgroundColor: AppColors.studentGreenLight,
-                              side: BorderSide.none,
-                            ))
-                        .toList(),
-                  ),
-                ],
-              ),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: presets
+                          .map((p) => ActionChip(
+                                label: Text(p,
+                                    style:
+                                        GoogleFonts.notoSansKr(fontSize: 11)),
+                                onPressed: sending
+                                    ? null
+                                    : () => setSt(() => controller.text = p),
+                                backgroundColor: AppColors.studentGreenLight,
+                                side: BorderSide.none,
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -775,8 +766,7 @@ class _State extends ConsumerState<StudentListScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('초기화',
                 style: GoogleFonts.notoSansKr(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.teacherNavy)),
+                    fontWeight: FontWeight.w800, color: AppColors.teacherNavy)),
           ),
         ],
       ),
@@ -786,7 +776,8 @@ class _State extends ConsumerState<StudentListScreen> {
     // 임시 비번 생성: 읽기 쉬운 8자리 (혼동 문자 제외)
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final r = Random.secure();
-    final tempPw = List.generate(8, (_) => chars[r.nextInt(chars.length)]).join();
+    final tempPw =
+        List.generate(8, (_) => chars[r.nextInt(chars.length)]).join();
 
     showDialog(
       context: context,

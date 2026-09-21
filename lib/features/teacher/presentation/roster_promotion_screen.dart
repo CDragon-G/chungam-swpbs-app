@@ -24,8 +24,7 @@ class PromotionPlan {
   final List<PlanRow> leaving;
   final List<PlanRow> ambiguous;
 
-  bool get isEmpty =>
-      moves.isEmpty && newcomers.isEmpty && leaving.isEmpty;
+  bool get isEmpty => moves.isEmpty && newcomers.isEmpty && leaving.isEmpty;
 
   /// 동명이인이 남아 있으면 실행할 수 없다. 그 학생들만 빼고 돌리면
   /// 자리가 어긋나 다른 학생의 이동까지 막힌다.
@@ -171,8 +170,8 @@ class _RosterPromotionScreenState extends ConsumerState<RosterPromotionScreen> {
             child: Text('취소', style: GoogleFonts.notoSansKr()),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: AppColors.teacherNavy),
+            style:
+                FilledButton.styleFrom(backgroundColor: AppColors.teacherNavy),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('실행',
                 style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
@@ -232,9 +231,7 @@ class _RosterPromotionScreenState extends ConsumerState<RosterPromotionScreen> {
               '명렬표에 없는 학생은 졸업·전출로 처리되고, '
               '새 이름은 신입생으로 등록되어 새 PIN을 받습니다.',
               style: GoogleFonts.notoSansKr(
-                  fontSize: 12.5,
-                  height: 1.7,
-                  color: const Color(0xFF92400E)),
+                  fontSize: 12.5, height: 1.7, color: const Color(0xFF92400E)),
             ),
           ),
           const SizedBox(height: AppSizes.md),
@@ -250,8 +247,8 @@ class _RosterPromotionScreenState extends ConsumerState<RosterPromotionScreen> {
                   fontSize: 12, color: AppColors.textTertiary),
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
           if (_parseErrors.isNotEmpty) ...[
@@ -273,8 +270,7 @@ class _RosterPromotionScreenState extends ConsumerState<RosterPromotionScreen> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white))
                 : Text('미리보기 (${_parsed.length}명)',
-                    style:
-                        GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+                    style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
           ),
           if (_result != null) ...[
             const SizedBox(height: AppSizes.md),
@@ -342,8 +338,7 @@ class _RosterPromotionScreenState extends ConsumerState<RosterPromotionScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 15)),
               onPressed:
                   (_busy || plan.isEmpty || plan.isBlocked) ? null : _apply,
-              child: Text(
-                  plan.isBlocked ? '동명이인을 먼저 정리해 주세요' : '이대로 진급 처리하기',
+              child: Text(plan.isBlocked ? '동명이인을 먼저 정리해 주세요' : '이대로 진급 처리하기',
                   style: GoogleFonts.notoSansKr(
                       fontWeight: FontWeight.w900, fontSize: 15)),
             ),

@@ -78,63 +78,63 @@ class _State extends ConsumerState<AnnouncementScreen> {
         padding: const EdgeInsets.all(AppSizes.lg),
         children: [
           if (ref.watch(profileProvider).value?.isAdminTeacher ?? false)
-          PbsCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  '새 공지 작성',
-                  style: GoogleFonts.notoSansKr(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.md),
-                PbsTextField(controller: _title, label: '제목'),
-                const SizedBox(height: 5),
-                Text(
-                  '👀 제목은 학생들 홈 화면 배너에 가장 먼저 보여요 — 한눈에 들어오게 써주세요!',
-                  style: GoogleFonts.notoSansKr(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textTertiary,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.md),
-                Text(
-                  '내용',
-                  style: GoogleFonts.notoSansKr(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _body,
-                  maxLines: 4,
-                  style: GoogleFonts.notoSansKr(fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: '학생들에게 전달할 내용을 입력하세요',
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      borderSide: BorderSide(color: AppColors.border),
+            PbsCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '새 공지 작성',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSizes.md),
-                PbsPrimaryButton(
-                  label: '공지 등록',
-                  color: AppColors.teacherNavy,
-                  loading: _saving,
-                  onPressed: _post,
-                ),
-              ],
+                  const SizedBox(height: AppSizes.md),
+                  PbsTextField(controller: _title, label: '제목'),
+                  const SizedBox(height: 5),
+                  Text(
+                    '👀 제목은 학생들 홈 화면 배너에 가장 먼저 보여요 — 한눈에 들어오게 써주세요!',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textTertiary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.md),
+                  Text(
+                    '내용',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _body,
+                    maxLines: 4,
+                    style: GoogleFonts.notoSansKr(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: '학생들에게 전달할 내용을 입력하세요',
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.md),
+                  PbsPrimaryButton(
+                    label: '공지 등록',
+                    color: AppColors.teacherNavy,
+                    loading: _saving,
+                    onPressed: _post,
+                  ),
+                ],
+              ),
             ),
-          ),
           const SectionHeader(title: '최근 공지'),
           annsAsync.when(
             loading: () => const PbsCard(child: SizedBox(height: 60)),
