@@ -36,7 +36,7 @@ $$;
 create or replace function point_rule_range(p_reason text)
 returns table (min_amount int, max_amount int, step int)
 language sql immutable as $$
-  select * from (values
+  select v.min_amount, v.max_amount, v.step from (values
     ('checkin_daily',  0, 300,  10),
     ('checkin_weekly', 0, 2000, 50),
     ('praise',         0, 300,  10),
@@ -479,7 +479,9 @@ begin
   end if;
   if not is_checkin_open(v_me.school_id) then
     return json_build_object('ok', false, 'error',
-      '칭찬 우체통은 ' || to_char(checkin_open_time(v_me.school_id), 'HH24:MI') || ' 부터 열려요');
+      '칭찬 우체통은 ' || korean_time_label(checkin_open_time(v_me.school_id))
+      || '부터 열려요. 하교 후에 친구를 칭찬해봐요!',
+      'reason', 'not_open_yet');
   end if;
 
   select * into v_to from profiles where user_id = p_recipient;
