@@ -144,6 +144,81 @@ class GroupProgress {
       );
 }
 
+/// 함께 키우기에 보탠 학생 한 명.
+class GroupContributor {
+  const GroupContributor({
+    required this.name,
+    required this.grade,
+    required this.classNum,
+    required this.studentNum,
+    required this.amount,
+    required this.times,
+    required this.lastAt,
+  });
+
+  final String name;
+  final int? grade;
+  final int? classNum;
+  final int? studentNum;
+  final int amount;
+  final int times;
+  final DateTime? lastAt;
+
+  String get classLabel => (grade == null || classNum == null)
+      ? ''
+      : '$grade-$classNum${studentNum == null ? '' : '-$studentNum'}';
+
+  factory GroupContributor.fromMap(Map<String, dynamic> m) => GroupContributor(
+        name: (m['name'] as String?) ?? '',
+        grade: (m['grade'] as num?)?.toInt(),
+        classNum: (m['class_num'] as num?)?.toInt(),
+        studentNum: (m['student_num'] as num?)?.toInt(),
+        amount: (m['amount'] as num?)?.toInt() ?? 0,
+        times: (m['times'] as num?)?.toInt() ?? 0,
+        lastAt: DateTime.tryParse(m['last_at'] as String? ?? '')?.toLocal(),
+      );
+}
+
+class GroupContributors {
+  const GroupContributors({
+    required this.name,
+    required this.emoji,
+    required this.goal,
+    required this.raised,
+    required this.items,
+  });
+
+  final String name;
+  final String emoji;
+  final int goal;
+  final int raised;
+  final List<GroupContributor> items;
+
+  factory GroupContributors.fromMap(Map<String, dynamic> m) =>
+      GroupContributors(
+        name: (m['name'] as String?) ?? '',
+        emoji: (m['emoji'] as String?) ?? '🎁',
+        goal: (m['goal'] as num?)?.toInt() ?? 0,
+        raised: (m['raised'] as num?)?.toInt() ?? 0,
+        items: ((m['items'] as List?) ?? const [])
+            .map((e) =>
+                GroupContributor.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList(),
+      );
+}
+
+/// 함께 키우기 — 보탠 학생 전체 명단 (선생님만).
+final groupContributorsProvider = FutureProvider.autoDispose
+    .family<GroupContributors, String>((ref, itemId) async {
+  final res = await SupabaseService.client
+      .rpc('group_contributors', params: {'p_item_id': itemId});
+  final m = Map<String, dynamic>.from(res as Map);
+  if (m['ok'] != true) {
+    throw StateError(m['error'] as String? ?? '명단을 불러오지 못했어요');
+  }
+  return GroupContributors.fromMap(m);
+});
+
 /// 강화물 id → 진행 상황. 목록 전체를 한 번에 받는다.
 final groupProgressProvider =
     FutureProvider.autoDispose<Map<String, GroupProgress>>((ref) async {
@@ -1484,35 +1559,182 @@ class _GroupProgressBar extends ConsumerWidget {
     final color = p.achieved ? AppColors.studentGreen : AppColors.teacherNavy;
     return Padding(
       padding: const EdgeInsets.only(top: 6, right: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: p.progress,
-              minHeight: 7,
-              backgroundColor: AppColors.borderLight,
-              valueColor: AlwaysStoppedAnimation(color),
+      child: GestureDetector(
+        onTap: () => showGroupContributors(context, itemId),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: p.progress,
+                minHeight: 7,
+                backgroundColor: AppColors.borderLight,
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${p.raised} / ${p.goal}P · ${p.percent}% · ${p.people}명 참여'
-            '${p.achieved ? '' : ' · 남은 ${p.remain}P'}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.notoSansKr(
-                fontSize: 11, fontWeight: FontWeight.w700, color: color),
-          ),
-          if (p.top.isNotEmpty)
+            const SizedBox(height: 4),
             Text(
-              '많이 보탠 학생: ${p.top.map((t) => '${t.name} ${t.amount}P').join(' · ')}',
+              '${p.raised} / ${p.goal}P · ${p.percent}% · ${p.people}명 참여'
+              '${p.achieved ? '' : ' · 남은 ${p.remain}P'}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.notoSansKr(
-                  fontSize: 10.5, color: AppColors.textTertiary),
+                  fontSize: 11, fontWeight: FontWeight.w700, color: color),
             ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    p.top.isEmpty
+                        ? '아직 보탠 학생이 없어요'
+                        : '많이 보탠 학생: ${p.top.map((t) => '${t.name} ${t.amount}P').join(' · ')}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 10.5, color: AppColors.textTertiary),
+                  ),
+                ),
+                if (p.people > 0)
+                  Text('명단 보기 ›',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.teacherNavy)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 보탠 학생 전체 명단 시트.
+void showGroupContributors(BuildContext context, String itemId) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      builder: (ctx, scroll) => Consumer(
+        builder: (ctx2, ref, __) {
+          final async = ref.watch(groupContributorsProvider(itemId));
+          return async.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.xl),
+                child: Text(translateError(e),
+                    textAlign: TextAlign.center,
+                    style:
+                        GoogleFonts.notoSansKr(color: AppColors.textSecondary)),
+              ),
+            ),
+            data: (d) => ListView(
+              controller: scroll,
+              padding: const EdgeInsets.all(AppSizes.lg),
+              children: [
+                Row(
+                  children: [
+                    Text(d.emoji, style: const TextStyle(fontSize: 22)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        d.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 17, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    Text('${d.raised} / ${d.goal}P',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.teacherNavy)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text('보탠 학생 ${d.items.length}명 · 많이 보탠 순서',
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 12, color: AppColors.textTertiary)),
+                const SizedBox(height: AppSizes.md),
+                if (d.items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 30),
+                    child: Text('아직 보탠 학생이 없어요.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.notoSansKr(
+                            color: AppColors.textSecondary)),
+                  ),
+                for (var i = 0; i < d.items.length; i++)
+                  _ContributorRow(rank: i + 1, c: d.items[i]),
+                const SizedBox(height: AppSizes.xl),
+              ],
+            ),
+          );
+        },
+      ),
+    ),
+  );
+}
+
+class _ContributorRow extends StatelessWidget {
+  const _ContributorRow({required this.rank, required this.c});
+  final int rank;
+  final GroupContributor c;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 24,
+            child: Text('$rank',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: rank <= 3
+                        ? AppColors.teacherNavy
+                        : AppColors.textTertiary)),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  c.classLabel.isEmpty ? c.name : '${c.classLabel} ${c.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 14, fontWeight: FontWeight.w800),
+                ),
+                Text(
+                  c.times > 1 ? '${c.times}번에 걸쳐 보탬' : '한 번에 보탬',
+                  maxLines: 1,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 11, color: AppColors.textTertiary),
+                ),
+              ],
+            ),
+          ),
+          Text('${c.amount}P',
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.studentGreen)),
         ],
       ),
     );
