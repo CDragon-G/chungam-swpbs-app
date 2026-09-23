@@ -47,10 +47,12 @@ final teacherAccountsProvider =
   if (profile?.schoolId == null) return [];
   final rows = await SupabaseService.client
       .from('profiles')
-      .select('id, user_id, name, nickname, teacher_role, grade, class_num')
+      // profiles 에는 name 컬럼이 없다 (이름은 nickname 에 들어간다).
+      // 예전에는 name 을 함께 읽어서 이 화면이 통째로 열리지 않았다.
+      .select('id, user_id, nickname, teacher_role, grade, class_num')
       .eq('school_id', profile!.schoolId!)
       .eq('role', 'teacher')
-      .order('name');
+      .order('nickname');
   return rows.map((m) => TeacherAccount.fromMap(m)).toList();
 });
 
@@ -88,7 +90,8 @@ class TeacherAdminScreen extends ConsumerWidget {
                 color: AppColors.teacherNavyLight,
                 child: Text(
                   '비밀번호를 잊으신 선생님은 여기서 바로 초기화할 수 있어요.\n'
-                  '임시 비밀번호를 정해 알려드리면 됩니다.',
+                  '임시 비밀번호를 정해 알려드리면 됩니다.\n'
+                  '학생 계정은 대시보드 → 로그인 도움에서 도와주세요.',
                   style: GoogleFonts.notoSansKr(
                       fontSize: 12.5,
                       height: 1.6,

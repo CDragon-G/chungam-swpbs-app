@@ -74,10 +74,10 @@ class DashboardQuickMenu extends ConsumerWidget {
       adminOnly: true,
     ),
     _QuickItem(
-      label: '명예의 전당',
-      icon: Icons.emoji_events_rounded,
-      color: Color(0xFFCA8A04),
-      route: '/teacher/hall-of-fame',
+      label: '로그인 도움',
+      icon: Icons.key_rounded,
+      color: Color(0xFF0369A1),
+      route: '/teacher/account-help',
     ),
   ];
 

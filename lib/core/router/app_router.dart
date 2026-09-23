@@ -28,6 +28,7 @@ import '../../features/praise_mail/praise_mail_screens.dart';
 import '../../features/support/support_referral_screen.dart';
 import '../../features/teacher/presentation/praise_sent_screen.dart';
 import '../../features/teacher/presentation/roster_promotion_screen.dart';
+import '../../features/teacher/presentation/account_help_screen.dart';
 import '../../features/teacher/presentation/point_rules_screen.dart';
 import '../../features/teacher/presentation/rule_stats_screen.dart';
 import '../../features/teacher/presentation/teacher_admin_screen.dart';
@@ -218,6 +219,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/teacher/suggestions',
               builder: (_, __) => const SuggestionAdminScreen()),
+          GoRoute(
+              path: '/teacher/account-help',
+              builder: (_, __) => const AccountHelpScreen()),
           GoRoute(
               path: '/teacher/point-rules',
               builder: (_, __) => const PointRulesScreen()),
