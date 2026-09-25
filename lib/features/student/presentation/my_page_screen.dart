@@ -20,6 +20,7 @@ import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../points/providers/points_provider.dart';
 import '../../praise/providers/praise_provider.dart';
+import '../../school/providers/school_provider.dart';
 import '../providers/student_stats_provider.dart';
 
 class MyPageScreen extends ConsumerWidget {
@@ -376,6 +377,37 @@ class MyPageScreen extends ConsumerWidget {
                     ),
                   ),
                   onTap: () async {
+                    // 체험 부스: 관람객이 눌러도 바로 나가지 않게 한 번 묻는다
+                    if (ref.read(isDemoSchoolProvider)) {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text('체험용 계정이에요',
+                              style: GoogleFonts.notoSansKr(
+                                  fontWeight: FontWeight.w900)),
+                          content: Text(
+                            '로그아웃하면 부스 담당 선생님이 다시 로그인해야 해요.\n'
+                            '정말 로그아웃할까요?',
+                            style: GoogleFonts.notoSansKr(
+                                fontSize: 13, height: 1.6),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: Text('그대로 둘게요',
+                                  style: GoogleFonts.notoSansKr()),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: Text('로그아웃',
+                                  style: GoogleFonts.notoSansKr(
+                                      color: AppColors.danger)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                    }
                     await ref.read(authRepositoryProvider).signOut();
                     if (context.mounted) context.go('/welcome');
                   },
@@ -410,6 +442,17 @@ class MyPageScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDeleteAccount(
+      BuildContext context, WidgetRef ref) async {
+    if (ref.read(isDemoSchoolProvider)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('체험용 계정은 탈퇴할 수 없어요.')),
+      );
+      return;
+    }
+    await _confirmDeleteAccountInner(context, ref);
+  }
+
+  Future<void> _confirmDeleteAccountInner(
       BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,

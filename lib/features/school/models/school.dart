@@ -10,6 +10,7 @@ class School {
     required this.createdAt,
     this.subscriptionStatus = 'active',
     this.subscriptionExpiresAt,
+    this.isDemo = false,
   });
 
   final String id;
@@ -22,6 +23,9 @@ class School {
   final DateTime createdAt;
   final String subscriptionStatus; // 'pending' | 'active' | 'expired'
   final DateTime? subscriptionExpiresAt;
+
+  /// 엑스포 부스 같은 체험용 학교 (069). 초기화 버튼이 보이고 탈퇴가 막힌다.
+  final bool isDemo;
 
   bool get isActive => subscriptionStatus == 'active';
 
@@ -39,10 +43,10 @@ class School {
         teacherCode: map['teacher_code'] as String?,
         createdBy: map['created_by'] as String?,
         createdAt: DateTime.parse(map['created_at'] as String),
-        subscriptionStatus:
-            (map['subscription_status'] as String?) ?? 'active',
+        subscriptionStatus: (map['subscription_status'] as String?) ?? 'active',
         subscriptionExpiresAt: map['subscription_expires_at'] == null
             ? null
             : DateTime.parse(map['subscription_expires_at'] as String),
+        isDemo: map['is_demo'] == true,
       );
 }

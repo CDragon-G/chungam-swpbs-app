@@ -6,7 +6,8 @@ import '../models/roster_entry.dart';
 import '../models/school.dart';
 import '../models/school_rule.dart';
 
-final schoolRepositoryProvider = Provider<SchoolRepository>((_) => SchoolRepository());
+final schoolRepositoryProvider =
+    Provider<SchoolRepository>((_) => SchoolRepository());
 
 final schoolProvider = FutureProvider<School?>((ref) async {
   final profile = ref.watch(profileProvider).value;
@@ -14,6 +15,10 @@ final schoolProvider = FutureProvider<School?>((ref) async {
   final repo = ref.read(schoolRepositoryProvider);
   return repo.findById(profile!.schoolId!);
 });
+
+/// 지금 학교가 체험용(엑스포 부스)인가.
+final isDemoSchoolProvider =
+    Provider<bool>((ref) => ref.watch(schoolProvider).value?.isDemo ?? false);
 
 final schoolRulesProvider = FutureProvider<List<SchoolRule>>((ref) async {
   final profile = ref.watch(profileProvider).value;
@@ -29,21 +34,24 @@ final allSchoolRulesProvider = FutureProvider<List<SchoolRule>>((ref) async {
   return repo.fetchAllRules(profile!.schoolId!);
 });
 
-final announcementsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final announcementsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final profile = ref.watch(profileProvider).value;
   if (profile?.schoolId == null) return [];
   final repo = ref.read(schoolRepositoryProvider);
   return repo.fetchAnnouncements(profile!.schoolId!);
 });
 
-final schoolStudentsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final schoolStudentsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final profile = ref.watch(profileProvider).value;
   if (profile?.schoolId == null) return [];
   final repo = ref.read(schoolRepositoryProvider);
   return repo.fetchStudents(profile!.schoolId!);
 });
 
-final schoolTeachersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final schoolTeachersProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final profile = ref.watch(profileProvider).value;
   if (profile?.schoolId == null) return [];
   final repo = ref.read(schoolRepositoryProvider);

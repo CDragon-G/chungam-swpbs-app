@@ -12,6 +12,7 @@ import '../../../shared/widgets/category_radar_chart.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../honor/honor_gardener.dart';
 import '../../homeroom/presentation/weekly_checkin_grid.dart';
+import '../../demo/demo_reset_banner.dart';
 import 'dashboard_quick_menu.dart';
 import '../providers/dashboard_provider.dart';
 
@@ -110,6 +111,7 @@ class _OverallTab extends ConsumerWidget {
         data: (o) => ListView(
           padding: const EdgeInsets.all(AppSizes.lg),
           children: [
+            const DemoResetBanner(),
             const DashboardQuickMenu(),
             const SizedBox(height: AppSizes.lg),
             HonorGardenerCard(

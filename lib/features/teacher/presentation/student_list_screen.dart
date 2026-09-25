@@ -9,6 +9,8 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/utils/error_messages.dart';
+import '../../../shared/providers/profile_provider.dart';
+import '../../../core/supabase/supabase_client.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../growth/growth_celebration.dart';
@@ -434,11 +436,92 @@ class _State extends ConsumerState<StudentListScreen> {
                 _showStudentEmail(student);
               },
             ),
+            if (ref.read(profileProvider).value?.isAdminTeacher ?? false) ...[
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.person_remove_rounded,
+                    color: AppColors.danger),
+                title: Text(
+                  '학생 계정 삭제',
+                  style: GoogleFonts.notoSansKr(
+                      fontWeight: FontWeight.w700, color: AppColors.danger),
+                ),
+                subtitle: Text(
+                  '테스트로 만든 계정을 정리할 때만 (관리자)',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _deleteStudent(student);
+                },
+              ),
+            ],
             const SizedBox(height: 8),
           ],
         ),
       ),
     );
+  }
+
+  /// 학생 계정 삭제 (관리자). 테스트 계정 정리용.
+  /// K-ODR · 학맞통 기록이 있는 학생은 서버가 거부한다 (공식 기록 보호).
+  /// 명렬표 자리는 서버가 풀어 주므로 같은 번호로 다시 가입할 수 있다.
+  Future<void> _deleteStudent(Map<String, dynamic> student) async {
+    final name = student['nickname'] as String;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('$name 학생 계정 삭제',
+            style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+        content: Text(
+          '이 학생의 계정과 점검 · 포인트 · 뱃지 · 칭찬 기록이 모두 지워지고\n'
+          '되돌릴 수 없어요.\n\n'
+          '테스트 계정을 정리할 때만 쓰세요.\n'
+          '전학 · 졸업한 학생은 학생 명단의 진급 처리로 정리해주세요.',
+          style: GoogleFonts.notoSansKr(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('취소', style: GoogleFonts.notoSansKr()),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('삭제',
+                style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    try {
+      final res = await SupabaseService.client
+          .rpc('delete_student', params: {'p_profile_id': student['id']});
+      final m = Map<String, dynamic>.from(res as Map);
+      if (m['ok'] != true) {
+        throw StateError(m['error'] as String? ?? '삭제하지 못했어요');
+      }
+      ref.invalidate(schoolStudentsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$name 학생 계정을 삭제했어요.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(translateError(e)),
+          ),
+        );
+      }
+    }
   }
 
   /// 학생 로그인 이메일 조회 (이메일 찾기 지원 — 같은 학교 교사만, 서버 검증).

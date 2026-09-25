@@ -44,16 +44,34 @@ class StudentHomeScreen extends ConsumerStatefulWidget {
 class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
   // 오전에 홈을 켜둔 채 1시가 지나면 점검 버튼이 저절로 열리도록
   Timer? _openTick;
+  // 체험 부스: 선생님 태블릿에서 초기화하면 학생 태블릿도 저절로 따라온다
+  Timer? _demoTick;
 
   @override
   void dispose() {
     _openTick?.cancel();
+    _demoTick?.cancel();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    _demoTick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted || !ref.read(isDemoSchoolProvider)) return;
+      ref.invalidate(todayCheckinProvider);
+      ref.invalidate(myStreakProvider);
+      ref.invalidate(studentStatsProvider);
+      ref.invalidate(checkinHistoryProvider(60));
+      ref.invalidate(totalCheckinCountProvider);
+      ref.invalidate(schoolGrowthProvider);
+      ref.invalidate(announcementsProvider);
+      ref.invalidate(myNotificationsProvider);
+      ref.invalidate(unreadNotificationCountProvider);
+      ref.invalidate(unreadPraiseMailProvider);
+      ref.invalidate(weeklyHonorProvider);
+      ref.invalidate(myWeeklyHonorProvider);
+    });
     _openTick = Timer.periodic(const Duration(minutes: 1), (_) {
       final st = ref.read(todaySchoolStatusProvider).value;
       if (mounted && st != null && st.isSchoolDay && !st.checkinOpen) {

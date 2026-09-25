@@ -707,6 +707,12 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               ),
               onTap: () {
                 Navigator.pop(sheetCtx);
+                if (ref.read(isDemoSchoolProvider)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('체험용 계정은 탈퇴할 수 없어요.')),
+                  );
+                  return;
+                }
                 _confirmDeleteAccount(context, ref);
               },
             ),
