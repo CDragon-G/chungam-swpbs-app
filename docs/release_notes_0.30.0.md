@@ -7,8 +7,8 @@
 ## 배포 순서
 
 ```
-1. 068_account_cleanup.sql     앱과 상관없이 먼저 (선생님 삭제 수정은 바로 적용)
-2. 069_expo_demo_school.sql    앱과 상관없이 먼저
+1. 068_account_cleanup.sql     (실행 완료)
+2. 069_expo_demo_school.sql    (실행 완료)
 3. 0.30.0 을 스토어에 올리고 출시 완료까지 기다린다
 4. 스토어에서 학생 계정으로 '업데이트' 버튼이 보이는지 확인
 5. latest_version 올리기        ← 플랫폼별로 따로
