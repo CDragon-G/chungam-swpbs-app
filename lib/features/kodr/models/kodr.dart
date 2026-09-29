@@ -1,6 +1,40 @@
+/// K-ODR 을 기록할 수 있는 학생 — 명렬표 한 줄 (가입 여부와 상관없이).
+class KodrStudentOption {
+  const KodrStudentOption({
+    required this.rosterId,
+    required this.name,
+    required this.grade,
+    required this.classNum,
+    required this.studentNum,
+    required this.joined,
+  });
+
+  final String rosterId;
+  final String name;
+  final int grade;
+  final int classNum;
+  final int studentNum;
+
+  /// 앱에 가입했는가. 가입 전이어도 K-ODR 은 기록할 수 있다.
+  final bool joined;
+
+  String get classLabel => '$grade-$classNum-$studentNum';
+
+  factory KodrStudentOption.fromMap(Map<String, dynamic> m) =>
+      KodrStudentOption(
+        rosterId: m['roster_id'] as String,
+        name: (m['name'] as String?) ?? '',
+        grade: (m['grade'] as num?)?.toInt() ?? 0,
+        classNum: (m['class_num'] as num?)?.toInt() ?? 0,
+        studentNum: (m['student_num'] as num?)?.toInt() ?? 0,
+        joined: m['joined'] == true,
+      );
+}
+
 /// K-ODR 월별 집계 한 줄 (학생별).
 class KodrSummaryEntry {
   KodrSummaryEntry({
+    required this.subjectId,
     required this.studentId,
     required this.nickname,
     required this.grade,
@@ -8,26 +42,34 @@ class KodrSummaryEntry {
     required this.studentNum,
     required this.recordCount,
     required this.needsCico,
+    required this.joined,
   });
 
-  final String studentId;
+  /// '그 학생' — 명렬표 줄 (명렬표에 없으면 계정)
+  final String subjectId;
+
+  /// 앱 계정. 가입하지 않은 학생이면 null — CICO 는 가입 뒤에 시작할 수 있다.
+  final String? studentId;
   final String nickname;
   final int grade;
   final int classNum;
   final int studentNum;
   final int recordCount;
   final bool needsCico;
+  final bool joined;
 
   String get classLabel => '$grade-$classNum-$studentNum';
 
   factory KodrSummaryEntry.fromMap(Map<String, dynamic> m) => KodrSummaryEntry(
-        studentId: m['student_id'] as String,
-        nickname: m['nickname'] as String,
-        grade: m['grade'] as int,
-        classNum: m['class_num'] as int,
-        studentNum: m['student_num'] as int,
-        recordCount: (m['record_count'] as num).toInt(),
+        subjectId: m['subject_id'] as String,
+        studentId: m['student_id'] as String?,
+        nickname: (m['name'] as String?) ?? '',
+        grade: (m['grade'] as num?)?.toInt() ?? 0,
+        classNum: (m['class_num'] as num?)?.toInt() ?? 0,
+        studentNum: (m['student_num'] as num?)?.toInt() ?? 0,
+        recordCount: (m['record_count'] as num?)?.toInt() ?? 0,
         needsCico: (m['needs_cico'] as bool?) ?? false,
+        joined: m['joined'] == true,
       );
 }
 

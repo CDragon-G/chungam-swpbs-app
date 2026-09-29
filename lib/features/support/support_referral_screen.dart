@@ -54,6 +54,7 @@ class SupportReferral {
     required this.cicoStatus,
     required this.meetingDate,
     required this.createdAt,
+    this.joined = true,
   });
 
   final String id;
@@ -72,6 +73,10 @@ class SupportReferral {
   final String? cicoStatus; // active | graduated | stopped | null
   final DateTime? meetingDate;
   final DateTime createdAt;
+
+  /// 앱에 가입한 학생인가. K-ODR 은 가입 전에도 기록할 수 있어서 (070)
+  /// 안건에 오른 학생이 아직 가입하지 않았을 수 있다. CICO 는 가입 뒤에 시작.
+  final bool joined;
 
   String get label => (grade != null && classNum != null && studentNum != null)
       ? '$grade학년 $classNum반 $studentNum번 $name'
@@ -99,6 +104,7 @@ class SupportReferral {
         createdAt:
             DateTime.tryParse(m['created_at'] as String? ?? '')?.toLocal() ??
                 DateTime.now(),
+        joined: m['joined'] != false,
       );
 }
 
@@ -605,7 +611,7 @@ class _ReferralCard extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(r.label,
+                  child: Text(r.joined ? r.label : '${r.label} · 미가입',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.notoSansKr(

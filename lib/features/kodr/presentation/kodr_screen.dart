@@ -9,13 +9,12 @@ import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../../shared/widgets/pbs_card.dart';
-import '../../../shared/widgets/student_picker_sheet.dart';
 import '../../cico/presentation/cico_start_dialog.dart';
 import '../../growth/growth_celebration.dart';
-import '../../school/providers/school_provider.dart';
 import '../constants/kodr_codes.dart';
 import '../models/kodr.dart';
 import '../providers/kodr_provider.dart';
+import 'kodr_student_picker.dart';
 
 /// K-ODR — 행동 기록 + 월별 현황. 처벌이 아닌 학생 지원을 위한 도구.
 class KodrScreen extends ConsumerStatefulWidget {
@@ -100,8 +99,7 @@ class _State extends ConsumerState<KodrScreen>
                     backgroundColor: AppColors.teacherNavy,
                     foregroundColor: Colors.white),
                 child: Text('확인했습니다',
-                    style:
-                        GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
+                    style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
               ),
             ),
             const SizedBox(height: AppSizes.md),
@@ -124,9 +122,7 @@ class _State extends ConsumerState<KodrScreen>
             const SizedBox(height: 6),
             Text(body,
                 style: GoogleFonts.notoSansKr(
-                    fontSize: 13,
-                    height: 1.7,
-                    color: AppColors.textSecondary)),
+                    fontSize: 13, height: 1.7, color: AppColors.textSecondary)),
           ],
         ),
       );
@@ -219,8 +215,11 @@ class _SummaryTab extends ConsumerWidget {
       onRefresh: () async => ref.invalidate(kodrSummaryProvider),
       child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) =>
-            ListView(children: [Padding(padding: const EdgeInsets.all(40), child: Center(child: Text(translateError(e))))]),
+        error: (e, _) => ListView(children: [
+          Padding(
+              padding: const EdgeInsets.all(40),
+              child: Center(child: Text(translateError(e))))
+        ]),
         data: (list) {
           final cico = list.where((e) => e.needsCico).toList();
           final others = list.where((e) => !e.needsCico).toList();
@@ -289,7 +288,7 @@ class _SummaryTab extends ConsumerWidget {
     if (ok != true) return;
     try {
       final res = await SupabaseService.client
-          .rpc('create_support_referral', params: {'p_student': e.studentId});
+          .rpc('create_support_referral', params: {'p_student': e.subjectId});
       final m = Map<String, dynamic>.from(res as Map);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -319,9 +318,21 @@ class _SummaryTab extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text('${e.nickname} (${e.classLabel})',
-                        style: GoogleFonts.notoSansKr(
-                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text('${e.nickname} (${e.classLabel})',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.notoSansKr(
+                                  fontWeight: FontWeight.w700, fontSize: 14)),
+                        ),
+                        if (!e.joined) ...[
+                          const SizedBox(width: 6),
+                          const _NotJoinedTag(),
+                        ],
+                      ],
+                    ),
                   ),
                   if (highlight)
                     Container(
@@ -362,17 +373,27 @@ class _SummaryTab extends ConsumerWidget {
                     ),
                   ),
                 ),
-              if (highlight)
+              if (highlight && e.studentId == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'CICO 는 학생이 앱에 가입한 뒤 시작할 수 있어요.',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 11.5, color: AppColors.textTertiary),
+                  ),
+                ),
+              if (highlight && e.studentId != null)
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
                     onPressed: () => showCicoStartDialog(
                       context,
                       ref,
-                      studentUserId: e.studentId,
+                      studentUserId: e.studentId!,
                       studentName: e.nickname,
-                      initialReason:
-                          '이달 K-ODR ${e.recordCount}건 — 동행 지원 시작',
+                      initialReason: '이달 K-ODR ${e.recordCount}건 — 동행 지원 시작',
                     ),
                     icon: const Text('🤝', style: TextStyle(fontSize: 14)),
                     label: Text('CICO 시작하기',
@@ -400,9 +421,16 @@ class _RecordTab extends ConsumerStatefulWidget {
 }
 
 class _RecordTabState extends ConsumerState<_RecordTab> {
-  Map<String, dynamic>? _student; // 선택된 학생
+  // 고른 학생들 (명렬표 기준 — 가입하지 않은 학생도)
+  List<KodrStudentOption> _students = [];
   DateTime _date = KstDate.today();
-  String? _behavior, _place, _situation, _immediate, _secondary, _reaction, _role;
+  String? _behavior,
+      _place,
+      _situation,
+      _immediate,
+      _secondary,
+      _reaction,
+      _role;
   final _note = TextEditingController();
   bool _saving = false;
 
@@ -413,15 +441,21 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
   }
 
   Future<void> _pickStudent() async {
-    final students = ref.read(schoolStudentsProvider).value ?? [];
-    final picked = await StudentPickerSheet.show(context, students,
-        title: '학생 선택');
-    if (picked != null) setState(() => _student = picked);
+    List<KodrStudentOption> options;
+    try {
+      options = await ref.read(kodrStudentOptionsProvider.future);
+    } catch (e) {
+      _toast(translateError(e));
+      return;
+    }
+    if (!mounted) return;
+    final picked =
+        await KodrStudentPicker.show(context, options, initial: _students);
+    if (picked != null) setState(() => _students = picked);
   }
 
   Future<void> _save() async {
-    final profile = ref.read(profileProvider).value;
-    if (_student == null) {
+    if (_students.isEmpty) {
       _toast('학생을 선택해주세요.');
       return;
     }
@@ -431,9 +465,8 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
     }
     setState(() => _saving = true);
     try {
-      await ref.read(kodrRepositoryProvider).create(
-            schoolId: profile!.schoolId!,
-            studentId: _student!['user_id'] as String,
+      final n = await ref.read(kodrRepositoryProvider).createMany(
+            rosterIds: _students.map((s) => s.rosterId).toList(),
             occurredDate: _date,
             behavior: _behavior!,
             place: _place,
@@ -447,10 +480,13 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
       ref.invalidate(kodrSummaryProvider);
       if (!mounted) return;
       celebrateGrowth(context, ref,
-          headline: '행동 기록 완료 — 학생 지원에 활용돼요 📋');
+          headline: n > 1
+              ? '$n명 행동 기록 완료 — 학생 지원에 활용돼요 📋'
+              : '행동 기록 완료 — 학생 지원에 활용돼요 📋');
       setState(() {
-        _behavior = _place = _situation = _immediate =
-            _secondary = _reaction = null;
+        _students = [];
+        _behavior =
+            _place = _situation = _immediate = _secondary = _reaction = null;
         _note.clear();
       });
     } catch (e) {
@@ -460,8 +496,8 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
     }
   }
 
-  void _toast(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  void _toast(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
@@ -470,28 +506,66 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
       children: [
         const _SupportBanner(),
         const SizedBox(height: AppSizes.md),
-        // 학생 선택
+        // 학생 선택 (여러 명 · 가입하지 않은 학생도)
         PbsCard(
           onTap: _pickStudent,
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.person_search_rounded,
-                  color: AppColors.teacherNavy),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _student == null
-                      ? '학생 선택'
-                      : '${_student!['nickname']} (${_student!['grade']}-${_student!['class_num']}-${_student!['student_num']})',
-                  style: GoogleFonts.notoSansKr(
-                      fontWeight: FontWeight.w700,
-                      color: _student == null
-                          ? AppColors.textTertiary
-                          : AppColors.textPrimary),
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.group_add_rounded,
+                      color: AppColors.teacherNavy),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _students.isEmpty
+                          ? '학생 선택 (여러 명 가능)'
+                          : '학생 ${_students.length}명',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.notoSansKr(
+                          fontWeight: FontWeight.w700,
+                          color: _students.isEmpty
+                              ? AppColors.textTertiary
+                              : AppColors.textPrimary),
+                    ),
+                  ),
+                  Text(_students.isEmpty ? '' : '바꾸기',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.teacherNavy)),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: AppColors.textTertiary),
+                ],
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textTertiary),
+              if (_students.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final st in _students)
+                      InputChip(
+                        label: Text(
+                          '${st.name} ${st.classLabel}${st.joined ? '' : ' · 미가입'}',
+                          style: GoogleFonts.notoSansKr(fontSize: 12),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        onDeleted: () => setState(() => _students = _students
+                            .where((x) => x.rosterId != st.rosterId)
+                            .toList()),
+                      ),
+                  ],
+                ),
+                if (_students.length > 1) ...[
+                  const SizedBox(height: 6),
+                  Text('학생마다 같은 내용으로 한 건씩 기록돼요.',
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 11.5, color: AppColors.textTertiary)),
+                ],
+              ],
             ],
           ),
         ),
@@ -501,8 +575,8 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
         const SizedBox(height: AppSizes.md),
         _dropdown('행동양상 *', KodrCodes.behaviors, _behavior,
             (v) => setState(() => _behavior = v)),
-        _dropdown('장소', KodrCodes.places, _place,
-            (v) => setState(() => _place = v)),
+        _dropdown(
+            '장소', KodrCodes.places, _place, (v) => setState(() => _place = v)),
         _dropdown('상황', KodrCodes.situations, _situation,
             (v) => setState(() => _situation = v)),
         _dropdown('즉각적 대응', KodrCodes.responses, _immediate,
@@ -541,7 +615,10 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
                     height: 18,
                     child: CircularProgressIndicator(
                         color: Colors.white, strokeWidth: 2))
-                : Text('기록 저장',
+                : Text(
+                    _students.length > 1
+                        ? '${_students.length}명 기록 저장'
+                        : '기록 저장',
                     style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
           ),
         ),
@@ -611,6 +688,27 @@ class _RecordTabState extends ConsumerState<_RecordTab> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 앱에 가입하지 않은 학생 표시.
+class _NotJoinedTag extends StatelessWidget {
+  const _NotJoinedTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: AppColors.borderLight,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text('미가입',
+          style: GoogleFonts.notoSansKr(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary)),
     );
   }
 }
