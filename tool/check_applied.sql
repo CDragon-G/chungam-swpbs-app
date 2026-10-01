@@ -302,7 +302,9 @@ select file as "파일", kind as "종류", name as "이름"
   ('070_kodr_roster_students.sql', 'function', 'kodr_student_options', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_student_options')),
   ('070_kodr_roster_students.sql', 'function', 'kodr_month_subjects', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_month_subjects')),
   ('070_kodr_roster_students.sql', 'function', 'kodr_subject_records', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_subject_records')),
-  ('071_student_rows_round.sql', 'function', 'student_rows', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'student_rows'))
+  ('071_student_rows_round.sql', 'function', 'student_rows', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'student_rows')),
+  ('072_kodr_history.sql', 'function', 'kodr_period_subjects', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_period_subjects')),
+  ('072_kodr_history.sql', 'function', 'kodr_subject_history', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_subject_history'))
   ) as t(file, kind, name, ok)
  where not ok
  order by file, kind, name;

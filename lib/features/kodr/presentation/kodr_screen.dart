@@ -14,9 +14,11 @@ import '../../growth/growth_celebration.dart';
 import '../constants/kodr_codes.dart';
 import '../models/kodr.dart';
 import '../providers/kodr_provider.dart';
+import 'kodr_history_screen.dart';
 import 'kodr_student_picker.dart';
 
-/// K-ODR — 행동 기록 + 월별 현황. 처벌이 아닌 학생 지원을 위한 도구.
+/// K-ODR — 행동 기록 + 기간별 현황(월별 · 학년도 · 전체) + 학생별 누적 기록.
+/// 처벌이 아닌 학생 지원을 위한 도구.
 class KodrScreen extends ConsumerStatefulWidget {
   const KodrScreen({super.key});
 
@@ -161,7 +163,7 @@ class _State extends ConsumerState<KodrScreen>
           unselectedLabelColor: AppColors.textTertiary,
           indicatorColor: AppColors.teacherNavy,
           labelStyle: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800),
-          tabs: const [Tab(text: '이달 현황'), Tab(text: '기록하기')],
+          tabs: const [Tab(text: '현황'), Tab(text: '기록하기')],
         ),
       ),
       body: TabBarView(
@@ -205,63 +207,127 @@ class _SupportBanner extends StatelessWidget {
   }
 }
 
-// ── 이달 현황 탭 ──────────────────────────────────────────────
+// ── 현황 탭 — 월별 · 이번 학년도 · 전체 ───────────────────────
+//   달이 바뀌어도 지난 기록을 볼 수 있어야 한다. 예전에는 '이번 달' 만 보여줘서
+//   10월 1일이 되면 9월 기록이 모두 사라진 것처럼 보였다.
 class _SummaryTab extends ConsumerWidget {
   const _SummaryTab();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final period = ref.watch(kodrPeriodProvider);
     final async = ref.watch(kodrSummaryProvider);
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(kodrSummaryProvider),
-      child: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ListView(children: [
-          Padding(
-              padding: const EdgeInsets.all(40),
-              child: Center(child: Text(translateError(e))))
-        ]),
-        data: (list) {
-          final cico = list.where((e) => e.needsCico).toList();
-          final others = list.where((e) => !e.needsCico).toList();
-          return ListView(
-            padding: const EdgeInsets.all(AppSizes.lg),
-            children: [
-              const _SupportBanner(),
-              const SizedBox(height: AppSizes.md),
-              if (cico.isNotEmpty) ...[
-                Text('🤝 함께 지원이 필요한 학생 (이달 기준 도달)',
-                    style: GoogleFonts.notoSansKr(
-                        fontWeight: FontWeight.w800, fontSize: 14)),
-                const SizedBox(height: 4),
-                Text('멘토 선생님과 함께하는 동행(CICO)을 시작해보세요.',
-                    style: GoogleFonts.notoSansKr(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 10),
-                ...cico.map((e) => _row(context, ref, e, highlight: true)),
-                const SizedBox(height: AppSizes.lg),
-              ],
-              if (others.isNotEmpty) ...[
-                Text('이달 기록된 학생',
-                    style: GoogleFonts.notoSansKr(
-                        fontWeight: FontWeight.w800, fontSize: 14)),
-                const SizedBox(height: 10),
-                ...others.map((e) => _row(context, ref, e)),
-              ],
-              if (list.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 40),
-                  child: Center(
-                    child: Text('이달 기록이 없어요.',
-                        style: GoogleFonts.notoSansKr(
-                            color: AppColors.textTertiary)),
-                  ),
-                ),
-              const SizedBox(height: 40),
+      child: ListView(
+        padding: const EdgeInsets.all(AppSizes.lg),
+        children: [
+          const _SupportBanner(),
+          const SizedBox(height: AppSizes.md),
+          _PeriodBar(period),
+          const SizedBox(height: AppSizes.md),
+          ...async.when(
+            loading: () => const [
+              Padding(
+                padding: EdgeInsets.only(top: 60),
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ],
-          );
-        },
+            error: (e, _) => [
+              Padding(
+                padding: const EdgeInsets.all(40),
+                child: Center(
+                  child: Text(translateError(e),
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.notoSansKr(
+                          color: AppColors.textSecondary)),
+                ),
+              ),
+            ],
+            data: (sum) => _content(context, ref, period, sum),
+          ),
+          const SizedBox(height: 40),
+        ],
       ),
     );
+  }
+
+  List<Widget> _content(BuildContext context, WidgetRef ref, KodrPeriod period,
+      KodrPeriodSummary sum) {
+    final list = sum.items;
+    final monthly = period.mode == KodrPeriodMode.month;
+    final label = switch (period.mode) {
+      KodrPeriodMode.month => '${period.month.month}월',
+      KodrPeriodMode.year => '이번 학년도',
+      KodrPeriodMode.all => '전체 기간',
+    };
+    final cico = list.where((e) => e.needsCico).toList();
+    final others = list.where((e) => !e.needsCico).toList();
+
+    return [
+      // 이번 학년도의 달별 건수 — 누르면 그 달로
+      if (!monthly && sum.months.isNotEmpty) ...[
+        _MonthStrip(sum.months),
+        const SizedBox(height: AppSizes.md),
+      ],
+      if (list.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text('$label · 학생 ${list.length}명 · ${sum.total}건',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary)),
+        ),
+      if (cico.isNotEmpty) ...[
+        Text('🤝 함께 지원이 필요한 학생 ($label 기준 도달)',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.notoSansKr(
+                fontWeight: FontWeight.w800, fontSize: 14)),
+        const SizedBox(height: 4),
+        Text('멘토 선생님과 함께하는 동행(CICO)을 시작해보세요.',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.notoSansKr(
+                fontSize: 12, color: AppColors.textSecondary)),
+        const SizedBox(height: 10),
+        ...cico.map((e) => _row(context, ref, e, period, highlight: true)),
+        const SizedBox(height: AppSizes.lg),
+      ],
+      if (others.isNotEmpty) ...[
+        Text(monthly ? '$label 기록된 학생' : '$label 누적 (지금 다니는 학생)',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.notoSansKr(
+                fontWeight: FontWeight.w800, fontSize: 14)),
+        const SizedBox(height: 4),
+        Text('학생을 누르면 지금까지의 기록을 모두 볼 수 있어요.',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.notoSansKr(
+                fontSize: 12, color: AppColors.textSecondary)),
+        const SizedBox(height: 10),
+        ...others.map((e) => _row(context, ref, e, period)),
+      ],
+      if (list.isEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 40),
+          child: Center(
+            child: Text(
+                monthly && !period.isThisMonth
+                    ? '$label 기록이 없어요.'
+                    : monthly
+                        ? '이달 기록이 아직 없어요.\n지난 기록은 위에서 달을 넘겨 볼 수 있어요.'
+                        : '$label 기록이 없어요.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSansKr(
+                    height: 1.6, color: AppColors.textTertiary)),
+          ),
+        ),
+    ];
   }
 
   Future<void> _referToSupport(BuildContext context, KodrSummaryEntry e) async {
@@ -304,10 +370,13 @@ class _SummaryTab extends ConsumerWidget {
   }
 
   Widget _row(BuildContext context, WidgetRef ref, KodrSummaryEntry e,
+          KodrPeriod period,
           {bool highlight = false}) =>
       Padding(
         padding: const EdgeInsets.only(bottom: AppSizes.sm),
         child: PbsCard(
+          onTap: () => KodrHistoryScreen.open(context,
+              subjectId: e.subjectId, title: '${e.nickname} (${e.classLabel})'),
           color: highlight ? const Color(0xFFFFF7ED) : null,
           border: highlight
               ? Border.all(color: AppColors.warning.withValues(alpha: 0.4))
@@ -350,13 +419,27 @@ class _SummaryTab extends ConsumerWidget {
                               color: const Color(0xFFB45309))),
                     ),
                   Text('${e.recordCount}건',
+                      maxLines: 1,
                       style: GoogleFonts.notoSansKr(
                           fontWeight: FontWeight.w900,
                           color: AppColors.teacherNavy)),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 18, color: AppColors.textTertiary),
                 ],
               ),
+              // 이 기간 말고도 기록이 더 있으면 함께 보여준다
+              if (_context(e, period) case final ctx?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(ctx,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 11.5, color: AppColors.textTertiary)),
+                ),
               // 리더십팀 판단으로 학맞통 안건에 바로 올리기 (기준 미달이어도)
-              if (ref.read(profileProvider).value?.isAdminTeacher ?? false)
+              if (period.mode == KodrPeriodMode.month &&
+                  (ref.read(profileProvider).value?.isAdminTeacher ?? false))
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
@@ -393,7 +476,8 @@ class _SummaryTab extends ConsumerWidget {
                       ref,
                       studentUserId: e.studentId!,
                       studentName: e.nickname,
-                      initialReason: '이달 K-ODR ${e.recordCount}건 — 동행 지원 시작',
+                      initialReason:
+                          '${period.month.month}월 K-ODR ${e.recordCount}건 — 동행 지원 시작',
                     ),
                     icon: const Text('🤝', style: TextStyle(fontSize: 14)),
                     label: Text('CICO 시작하기',
@@ -411,6 +495,169 @@ class _SummaryTab extends ConsumerWidget {
           ),
         ),
       );
+
+  /// '학년도 4건 · 전체 9건' — 보고 있는 기간보다 넓은 누적만 보여준다.
+  static String? _context(KodrSummaryEntry e, KodrPeriod period) {
+    final year = e.yearCount, total = e.totalCount;
+    if (year == null || total == null) return null; // 072 이전 서버
+    final parts = <String>[
+      if (period.mode == KodrPeriodMode.month && year > e.recordCount)
+        '학년도 $year건',
+      if (period.mode != KodrPeriodMode.all && total > year) '전체 $total건',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+}
+
+// ── 기간 고르기 ───────────────────────────────────────────────
+class _PeriodBar extends ConsumerWidget {
+  const _PeriodBar(this.period);
+  final KodrPeriod period;
+
+  static const _modes = [
+    (KodrPeriodMode.month, '월별'),
+    (KodrPeriodMode.year, '이번 학년도'),
+    (KodrPeriodMode.all, '전체'),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    void set(KodrPeriod p) => ref.read(kodrPeriodProvider.notifier).state = p;
+    final m = period.month;
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            for (final (i, (mode, label)) in _modes.indexed)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => set(period.withMode(mode)),
+                  child: Container(
+                    margin:
+                        EdgeInsets.only(right: i == _modes.length - 1 ? 0 : 6),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: period.mode == mode
+                          ? AppColors.teacherNavy
+                          : AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(label,
+                        maxLines: 1,
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: period.mode == mode
+                                ? Colors.white
+                                : AppColors.textSecondary)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        if (period.mode == KodrPeriodMode.month) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: '지난달',
+                visualDensity: VisualDensity.compact,
+                onPressed: () =>
+                    set(period.withMonth(DateTime(m.year, m.month - 1))),
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
+              SizedBox(
+                width: 120,
+                child: Text('${m.year}년 ${m.month}월',
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.notoSansKr(
+                        fontSize: 15, fontWeight: FontWeight.w900)),
+              ),
+              IconButton(
+                tooltip: '다음 달',
+                visualDensity: VisualDensity.compact,
+                // 이번 달보다 뒤로는 갈 수 없다
+                onPressed: period.isThisMonth
+                    ? null
+                    : () =>
+                        set(period.withMonth(DateTime(m.year, m.month + 1))),
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+              if (!period.isThisMonth)
+                TextButton(
+                  onPressed: () => set(KodrPeriod.thisMonth()),
+                  style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact),
+                  child: Text('이번 달',
+                      maxLines: 1,
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 이번 학년도의 달별 건수. 누르면 그 달의 현황으로 간다.
+class _MonthStrip extends ConsumerWidget {
+  const _MonthStrip(this.months);
+  final List<KodrMonthCount> months;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      height: 54,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        // 최근 달이 먼저 보이게
+        reverse: true,
+        itemCount: months.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (_, i) {
+          final m = months[months.length - 1 - i];
+          final has = m.recordCount > 0;
+          return GestureDetector(
+            onTap: () => ref.read(kodrPeriodProvider.notifier).state =
+                KodrPeriod(KodrPeriodMode.month, m.month),
+            child: Container(
+              width: 62,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('${m.month.month}월',
+                      maxLines: 1,
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 11.5, color: AppColors.textSecondary)),
+                  Text('${m.recordCount}건',
+                      maxLines: 1,
+                      style: GoogleFonts.notoSansKr(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w900,
+                          color: has
+                              ? AppColors.teacherNavy
+                              : AppColors.textTertiary)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 // ── 기록하기 탭 ──────────────────────────────────────────────
