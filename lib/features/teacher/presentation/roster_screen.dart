@@ -467,8 +467,35 @@ class _UploadTabState extends ConsumerState<_UploadTab> {
 
 // ── PIN 조회 탭 ────────────────────────────────────────────────
 
-class _PinListTab extends ConsumerWidget {
+class _PinListTab extends ConsumerStatefulWidget {
   const _PinListTab();
+
+  @override
+  ConsumerState<_PinListTab> createState() => _PinListTabState();
+}
+
+class _PinListTabState extends ConsumerState<_PinListTab> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// 이름 · 2-3 · 2-3-15 · 2학년3반 · 학번(20315) 으로 찾는다.
+  bool _matches(RosterEntry e, String q) {
+    if (q.isEmpty) return true;
+    final combos = [
+      e.name.replaceAll(' ', ''),
+      '${e.grade}-${e.classNum}-${e.studentNum}',
+      '${e.grade}-${e.classNum}',
+      '${e.grade}학년${e.classNum}반${e.studentNum}번',
+      '${e.grade}${e.classNum.toString().padLeft(2, '0')}${e.studentNum.toString().padLeft(2, '0')}',
+    ];
+    return combos.any((x) => x.contains(q));
+  }
 
   Future<void> _clearAll(BuildContext context, WidgetRef ref) async {
     final profile = ref.read(profileProvider).value;
@@ -516,7 +543,7 @@ class _PinListTab extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final rosterAsync = ref.watch(schoolRosterProvider);
     return rosterAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -529,8 +556,10 @@ class _PinListTab extends ConsumerWidget {
                 style: GoogleFonts.notoSansKr(color: AppColors.textTertiary)),
           );
         }
+        final q = _query.trim().replaceAll(' ', '');
+        final shown = roster.where((e) => _matches(e, q)).toList();
         final groups = <String, List<RosterEntry>>{};
-        for (final r in roster) {
+        for (final r in shown) {
           groups.putIfAbsent('${r.grade}-${r.classNum}', () => []).add(r);
         }
         final keys = groups.keys.toList()
@@ -540,32 +569,96 @@ class _PinListTab extends ConsumerWidget {
             return pa[0] != pb[0] ? pa[0] - pb[0] : pa[1] - pb[1];
           });
 
-        return ListView(
-          padding: const EdgeInsets.all(AppSizes.lg),
+        return Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('전체 ${roster.length}명',
-                    style: GoogleFonts.notoSansKr(
-                        fontWeight: FontWeight.w800, fontSize: 14)),
-                TextButton.icon(
-                  onPressed: () => _clearAll(context, ref),
-                  icon: const Icon(Icons.delete_sweep_rounded,
-                      size: 18, color: AppColors.danger),
-                  label: Text('전체 삭제',
-                      style: GoogleFonts.notoSansKr(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.danger,
-                          fontSize: 13)),
+            // 검색창은 목록을 내려도 위에 그대로 둔다
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSizes.lg, AppSizes.lg, AppSizes.lg, 0),
+              child: TextField(
+                controller: _search,
+                style: GoogleFonts.notoSansKr(fontSize: 14),
+                textInputAction: TextInputAction.search,
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: '지우기',
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          onPressed: () {
+                            _search.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
+                  hintText: '이름 · 2-3 · 2-3-15',
+                  hintMaxLines: 1,
+                  hintStyle: GoogleFonts.notoSansKr(
+                      fontSize: 13, color: AppColors.textTertiary),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: AppSizes.sm),
-            for (final k in keys) ...[
-              _ClassPinCard(gradeClass: k, entries: groups[k]!),
-              const SizedBox(height: AppSizes.md),
-            ],
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(AppSizes.lg),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                          q.isEmpty
+                              ? '전체 ${roster.length}명'
+                              : '검색 결과 ${shown.length}명',
+                          maxLines: 1,
+                          style: GoogleFonts.notoSansKr(
+                              fontWeight: FontWeight.w800, fontSize: 14)),
+                      // 검색 중에는 '전체 삭제' 를 숨긴다 (보이는 학생만 지워진다고 오해하지 않게)
+                      if (q.isEmpty)
+                        TextButton.icon(
+                          onPressed: () => _clearAll(context, ref),
+                          icon: const Icon(Icons.delete_sweep_rounded,
+                              size: 18, color: AppColors.danger),
+                          label: Text('전체 삭제',
+                              style: GoogleFonts.notoSansKr(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.danger,
+                                  fontSize: 13)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                  if (shown.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 40),
+                      child: Center(
+                        child: Text('검색 결과가 없어요.',
+                            style: GoogleFonts.notoSansKr(
+                                color: AppColors.textTertiary)),
+                      ),
+                    ),
+                  for (final k in keys) ...[
+                    _ClassPinCard(
+                      gradeClass: k,
+                      entries: groups[k]!,
+                      // 검색 중에는 반 전체가 아니라 찾은 학생만 보이므로 표시해 둔다
+                      filtered: q.isNotEmpty,
+                    ),
+                    const SizedBox(height: AppSizes.md),
+                  ],
+                ],
+              ),
+            ),
           ],
         );
       },
@@ -574,9 +667,16 @@ class _PinListTab extends ConsumerWidget {
 }
 
 class _ClassPinCard extends ConsumerWidget {
-  const _ClassPinCard({required this.gradeClass, required this.entries});
+  const _ClassPinCard({
+    required this.gradeClass,
+    required this.entries,
+    this.filtered = false,
+  });
   final String gradeClass;
   final List<RosterEntry> entries;
+
+  /// 검색으로 걸러진 상태 — 복사 버튼이 '찾은 학생만' 복사한다.
+  final bool filtered;
 
   Future<void> _deleteOne(
       BuildContext context, WidgetRef ref, RosterEntry e) async {
@@ -623,14 +723,15 @@ class _ClassPinCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Text(title,
+              Text(filtered ? '$title · ${entries.length}명' : title,
+                  maxLines: 1,
                   style: GoogleFonts.notoSansKr(
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
                       color: AppColors.teacherNavy)),
               const Spacer(),
               IconButton(
-                tooltip: '이 학급 PIN 복사',
+                tooltip: filtered ? '찾은 학생 PIN 복사' : '이 학급 PIN 복사',
                 icon: const Icon(Icons.copy_rounded, size: 18),
                 color: AppColors.teacherNavy,
                 onPressed: () async {
@@ -642,7 +743,10 @@ class _ClassPinCard extends ConsumerWidget {
                       ClipboardData(text: '[$title PIN]\n$text'));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$title PIN을 복사했어요')),
+                      SnackBar(
+                          content: Text(filtered
+                              ? '$title ${entries.length}명의 PIN을 복사했어요'
+                              : '$title PIN을 복사했어요')),
                     );
                   }
                 },
