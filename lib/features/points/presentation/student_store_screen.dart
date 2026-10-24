@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/review/review_prompt.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
 import '../../growth/growth_celebration.dart';
+import '../../school/providers/school_provider.dart';
 import '../../student/providers/badge_provider.dart';
 import '../models/point_exchange.dart';
 import '../models/point_store_item.dart';
@@ -225,6 +227,9 @@ class StudentStoreScreen extends ConsumerWidget {
         // 축하 토스트는 금방 사라져서 학생이 '찾아가야 한다'는 걸 놓친다.
         // 직접 닫아야 하는 안내창으로 수령처를 확실히 알린다.
         await _showPickupGuide(context, it);
+        // 강화물을 받은 순간 — 조건이 맞으면 스토어 별점 창 (체험 학교 제외)
+        ReviewPrompt.happyMoment(
+            teacher: false, isDemo: ref.read(isDemoSchoolProvider));
       }
     } catch (e) {
       if (context.mounted) {

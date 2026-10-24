@@ -71,15 +71,8 @@ class PlantLines {
       }
     }
 
-    final g = growth;
-    if (g != null &&
-        !g.isMaxLevel &&
-        !g.isGateLocked &&
-        !g.isDayLocked &&
-        g.pointsToNext > 0 &&
-        g.pointsToNext <= 10) {
-      out.add('Lv.${g.level + 1}까지\n양분 ${g.pointsToNext}만 더! 🌱');
-    }
+    final grow = growthLine(growth, teacher: false);
+    if (grow != null) out.add(grow);
 
     if (updateAvailable) {
       out.add('새 버전이 나왔어! 📲\n스토어에서 업데이트해줘');
@@ -119,9 +112,12 @@ class PlantLines {
     int praiseMailToday = 0,
     int? participants,
     double? participationPct,
+    GrowthStatus? growth,
     bool updateAvailable = false,
   }) {
     final out = <String>[];
+    final grow = growthLine(growth, teacher: true);
+    if (grow != null) out.add(grow);
     for (final n in _recentUnread(notifications, now)) {
       final line = switch (n.type) {
         'support_referral' => '학맞통 안건이 올라왔어요 🧩\n알림을 확인해주세요',
@@ -153,6 +149,44 @@ class PlantLines {
   }
 
   // ── 공통 ─────────────────────────────────────────────────
+
+  /// 나무가 '다음 레벨까지 무엇이 얼마나 남았는지' 말하는 한 줄.
+  static String? growthLine(GrowthStatus? g, {required bool teacher}) {
+    if (g == null || g.isMaxLevel || g.isGateLocked) return null;
+    final next = 'Lv.${g.level + 1}';
+    if (g.isDayLocked) {
+      return teacher
+          ? '양분은 가득 찼어요!\n$next까지 ${g.daysToNext}일 남았어요 🌙'
+          : '양분은 가득 찼어!\n$next까지 ${g.daysToNext}일만 기다려줘 🌙';
+    }
+    final h = g.nextHint;
+    if (h == null) {
+      if (g.pointsToNext <= 0) return null;
+      return teacher
+          ? '$next까지 양분 ${g.pointsToNext}점이에요.\n매일 점검이 큰 양분이 돼요 💧'
+          : '$next까지 양분 ${g.pointsToNext}점!\n매일 점검이 제일 큰 양분이야 💧';
+    }
+    if (h.daysLeft > 0) {
+      return teacher
+          ? '${h.actionIf} 양분이 가득 차요.\n$next은 ${h.daysLeft}일 뒤에 열려요 🌙'
+          : '${h.actionIf} 양분 가득!\n$next은 ${h.daysLeft}일 뒤에 열려 🌙';
+    }
+    if (teacher) {
+      return switch (h.boost.key) {
+        'praise' => '$next까지 ${h.action} 남았어요.\n칭찬 한 번이 큰 양분이에요 💚',
+        'exchange' => '$next까지 ${h.action} 남았어요.\n교환 수령을 처리해 주세요 🛍️',
+        'vote' => '$next까지 ${h.action} 남았어요.\n이번 주 투표, 잊지 마세요 🍽️',
+        _ => '$next까지 ${h.action} 남았어요 ${h.boost.emoji}',
+      };
+    }
+    return switch (h.boost.key) {
+      'praise' => '$next까지 ${h.action} 남았어!\n칭찬받을 때마다 쑥쑥 클게 💚',
+      'exchange' => '$next까지 ${h.action} 남았어!\n교환소에 들러볼까? 🛍️',
+      'vote' => '$next까지 ${h.action} 남았어!\n우리 반이 수업맛집 되자 🍽️',
+      'weekly' => '$next까지 ${h.action} 남았어!\n이번 주도 매일 점검하자 🔥',
+      _ => '$next까지 ${h.action} 남았어! ${h.boost.emoji}',
+    };
+  }
 
   /// 최근 3일 안에 온, 아직 안 읽은 알림 (최신 순, 최대 3개).
   static Iterable<AppNotification> _recentUnread(

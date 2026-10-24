@@ -249,6 +249,15 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
               )),
 
           SectionHeader(title: '💧 ${g.yearLabel} 양분 (활동 점수)'),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              '한 번 모인 양분은 줄지 않아요. 참여율이 잠깐 내려가도\n'
+              '이번 학년도 최고 기록을 지키고, 새 활동은 그대로 더해져요.',
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 11.5, height: 1.5, color: AppColors.textSecondary),
+            ),
+          ),
           PbsCard(
             child: Column(
               children: [
@@ -257,6 +266,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: '최근 30일 점검 참여율',
                   value: '${g.activity.participation.toStringAsFixed(0)}%',
                   pts: g.activity.participationPts,
+                  kept: g.activity.kept.contains('participation_pts'),
                   max: 40,
                 ),
                 _ActivityRow(
@@ -264,6 +274,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: '칭찬 ${g.activity.praiseTotal}회',
                   value: '',
                   pts: g.activity.praisePts,
+                  kept: g.activity.kept.contains('praise_pts'),
                   max: 25,
                 ),
                 _ActivityRow(
@@ -271,6 +282,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: g.activity.kodrLabel,
                   value: '',
                   pts: g.activity.kodrPts,
+                  kept: g.activity.kept.contains('kodr_pts'),
                   max: 20,
                 ),
                 _ActivityRow(
@@ -278,6 +290,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: 'CICO 졸업(자립) ${g.activity.cicoGraduated}명',
                   value: '',
                   pts: g.activity.cicoPts,
+                  kept: g.activity.kept.contains('cico_pts'),
                   max: 15,
                 ),
                 _ActivityRow(
@@ -285,6 +298,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: '교환소 강화물 ${g.activity.storeItems}개',
                   value: '',
                   pts: g.activity.storePts,
+                  kept: g.activity.kept.contains('store_pts'),
                   max: 10,
                 ),
                 _ActivityRow(
@@ -292,6 +306,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: '보상 교환 수령 ${g.activity.exchanges}건',
                   value: '',
                   pts: g.activity.exchangePts,
+                  kept: g.activity.kept.contains('exchange_pts'),
                   max: 15,
                 ),
                 _ActivityRow(
@@ -299,6 +314,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: '수업맛집 투표 참여 ${g.activity.votesCast}표',
                   value: '',
                   pts: g.activity.votePts,
+                  kept: g.activity.kept.contains('vote_pts'),
                   max: 15,
                 ),
                 _ActivityRow(
@@ -306,6 +322,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: '공지 작성 ${g.activity.announcements}건',
                   value: '',
                   pts: g.activity.announcePts,
+                  kept: g.activity.kept.contains('announce_pts'),
                   max: 10,
                 ),
                 _ActivityRow(
@@ -313,6 +330,7 @@ void showGrowthSheet(BuildContext context, GrowthStatus g) {
                   label: '주간 개근 보너스 ${g.activity.weeklyBonus}회',
                   value: '',
                   pts: g.activity.weeklyPts,
+                  kept: g.activity.kept.contains('weekly_pts'),
                   max: 10,
                 ),
               ],
@@ -372,12 +390,16 @@ class _ActivityRow extends StatelessWidget {
     required this.value,
     required this.pts,
     required this.max,
+    this.kept = false,
   });
   final String icon;
   final String label;
   final String value;
   final int pts;
   final int max;
+
+  /// 지금 값보다 높은 이번 학년도 최고 기록을 지키는 중
+  final bool kept;
 
   @override
   Widget build(BuildContext context) {
@@ -390,9 +412,26 @@ class _ActivityRow extends StatelessWidget {
           Expanded(
             child: Text(
               value.isEmpty ? label : '$label $value',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.notoSansKr(fontSize: 12.5),
             ),
           ),
+          if (kept)
+            Container(
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text('최고 기록',
+                  maxLines: 1,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.studentGreen)),
+            ),
           Text(
             '+$pts / $max',
             style: GoogleFonts.notoSansKr(

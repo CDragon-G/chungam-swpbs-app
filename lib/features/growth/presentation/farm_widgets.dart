@@ -262,6 +262,20 @@ class GrowthProgressBar extends StatelessWidget {
   final GrowthStatus growth;
   final double scale;
 
+  /// 진행바 아래 한 줄 — 다음 레벨까지 무엇을 몇 번 하면 되는지.
+  static String _caption(GrowthStatus g) {
+    if (g.isMaxLevel) return '🎉 숲이 되었어요! 모두의 결실이에요';
+    if (g.isGateLocked) return '🔑 열쇠 미션만 끝나면 바로 레벨업!';
+    if (g.isDayLocked) return '🌙 ${g.daysToNext}일 더 함께 자라면 레벨업!';
+    final h = g.nextHint;
+    if (h != null) {
+      return h.daysLeft > 0
+          ? '${h.boost.emoji} ${h.actionIf} 양분이 가득 차요'
+          : '${h.boost.emoji} ${h.actionIf} Lv.${g.level + 1}!';
+    }
+    return '🌱 Lv.${g.level + 1}까지 양분 ${g.pointsToNext}점!';
+  }
+
   @override
   Widget build(BuildContext context) {
     final g = growth;
@@ -324,18 +338,16 @@ class GrowthProgressBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 5),
-              Text(
-                g.isMaxLevel
-                    ? '🎉 숲이 되었어요! 모두의 결실이에요'
-                    : g.isGateLocked
-                        ? '🔑 열쇠 미션만 끝나면 바로 레벨업!'
-                        : g.isDayLocked
-                            ? '🌙 ${g.daysToNext}일 더 함께 자라면 레벨업!'
-                            : '레벨업까지 ${100 - pct}% 남았어요!',
-                style: GoogleFonts.notoSansKr(
-                  fontSize: 11 * sc,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _caption(g),
+                  maxLines: 1,
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11 * sc,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],

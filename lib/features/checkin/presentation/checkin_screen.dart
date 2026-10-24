@@ -14,6 +14,7 @@ import '../../calendar/providers/calendar_provider.dart';
 import '../../growth/growth_celebration.dart';
 import '../../school/models/school_rule.dart';
 import '../../school/providers/school_provider.dart';
+import '../../../core/review/review_prompt.dart';
 import '../../points/providers/points_provider.dart';
 import '../../student/providers/badge_provider.dart';
 import '../../student/providers/student_stats_provider.dart';
@@ -161,7 +162,10 @@ class _CheckinScreenState extends ConsumerState<CheckinScreen>
       await evaluateAndAwardBadges(ref);
       if (!mounted) return;
       celebrateGrowth(context, ref, headline: '오늘의 자기점검 완료! ✅');
+      final isDemo = ref.read(isDemoSchoolProvider);
       context.go('/student/checkin/result');
+      // 점검을 마친 순간 — 조건이 맞으면 결과 화면 위로 스토어 별점 창
+      ReviewPrompt.happyMoment(teacher: false, isDemo: isDemo);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

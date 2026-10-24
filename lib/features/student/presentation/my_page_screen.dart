@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../checkin/providers/checkin_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/review/review_prompt.dart';
 import '../../../core/notifications/notifications_service.dart';
 import '../../../core/notifications/reminder_prefs.dart';
 import '../../../core/utils/date_utils.dart';
@@ -366,6 +367,28 @@ class MyPageScreen extends ConsumerWidget {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
+                // 체험 학교 태블릿에서는 스토어로 나가지 않게 숨긴다
+                if (!ref.watch(isDemoSchoolProvider)) ...[
+                  ListTile(
+                    leading: const Icon(Icons.star_rounded,
+                        color: Color(0xFFF59E0B)),
+                    title: Text(
+                      '자람 평가하기',
+                      style: GoogleFonts.notoSansKr(
+                          fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    subtitle: Text(
+                      '별점 하나가 자람을 키워요',
+                      maxLines: 1,
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 11,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                    onTap: ReviewPrompt.openStore,
+                  ),
+                  const Divider(height: 1),
+                ],
                 ListTile(
                   leading: const Icon(Icons.logout_rounded,
                       color: AppColors.textSecondary),

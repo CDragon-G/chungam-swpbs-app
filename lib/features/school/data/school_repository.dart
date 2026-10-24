@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase/supabase_client.dart';
@@ -153,10 +155,12 @@ class SchoolRepository {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  /// 공지 등록. [event] 를 넘기면 홈 배너로 홍보하는 이벤트 공지가 된다 (073).
   Future<Map<String, dynamic>> postAnnouncement({
     required String schoolId,
     required String title,
     required String body,
+    NoticeEventOptions? event,
   }) async {
     final user = _c.auth.currentUser;
     if (user == null) throw StateError('로그인 상태가 아닙니다.');
@@ -167,14 +171,49 @@ class SchoolRepository {
           'title': title,
           'body': body,
           'created_by': user.id,
+          if (event != null) ...event.toRow(),
         })
         .select()
         .single();
     return inserted;
   }
 
-  Future<void> deleteAnnouncement(String id) async {
+  static const _noticeBucket = 'notice-images';
+
+  /// 이벤트 포스터 올리기 → 공개 주소. 학교 폴더 안에만 올릴 수 있다 (073 정책).
+  Future<String> uploadNoticeImage({
+    required String schoolId,
+    required Uint8List bytes,
+    required String ext,
+  }) async {
+    final e = ext.toLowerCase().replaceAll('.', '');
+    final type = switch (e) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    final path =
+        '$schoolId/${DateTime.now().millisecondsSinceEpoch}.${e == 'jpg' || e == 'jpeg' || e.isEmpty ? 'jpg' : e}';
+    await _c.storage.from(_noticeBucket).uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: type, upsert: false),
+        );
+    return _c.storage.from(_noticeBucket).getPublicUrl(path);
+  }
+
+  /// 공지 삭제. 이벤트 포스터가 있으면 함께 지운다 (못 지워도 공지는 지운다).
+  Future<void> deleteAnnouncement(String id, {String? imageUrl}) async {
     await _c.from('announcements').delete().eq('id', id);
+    if (imageUrl == null) return;
+    const marker = '/$_noticeBucket/';
+    final at = imageUrl.indexOf(marker);
+    if (at < 0) return;
+    try {
+      await _c.storage
+          .from(_noticeBucket)
+          .remove([imageUrl.substring(at + marker.length)]);
+    } catch (_) {}
   }
 
   // Teacher: list students for a school
@@ -308,4 +347,34 @@ class SchoolRepository {
     final res = await _c.rpc('clear_roster', params: {'p_school_id': schoolId});
     return (res as int?) ?? 0;
   }
+}
+
+/// 이벤트 공지 설정 — 기간 · 색 · 포스터 · 연결 강화물 (073).
+class NoticeEventOptions {
+  const NoticeEventOptions({
+    this.start,
+    this.end,
+    this.theme = 'warm',
+    this.imageUrl,
+    this.itemId,
+  });
+
+  final DateTime? start;
+  final DateTime? end;
+  final String theme;
+  final String? imageUrl;
+  final String? itemId;
+
+  static String? _d(DateTime? d) => d == null
+      ? null
+      : '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Map<String, dynamic> toRow() => {
+        'kind': 'event',
+        'event_start': _d(start),
+        'event_end': _d(end),
+        'theme': theme,
+        'image_url': imageUrl,
+        'item_id': itemId,
+      };
 }

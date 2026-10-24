@@ -6,9 +6,13 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../praise_mail/praise_mail_screens.dart';
+import '../../feed/feed_clouds.dart';
+import '../../feed/live_feed.dart';
+import '../../notice/school_event.dart';
 import '../../honor/weekly_honor_marquee.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/review/review_prompt.dart';
 import '../../../core/update/update_service.dart';
 import '../../../shared/widgets/flame_streak.dart';
 import '../../../shared/providers/profile_provider.dart';
@@ -71,6 +75,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
       ref.invalidate(unreadPraiseMailProvider);
       ref.invalidate(weeklyHonorProvider);
       ref.invalidate(myWeeklyHonorProvider);
+      ref.invalidate(liveFeedProvider);
     });
     _openTick = Timer.periodic(const Duration(minutes: 1), (_) {
       final st = ref.read(todaySchoolStatusProvider).value;
@@ -78,6 +83,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         setState(() {});
       }
     });
+    ReviewPrompt.noteFirstSeen();
     // 학생 첫 진입 시 일일 리마인더 기본 ON (한 번도 설정 안 했을 때만)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // 첫 실행 알림 권한 안내 (동의 시 일일 리마인더도 함께 켜짐)
@@ -89,6 +95,14 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
       if (mounted) await maybeShowLevelUp(context, ref);
       // 리마인더를 '수업일에만' 다시 예약 (주말·공휴일·방학 제외)
       syncStudentReminders();
+      // 학교 이벤트 홍보 (이벤트마다 하루 한 번). 떴으면 퀴즈는 쉬어 간다
+      await ref
+          .read(announcementsProvider.future)
+          .catchError((_) => const <Map<String, dynamic>>[]);
+      if (!mounted) return;
+      final shownEvent =
+          await maybeShowEventPopup(context, ref, isTeacher: false);
+      if (shownEvent) return;
       // 깜짝 초성 퀴즈 (30% 확률, 하루 1회)
       await Future.delayed(const Duration(milliseconds: 1600));
       if (mounted) maybeShowQuizPopup(context, ref, isTeacher: false);
@@ -108,9 +122,13 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
     final isRestDay = schoolDay != null && !schoolDay.isSchoolDay;
     final beforeOpen = schoolDay != null && schoolDay.isBeforeOpen;
     final announcements = ref.watch(announcementsProvider).value;
-    final latestNotice = (announcements != null && announcements.isNotEmpty)
-        ? announcements.first['title'] as String
-        : null;
+    // 이벤트 공지는 따로 배너로 뜨므로, 공지 배너에는 일반 공지만
+    final latestNotice = announcements
+        ?.where((a) => a['kind'] != 'event')
+        .map((a) => a['title'] as String)
+        .firstOrNull;
+    final events = ref.watch(activeEventsProvider);
+    final hasSlot = latestNotice != null || events.isNotEmpty;
 
     final fs = farmScale(context);
     return RefreshIndicator(
@@ -129,289 +147,315 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         ref.invalidate(myWeeklyHonorProvider);
         ref.invalidate(myNotificationsProvider);
         ref.invalidate(unreadPraiseMailProvider);
+        ref.invalidate(liveFeedProvider);
       },
       // 농장 홈은 고정 캔버스 화면 — 시스템 글자 확대는 1.1배까지만
       child: MediaQuery.withClampedTextScaling(
         maxScaleFactor: 1.1,
-        child: Stack(
-          children: [
-            ListView(physics: const AlwaysScrollableScrollPhysics()),
-            // ── 농장 배경 ──
-            Positioned.fill(
-              child: Image.asset(
-                'assets/farm/farm_bg.png',
-                fit: BoxFit.cover,
-                alignment: Alignment.bottomCenter,
-                filterQuality: FilterQuality.medium,
-              ),
-            ),
-
-            // ── 상단: 학교 팻말 ──
-            Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: SchoolSign(
-                  scale: fs,
-                  name: growth?.schoolName ?? '자람 학교',
-                  onTap: growth == null
-                      ? null
-                      : () => showGrowthSheet(context, growth),
+        child: LayoutBuilder(builder: (context, box) {
+          // 구름이 지나갈 하늘: 명예 식집사 띠 아래 ~ 식물 말풍선 위
+          final laneH = FeedCloudSky.laneHeight(fs);
+          final skyTop = (hasSlot ? 142 : 102) * fs + 30 + 8;
+          final skyBottom = box.maxHeight - (76 + 317) * fs - 24;
+          final lanes = (skyBottom - skyTop) >= laneH * 1.6 ? 2 : 1;
+          return Stack(
+            children: [
+              ListView(physics: const AlwaysScrollableScrollPhysics()),
+              // ── 농장 배경 ──
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/farm/farm_bg.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.bottomCenter,
+                  filterQuality: FilterQuality.medium,
                 ),
               ),
-            ),
 
-            // ── 팻말 아래: 최근 공지 배너 ──
-            if (latestNotice != null)
+              // ── 하늘: 흘러가는 구름 소식 (메뉴 · 식물보다 뒤) ──
               Positioned(
-                top: 102 * fs,
+                top: skyTop,
+                left: 0,
+                right: 0,
+                height: laneH * lanes,
+                child: FeedCloudSky(lanes: lanes, teacher: false, scale: fs),
+              ),
+
+              // ── 상단: 학교 팻말 ──
+              Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: SchoolSign(
+                    scale: fs,
+                    name: growth?.schoolName ?? '자람 학교',
+                    onTap: growth == null
+                        ? null
+                        : () => showGrowthSheet(context, growth),
+                  ),
+                ),
+              ),
+
+              // ── 팻말 아래: 이벤트 배너 · 최근 공지 (번갈아) ──
+              if (hasSlot)
+                Positioned(
+                  top: 102 * fs,
+                  left: 62 * fs,
+                  right: 62 * fs,
+                  child: NoticeSlot(
+                    events: events,
+                    notice: latestNotice == null
+                        ? null
+                        : FarmNoticeBanner(
+                            text: latestNotice,
+                            onTap: () => _showNoticeSheet(context),
+                          ),
+                    onEvent: (e) =>
+                        showEventSheet(context, e, isTeacher: false),
+                  ),
+                ),
+
+              // ── 공지 아래: 이 주의 명예 식집사 (좌→우로 흐름) ──
+              //    좌우 메뉴를 피해 공지 배너와 같은 폭에 둔다.
+              Positioned(
+                top: (hasSlot ? 142 : 102) * fs,
                 left: 62 * fs,
                 right: 62 * fs,
-                child: FarmNoticeBanner(
-                  text: latestNotice,
-                  onTap: () => _showNoticeSheet(context),
-                ),
+                child: const WeeklyHonorMarquee(),
               ),
 
-            // ── 공지 아래: 이 주의 명예 식집사 (좌→우로 흐름) ──
-            //    좌우 메뉴를 피해 공지 배너와 같은 폭에 둔다.
-            Positioned(
-              top: (latestNotice != null ? 142 : 102) * fs,
-              left: 62 * fs,
-              right: 62 * fs,
-              child: const WeeklyHonorMarquee(),
-            ),
-
-            // ── 좌상단: 인사 + 스트릭 ──
-            Positioned(
-              top: 10,
-              left: 10,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '${profile?.nickname ?? ''} 🌟',
-                      style: GoogleFonts.notoSansKr(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary),
-                    ),
-                  ),
-                  if ((stats?.streak ?? 0) > 0)
+              // ── 좌상단: 인사 + 스트릭 ──
+              Positioned(
+                top: 10,
+                left: 10,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Container(
-                      margin: const EdgeInsets.only(top: 4),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 9, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7ED).withValues(alpha: 0.95),
+                        color: Colors.white.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: FlameStreak(
-                        days: stats!.streak,
-                        size: 15,
-                        fontSize: 11,
-                        label: '${stats.streak}일 연속',
+                      child: Text(
+                        '${profile?.nickname ?? ''} 🌟',
+                        style: GoogleFonts.notoSansKr(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary),
                       ),
                     ),
-                ],
-              ),
-            ),
-
-            // ── 우상단: 알림 종 + 로그아웃 ──
-            Positioned(
-              top: 6,
-              right: 8,
-              child: Row(
-                children: [
-                  const NotificationBell(route: '/student/notifications'),
-                  const SizedBox(width: 14),
-                  GestureDetector(
-                    onTap: () async {
-                      await ref.read(authRepositoryProvider).signOut();
-                      if (context.mounted) context.go('/welcome');
-                    },
-                    child: const Icon(
-                      Icons.logout_rounded,
-                      size: 25,
-                      color: Colors.white,
-                      shadows: [Shadow(color: Colors.black45, blurRadius: 6)],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── 좌측: 실행 메뉴 ──
-            Positioned(
-              left: 6,
-              top: 148 * fs,
-              child: Column(
-                children: [
-                  FarmMenuButton(
-                    scale: fs,
-                    asset: 'assets/icons/info_status.png',
-                    label: '오늘 점검',
-                    badge: (todayDone || isRestDay || beforeOpen) ? null : '!',
-                    onTap: () => context.go('/student/checkin'),
-                  ),
-                  FarmMenuButton(
-                    scale: fs,
-                    asset: 'assets/icons/menu_fame.png',
-                    label: '명예의 전당',
-                    onTap: () => context.go('/student/hall-of-fame'),
-                  ),
-                  FarmMenuButton(
-                    scale: fs,
-                    asset: 'assets/icons/menu_mailbox.png',
-                    label: '칭찬 우체통',
-                    badge: unreadMail > 0 ? '$unreadMail' : null,
-                    onTap: () => context.go('/student/praise-mail'),
-                  ),
-                  if (hasCico)
-                    FarmMenuButton(
-                      scale: fs,
-                      asset: 'assets/icons/menu_cico.png',
-                      label: 'CICO',
-                      onTap: () => context.go('/student/cico'),
-                    ),
-                ],
-              ),
-            ),
-
-            // ── 우측: 정보 메뉴 ──
-            Positioned(
-              right: 6,
-              top: 148 * fs,
-              child: Column(
-                children: [
-                  FarmMenuButton(
-                    scale: fs,
-                    asset: 'assets/icons/info_missions.png',
-                    label: '성장 미션',
-                    onTap: growth == null
-                        ? () {}
-                        : () => showGrowthSheet(context, growth),
-                  ),
-                  FarmMenuButton(
-                    scale: fs,
-                    asset: 'assets/icons/menu_praise.png',
-                    label: '건의함',
-                    onTap: () => context.go('/student/suggest'),
-                  ),
-                  if (voteHint?.hasRound == true)
-                    FarmMenuButton(
-                      scale: fs,
-                      asset: 'assets/icons/menu_vote.png',
-                      label: '수업맛집',
-                      onTap: () => _showVoteHintSheet(context),
-                    ),
-                ],
-              ),
-            ),
-
-            // ── 하단 고정: 말풍선 + 식물 + 진행바 (CTA 바로 위) ──
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 76 * fs,
-              child: GestureDetector(
-                onTap: growth == null
-                    ? null
-                    : () => showGrowthSheet(context, growth),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ValueListenableBuilder<UpdateInfo>(
-                      valueListenable: UpdateService.latest,
-                      builder: (context, update, _) {
-                        final now = DateTime.now();
-                        return PlantSpeechBubble(
-                          scale: fs,
-                          pinned: (growth != null && growth.isGateLocked)
-                              ? '양분은 가득 찼어! 🌕\n🔑 "${growth.gateKeyLabel}"\n미션이 끝나면 바로 레벨업이야!'
-                              : null,
-                          news: PlantLines.studentNews(
-                            notifications:
-                                ref.watch(myNotificationsProvider).value ??
-                                    const [],
-                            now: now,
-                            todayDone: todayDone,
-                            checkinOpen: schoolDay?.isCheckinOpenNow ?? false,
-                            beforeOpen: beforeOpen,
-                            opensText: schoolDay?.opensText,
-                            growth: growth,
-                            honor: ref.watch(myWeeklyHonorProvider).value,
-                            updateAvailable: update.updateAvailable,
-                          ),
-                          messages: PlantLines.student(now),
-                        );
-                      },
-                    ),
-                    BreathingSprout(
-                      asset: growth?.levelAsset ?? GrowthStatus.assetFor(1),
-                      level: growth?.level ?? 1,
-                      size: 172 * fs,
-                    ),
-                    SizedBox(height: 10 * fs),
-                    if (growth != null)
-                      GrowthProgressBar(growth: growth, scale: fs),
+                    if ((stats?.streak ?? 0) > 0)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 9, vertical: 3),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFFFFF7ED).withValues(alpha: 0.95),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: FlameStreak(
+                          days: stats!.streak,
+                          size: 15,
+                          fontSize: 11,
+                          label: '${stats.streak}일 연속',
+                        ),
+                      ),
                   ],
                 ),
               ),
-            ),
 
-            // ── 하단: 오늘 점검 CTA ──
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 10,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: (todayDone || isRestDay || beforeOpen)
-                          ? null
-                          : () => context.go('/student/checkin'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.studentGreen,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                            Colors.white.withValues(alpha: 0.92),
-                        disabledForegroundColor: AppColors.studentGreen,
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
-                        ),
+              // ── 우상단: 알림 종 + 로그아웃 ──
+              Positioned(
+                top: 6,
+                right: 8,
+                child: Row(
+                  children: [
+                    const NotificationBell(route: '/student/notifications'),
+                    const SizedBox(width: 14),
+                    GestureDetector(
+                      onTap: () async {
+                        await ref.read(authRepositoryProvider).signOut();
+                        if (context.mounted) context.go('/welcome');
+                      },
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        size: 25,
+                        color: Colors.white,
+                        shadows: [Shadow(color: Colors.black45, blurRadius: 6)],
                       ),
-                      child: Text(
-                        isRestDay
-                            ? schoolDay.message
-                            : beforeOpen
-                                ? '🕐 자기점검은 ${schoolDay.opensText}부터 열려요'
-                                : todayDone
-                                    ? '오늘 점검 완료! 새싹이 자랐어요 🌱'
-                                    : '✅ 오늘 자기점검 하러 가기',
-                        style: GoogleFonts.notoSansKr(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── 좌측: 실행 메뉴 ──
+              Positioned(
+                left: 6,
+                top: 148 * fs,
+                child: Column(
+                  children: [
+                    FarmMenuButton(
+                      scale: fs,
+                      asset: 'assets/icons/info_status.png',
+                      label: '오늘 점검',
+                      badge:
+                          (todayDone || isRestDay || beforeOpen) ? null : '!',
+                      onTap: () => context.go('/student/checkin'),
+                    ),
+                    FarmMenuButton(
+                      scale: fs,
+                      asset: 'assets/icons/menu_fame.png',
+                      label: '명예의 전당',
+                      onTap: () => context.go('/student/hall-of-fame'),
+                    ),
+                    FarmMenuButton(
+                      scale: fs,
+                      asset: 'assets/icons/menu_mailbox.png',
+                      label: '칭찬 우체통',
+                      badge: unreadMail > 0 ? '$unreadMail' : null,
+                      onTap: () => context.go('/student/praise-mail'),
+                    ),
+                    if (hasCico)
+                      FarmMenuButton(
+                        scale: fs,
+                        asset: 'assets/icons/menu_cico.png',
+                        label: 'CICO',
+                        onTap: () => context.go('/student/cico'),
+                      ),
+                  ],
+                ),
+              ),
+
+              // ── 우측: 정보 메뉴 ──
+              Positioned(
+                right: 6,
+                top: 148 * fs,
+                child: Column(
+                  children: [
+                    FarmMenuButton(
+                      scale: fs,
+                      asset: 'assets/icons/info_missions.png',
+                      label: '성장 미션',
+                      onTap: growth == null
+                          ? () {}
+                          : () => showGrowthSheet(context, growth),
+                    ),
+                    FarmMenuButton(
+                      scale: fs,
+                      asset: 'assets/icons/menu_praise.png',
+                      label: '건의함',
+                      onTap: () => context.go('/student/suggest'),
+                    ),
+                    if (voteHint?.hasRound == true)
+                      FarmMenuButton(
+                        scale: fs,
+                        asset: 'assets/icons/menu_vote.png',
+                        label: '수업맛집',
+                        onTap: () => _showVoteHintSheet(context),
+                      ),
+                  ],
+                ),
+              ),
+
+              // ── 하단 고정: 말풍선 + 식물 + 진행바 (CTA 바로 위) ──
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 76 * fs,
+                child: GestureDetector(
+                  onTap: growth == null
+                      ? null
+                      : () => showGrowthSheet(context, growth),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ValueListenableBuilder<UpdateInfo>(
+                        valueListenable: UpdateService.latest,
+                        builder: (context, update, _) {
+                          final now = DateTime.now();
+                          return PlantSpeechBubble(
+                            scale: fs,
+                            pinned: (growth != null && growth.isGateLocked)
+                                ? '양분은 가득 찼어! 🌕\n🔑 "${growth.gateKeyLabel}"\n미션이 끝나면 바로 레벨업이야!'
+                                : null,
+                            news: PlantLines.studentNews(
+                              notifications:
+                                  ref.watch(myNotificationsProvider).value ??
+                                      const [],
+                              now: now,
+                              todayDone: todayDone,
+                              checkinOpen: schoolDay?.isCheckinOpenNow ?? false,
+                              beforeOpen: beforeOpen,
+                              opensText: schoolDay?.opensText,
+                              growth: growth,
+                              honor: ref.watch(myWeeklyHonorProvider).value,
+                              updateAvailable: update.updateAvailable,
+                            ),
+                            messages: PlantLines.student(now),
+                          );
+                        },
+                      ),
+                      BreathingSprout(
+                        asset: growth?.levelAsset ?? GrowthStatus.assetFor(1),
+                        level: growth?.level ?? 1,
+                        size: 172 * fs,
+                      ),
+                      SizedBox(height: 10 * fs),
+                      if (growth != null)
+                        GrowthProgressBar(growth: growth, scale: fs),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── 하단: 오늘 점검 CTA ──
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 10,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: (todayDone || isRestDay || beforeOpen)
+                            ? null
+                            : () => context.go('/student/checkin'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.studentGreen,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor:
+                              Colors.white.withValues(alpha: 0.92),
+                          disabledForegroundColor: AppColors.studentGreen,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: Text(
+                          isRestDay
+                              ? schoolDay.message
+                              : beforeOpen
+                                  ? '🕐 자기점검은 ${schoolDay.opensText}부터 열려요'
+                                  : todayDone
+                                      ? '오늘 점검 완료! 새싹이 자랐어요 🌱'
+                                      : '✅ 오늘 자기점검 하러 가기',
+                          style: GoogleFonts.notoSansKr(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        }),
       ),
     );
   }

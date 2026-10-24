@@ -69,6 +69,7 @@ class HomeroomOverview {
     this.avgParticipation = 0,
     this.avgScore = 0,
     this.totalPoints = 0,
+    this.totalEarned,
     this.students = const [],
   });
 
@@ -83,7 +84,10 @@ class HomeroomOverview {
   final int todayPct;
   final int avgParticipation;
   final int avgScore;
-  final int totalPoints;
+  final int totalPoints; // 지금 잔액 합 (교환하면 줄어든다)
+
+  /// 반이 이번 학년도에 모은 포인트 합 — 써도 줄지 않는다 (073 전 서버면 null)
+  final int? totalEarned;
   final List<HomeroomStudent> students;
 
   /// 담임 학급을 아직 정하지 않은 상태인가.
@@ -105,6 +109,7 @@ class HomeroomOverview {
         avgParticipation: (m['avg_participation'] as num?)?.toInt() ?? 0,
         avgScore: (m['avg_score'] as num?)?.toInt() ?? 0,
         totalPoints: (m['total_points'] as num?)?.toInt() ?? 0,
+        totalEarned: (m['total_earned'] as num?)?.toInt(),
         students: ((m['students'] as List?) ?? const [])
             .map((e) =>
                 HomeroomStudent.fromMap(Map<String, dynamic>.from(e as Map)))
@@ -124,6 +129,7 @@ class HomeroomStudent {
     required this.todayDone,
     required this.streak,
     required this.points,
+    this.earned,
     required this.badges,
     required this.missed,
     this.lastDate,
@@ -138,7 +144,10 @@ class HomeroomStudent {
   final int avgScore; // 평균 점수 %
   final bool todayDone;
   final int streak;
-  final int points;
+  final int points; // 지금 잔액
+
+  /// 이번 학년도에 모은 포인트 — 교환소에서 써도 줄지 않는다 (073 전 서버면 null)
+  final int? earned;
   final int badges;
   final int missed; // 마지막 점검 이후 지난 날
   final DateTime? lastDate;
@@ -162,6 +171,7 @@ class HomeroomStudent {
       todayDone: (m['today_done'] as bool?) ?? false,
       streak: (m['streak'] as num?)?.toInt() ?? 0,
       points: (m['points'] as num?)?.toInt() ?? 0,
+      earned: (m['earned'] as num?)?.toInt(),
       badges: (m['badges'] as num?)?.toInt() ?? 0,
       missed: (m['missed'] as num?)?.toInt() ?? 999,
       lastDate: last == null ? null : DateTime.parse(last),

@@ -358,7 +358,10 @@ class _Summary extends StatelessWidget {
             children: [
               _Stat(label: '평균 참여율', value: '${o.avgParticipation}%'),
               _Stat(label: '평균 점수', value: '${o.avgScore}점'),
-              _Stat(label: '반 전체 포인트', value: f.format(o.totalPoints)),
+              // 모은 포인트는 교환해도 줄지 않는다 (잔액 합은 쓰면 줄어서 반이 뒷걸음질해 보였다)
+              o.totalEarned != null
+                  ? _Stat(label: '반이 모은 포인트', value: f.format(o.totalEarned))
+                  : _Stat(label: '반 전체 포인트', value: f.format(o.totalPoints)),
             ],
           ),
         ],
@@ -517,11 +520,17 @@ class _StudentTile extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('${f.format(s.points)}P',
+                    Text('${f.format(s.earned ?? s.points)}P',
+                        maxLines: 1,
                         style: GoogleFonts.notoSansKr(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
                             color: AppColors.studentGreen)),
+                    if (s.earned != null)
+                      Text('남은 ${f.format(s.points)}P',
+                          maxLines: 1,
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 10.5, color: AppColors.textTertiary)),
                     if (s.badges > 0)
                       Text('배지 ${s.badges}',
                           style: GoogleFonts.notoSansKr(

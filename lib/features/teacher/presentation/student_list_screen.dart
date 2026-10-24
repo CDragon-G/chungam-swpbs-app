@@ -17,6 +17,7 @@ import '../../growth/growth_celebration.dart';
 import '../../points/providers/points_provider.dart';
 import '../../praise/providers/praise_provider.dart';
 import '../../school/providers/school_provider.dart';
+import '../../../core/review/review_prompt.dart';
 
 class StudentListScreen extends ConsumerStatefulWidget {
   const StudentListScreen({super.key});
@@ -619,6 +620,8 @@ class _State extends ConsumerState<StudentListScreen> {
               });
               celebrateGrowth(context, ref,
                   headline: '$sent명에게 칭찬을 보냈어요! 💚 (각 +50P)');
+              ReviewPrompt.happyMoment(
+                  teacher: true, isDemo: ref.read(isDemoSchoolProvider));
             } catch (e) {
               if (!dialogCtx.mounted) return;
               setSt(() => sending = false);
@@ -737,6 +740,8 @@ class _State extends ConsumerState<StudentListScreen> {
               if (!mounted) return;
               celebrateGrowth(context, ref,
                   headline: '$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)');
+              ReviewPrompt.happyMoment(
+                  teacher: true, isDemo: ref.read(isDemoSchoolProvider));
             } catch (e) {
               if (!dialogCtx.mounted) return;
               setSt(() => sending = false);
