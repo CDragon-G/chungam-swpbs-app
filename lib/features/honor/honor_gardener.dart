@@ -9,6 +9,7 @@ import '../../core/constants/app_sizes.dart';
 import '../../core/supabase/supabase_client.dart';
 import '../../core/utils/error_messages.dart';
 import '../../shared/widgets/pbs_card.dart';
+import '../points/providers/points_provider.dart';
 
 /// 🌿 2주 꾸준 식집사 — 2주에 전교 한 명, 관리자 선생님이 선정한다.
 ///
@@ -107,7 +108,9 @@ class _HonorCardState extends ConsumerState<HonorGardenerCard> {
       ref.invalidate(honorStatusProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${m['name']} 학생이 명예 식집사로 선정됐어요! (500P)')),
+          SnackBar(
+              content: Text(
+                  '${m['name']} 학생이 명예 식집사로 선정됐어요! (${(ref.read(pointAmountsProvider).value ?? const PointAmounts()).honorGardener}P)')),
         );
       }
     } catch (e) {

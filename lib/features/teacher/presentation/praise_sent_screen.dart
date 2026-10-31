@@ -7,6 +7,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/utils/error_messages.dart';
 import '../../../shared/widgets/pbs_card.dart';
+import '../../points/providers/points_provider.dart';
 
 /// 내가 보낸 칭찬 한 건.
 class SentPraise {
@@ -151,7 +152,7 @@ class PraiseSentScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '전체 ${items.length}건 · 칭찬 한 번에 학생 +50P',
+                                  '전체 ${items.length}건 · 칭찬 한 번에 학생 +${(ref.watch(pointAmountsProvider).value ?? const PointAmounts()).praise}P',
                                   style: GoogleFonts.notoSansKr(
                                       fontSize: 11.5,
                                       color: AppColors.textSecondary),

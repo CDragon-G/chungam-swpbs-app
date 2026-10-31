@@ -23,9 +23,13 @@ class StudentStoreScreen extends ConsumerWidget {
     final balance = ref.watch(myPointsProvider);
     final itemsAsync = ref.watch(activeStoreItemsProvider);
     final myExchanges = ref.watch(myExchangesProvider);
+    // 관리자가 '포인트 설정' 에서 정한 금액 (화면에 숫자를 박지 않는다)
+    final amounts =
+        ref.watch(pointAmountsProvider).value ?? const PointAmounts();
 
     return RefreshIndicator(
       onRefresh: () async {
+        ref.invalidate(pointAmountsProvider);
         ref.invalidate(myPointsProvider);
         ref.invalidate(activeStoreItemsProvider);
         ref.invalidate(myExchangesProvider);
@@ -59,7 +63,8 @@ class StudentStoreScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '• 매일 자기점검 1회 = +100P\n• 월~금 모두 참여 보너스 = +500P',
+                  '• 매일 자기점검 1회 = +${amounts.checkinDaily}P\n'
+                  '• 월~금 모두 참여 보너스 = +${amounts.checkinWeekly}P',
                   style: GoogleFonts.notoSansKr(
                     fontSize: 13,
                     color: AppColors.textPrimary,
@@ -176,7 +181,8 @@ class StudentStoreScreen extends ConsumerWidget {
                 );
               }
               return Column(
-                children: list.take(10).map((e) => _ExchangeRow(ex: e)).toList(),
+                children:
+                    list.take(10).map((e) => _ExchangeRow(ex: e)).toList(),
               );
             },
           ),
@@ -208,7 +214,8 @@ class StudentStoreScreen extends ConsumerWidget {
             child: const Text('취소'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.studentGreen),
+            style:
+                FilledButton.styleFrom(backgroundColor: AppColors.studentGreen),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('교환하기'),
           ),
@@ -531,8 +538,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
             TextButton(
               onPressed: () => Navigator.pop(dialogCtx, false),
               child: Text('취소',
-                  style:
-                      GoogleFonts.notoSansKr(color: AppColors.textTertiary)),
+                  style: GoogleFonts.notoSansKr(color: AppColors.textTertiary)),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -796,7 +802,8 @@ Future<void> _showPickupGuide(BuildContext context, PointStoreItem it) {
         FilledButton(
           style: FilledButton.styleFrom(
               backgroundColor: AppColors.studentGreen,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
           onPressed: () => Navigator.pop(dialogCtx),
           child: Text('알겠어요',
               style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),

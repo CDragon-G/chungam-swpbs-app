@@ -138,3 +138,45 @@ final classPointEconomyProvider =
   final res = await SupabaseService.client.rpc('class_point_economy_stats');
   return Map<String, dynamic>.from(res as Map);
 });
+
+/// 우리 학교의 지금 포인트 금액 (관리자가 '포인트 설정' 에서 정한 값, 074).
+/// 화면 문구에 금액을 숫자로 박지 않고 이 값을 쓴다.
+class PointAmounts {
+  const PointAmounts({
+    this.checkinDaily = 100,
+    this.checkinWeekly = 500,
+    this.praise = 50,
+    this.quiz = 5,
+    this.honorGardener = 500,
+  });
+
+  final int checkinDaily;
+  final int checkinWeekly;
+  final int praise;
+  final int quiz;
+  final int honorGardener;
+
+  factory PointAmounts.fromMap(Map<String, dynamic> m) {
+    int v(String k, int d) => (m[k] as num?)?.toInt() ?? d;
+    return PointAmounts(
+      checkinDaily: v('checkin_daily', 100),
+      checkinWeekly: v('checkin_weekly', 500),
+      praise: v('praise', 50),
+      quiz: v('quiz', 5),
+      honorGardener: v('honor_gardener', 500),
+    );
+  }
+}
+
+/// 074 전 서버거나 불러오지 못하면 기본값(064 의 기본 금액)을 쓴다.
+final pointAmountsProvider = FutureProvider<PointAmounts>((ref) async {
+  ref.watch(profileProvider);
+  try {
+    final res = await SupabaseService.client.rpc('point_amounts');
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) return const PointAmounts();
+    return PointAmounts.fromMap(m);
+  } catch (_) {
+    return const PointAmounts();
+  }
+});

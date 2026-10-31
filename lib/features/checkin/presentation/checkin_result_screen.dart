@@ -63,8 +63,11 @@ class CheckinResultScreen extends ConsumerWidget {
             0,
             (sum, t) => sum + t.amount,
           );
-          final hasWeeklyBonus =
-              earnedToday.any((t) => t.reason == 'checkin_weekly');
+          // 개근 보너스는 실제로 받은 금액을 보여준다 (포인트 설정에 따라 다르다)
+          final weeklyBonus = earnedToday
+              .where((t) => t.reason == 'checkin_weekly')
+              .fold<int>(0, (sum, t) => sum + t.amount);
+          final hasWeeklyBonus = weeklyBonus > 0;
 
           return ListView(
             padding: const EdgeInsets.all(AppSizes.xl),
@@ -76,6 +79,7 @@ class CheckinResultScreen extends ConsumerWidget {
                 _PointsEarnedBanner(
                   earned: totalEarnedToday,
                   hasWeeklyBonus: hasWeeklyBonus,
+                  weeklyBonus: weeklyBonus,
                   totalBalance: balanceAsync.value ?? 0,
                   onTapStore: () => context.go('/student/store'),
                 ),
@@ -200,12 +204,14 @@ class _PointsEarnedBanner extends StatefulWidget {
   const _PointsEarnedBanner({
     required this.earned,
     required this.hasWeeklyBonus,
+    this.weeklyBonus = 0,
     required this.totalBalance,
     required this.onTapStore,
   });
 
   final int earned;
   final bool hasWeeklyBonus;
+  final int weeklyBonus; // 실제로 받은 개근 보너스
   final int totalBalance;
   final VoidCallback onTapStore;
 
@@ -283,7 +289,8 @@ class _PointsEarnedBannerState extends State<_PointsEarnedBanner>
             if (widget.hasWeeklyBonus) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(999),
@@ -294,7 +301,7 @@ class _PointsEarnedBannerState extends State<_PointsEarnedBanner>
                     const Text('🎉', style: TextStyle(fontSize: 14)),
                     const SizedBox(width: 4),
                     Text(
-                      '월~금 개근 보너스 +500P 포함!',
+                      '월~금 개근 보너스 +${widget.weeklyBonus}P 포함!',
                       style: GoogleFonts.notoSansKr(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,

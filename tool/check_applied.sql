@@ -55,6 +55,8 @@ select file as "파일", kind as "종류", name as "이름"
   ('061_bottleneck_relief.sql', 'table', 'weekly_honor_cache', to_regclass('public.weekly_honor_cache') is not null),
   ('063_school_day_streak.sql', 'table', 'checkin_streaks', to_regclass('public.checkin_streaks') is not null),
   ('064_point_rules_mailbox_hours.sql', 'table', 'school_point_rules', to_regclass('public.school_point_rules') is not null),
+  ('073_live_home.sql', 'table', 'school_feed_events', to_regclass('public.school_feed_events') is not null),
+  ('073_live_home.sql', 'table', 'school_feed_cache', to_regclass('public.school_feed_cache') is not null),
   ('006_teacher_roles.sql', 'column', 'profiles.teacher_role', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'teacher_role')),
   ('008_teacher_code.sql', 'column', 'schools.teacher_code', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'schools' and column_name = 'teacher_code')),
   ('015_subscription.sql', 'column', 'schools.subscription_status', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'schools' and column_name = 'subscription_status')),
@@ -95,6 +97,13 @@ select file as "파일", kind as "종류", name as "이름"
   ('070_kodr_roster_students.sql', 'column', 'kodr_records.subject_id', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'kodr_records' and column_name = 'subject_id')),
   ('070_kodr_roster_students.sql', 'column', 'support_referrals.subject_id', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'support_referrals' and column_name = 'subject_id')),
   ('070_kodr_roster_students.sql', 'column', 'kodr_tier_alerts.subject_id', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'kodr_tier_alerts' and column_name = 'subject_id')),
+  ('073_live_home.sql', 'column', 'school_growth_year.floors', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'school_growth_year' and column_name = 'floors')),
+  ('073_live_home.sql', 'column', 'announcements.kind', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'announcements' and column_name = 'kind')),
+  ('073_live_home.sql', 'column', 'announcements.image_url', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'announcements' and column_name = 'image_url')),
+  ('073_live_home.sql', 'column', 'announcements.event_start', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'announcements' and column_name = 'event_start')),
+  ('073_live_home.sql', 'column', 'announcements.event_end', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'announcements' and column_name = 'event_end')),
+  ('073_live_home.sql', 'column', 'announcements.theme', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'announcements' and column_name = 'theme')),
+  ('073_live_home.sql', 'column', 'announcements.item_id', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'announcements' and column_name = 'item_id')),
   ('001_init.sql', 'function', 'set_updated_at', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'set_updated_at')),
   ('003_fix_rls_recursion.sql', 'function', 'current_profile_school', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'current_profile_school')),
   ('003_fix_rls_recursion.sql', 'function', 'current_profile_role', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'current_profile_role')),
@@ -245,7 +254,6 @@ select file as "파일", kind as "종류", name as "이름"
   ('060_checkin_semester_compaction.sql', 'function', 'semester_start', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'semester_start')),
   ('060_checkin_semester_compaction.sql', 'function', 'semester_label', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'semester_label')),
   ('060_checkin_semester_compaction.sql', 'function', 'compact_checkins', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'compact_checkins')),
-  ('061_bottleneck_relief.sql', 'function', 'school_growth', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'school_growth')),
   ('061_bottleneck_relief.sql', 'function', 'weekly_honor_gardeners', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'weekly_honor_gardeners')),
   ('061_bottleneck_relief.sql', 'function', 'my_weekly_honor', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'my_weekly_honor')),
   ('061_bottleneck_relief.sql', 'function', 'teacher_school_overview', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'teacher_school_overview')),
@@ -257,7 +265,6 @@ select file as "파일", kind as "종류", name as "이름"
   ('062_teacher_week_praise_stats.sql', 'function', 'class_week_checkins', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'class_week_checkins')),
   ('062_teacher_week_praise_stats.sql', 'function', 'praise_mail_stats', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'praise_mail_stats')),
   ('063_school_day_streak.sql', 'function', 'hall_of_fame', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'hall_of_fame')),
-  ('063_school_day_streak.sql', 'function', 'homeroom_overview', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'homeroom_overview')),
   ('063_school_day_streak.sql', 'function', 'prev_school_day', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'prev_school_day')),
   ('063_school_day_streak.sql', 'function', 'streak_now', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'streak_now')),
   ('063_school_day_streak.sql', 'function', 'trg_update_checkin_streak', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'trg_update_checkin_streak')),
@@ -304,7 +311,11 @@ select file as "파일", kind as "종류", name as "이름"
   ('070_kodr_roster_students.sql', 'function', 'kodr_subject_records', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_subject_records')),
   ('071_student_rows_round.sql', 'function', 'student_rows', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'student_rows')),
   ('072_kodr_history.sql', 'function', 'kodr_period_subjects', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_period_subjects')),
-  ('072_kodr_history.sql', 'function', 'kodr_subject_history', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_subject_history'))
+  ('072_kodr_history.sql', 'function', 'kodr_subject_history', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kodr_subject_history')),
+  ('073_live_home.sql', 'function', 'school_growth', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'school_growth')),
+  ('073_live_home.sql', 'function', 'homeroom_overview', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'homeroom_overview')),
+  ('073_live_home.sql', 'function', 'school_live_feed', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'school_live_feed')),
+  ('073_live_home.sql', 'function', 'growth_apply_floor', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'growth_apply_floor'))
   ) as t(file, kind, name, ok)
  where not ok
  order by file, kind, name;

@@ -59,7 +59,7 @@ const _pages = <_OnboardingPage>[
     title: '포인트 모으고 교환해요',
     subtitle: '강화물 교환 시스템',
     body:
-        '점검 한 번 = 100P, 월~금 모두 참여 시 +500P 보너스! 모은 포인트로 인성생활부에서 정한 간식·음료 등으로 교환할 수 있어요.',
+        '점검할 때마다 포인트가 쌓이고, 월~금 모두 참여하면 보너스도 있어요! 모은 포인트로 학교에서 정한 간식·음료 등으로 교환할 수 있어요.',
     color: AppColors.primary,
   ),
   _OnboardingPage(

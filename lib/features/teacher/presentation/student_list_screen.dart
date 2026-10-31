@@ -40,6 +40,10 @@ class _State extends ConsumerState<StudentListScreen> {
         _selected.clear();
       });
 
+  /// 칭찬 한 번에 학생이 받는 포인트 — 관리자가 '포인트 설정' 에서 정한 값
+  int get _praisePts =>
+      (ref.read(pointAmountsProvider).value ?? const PointAmounts()).praise;
+
   bool _matchesQuery(Map<String, dynamic> s) {
     if (_query.trim().isEmpty) return true;
     final q = _query.toLowerCase().replaceAll(' ', '');
@@ -53,6 +57,7 @@ class _State extends ConsumerState<StudentListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(pointAmountsProvider); // 금액을 미리 받아 두고, 바뀌면 문구도 바뀌게
     final studentsAsync = ref.watch(schoolStudentsProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -81,7 +86,9 @@ class _State extends ConsumerState<StudentListScreen> {
               ),
             ),
             Text(
-              _multi ? '여러 명을 골라 한 번에 칭찬해요' : '학생을 검색해 칭찬 한마디 + 50P + 배지',
+              _multi
+                  ? '여러 명을 골라 한 번에 칭찬해요'
+                  : '학생을 검색해 칭찬 한마디 + ${_praisePts}P + 배지',
               style: GoogleFonts.notoSansKr(
                 fontSize: 11,
                 color: AppColors.textSecondary,
@@ -386,7 +393,7 @@ class _State extends ConsumerState<StudentListScreen> {
                 style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
-                '칭찬 메시지 전송 + 50P 적립 + 칭찬 배지',
+                '칭찬 메시지 전송 + ${_praisePts}P 적립 + 칭찬 배지',
                 style: GoogleFonts.notoSansKr(
                   fontSize: 11,
                   color: AppColors.textTertiary,
@@ -619,7 +626,7 @@ class _State extends ConsumerState<StudentListScreen> {
                 _multi = false;
               });
               celebrateGrowth(context, ref,
-                  headline: '$sent명에게 칭찬을 보냈어요! 💚 (각 +50P)');
+                  headline: '$sent명에게 칭찬을 보냈어요! 💚 (각 +${_praisePts}P)');
               ReviewPrompt.happyMoment(
                   teacher: true, isDemo: ref.read(isDemoSchoolProvider));
             } catch (e) {
@@ -739,7 +746,8 @@ class _State extends ConsumerState<StudentListScreen> {
               if (dialogCtx.mounted) Navigator.pop(dialogCtx); // 다이얼로그 닫기
               if (!mounted) return;
               celebrateGrowth(context, ref,
-                  headline: '$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +50P)');
+                  headline:
+                      '$name 학생에게 칭찬을 보냈어요! 💚 (누적 $count회, +${_praisePts}P)');
               ReviewPrompt.happyMoment(
                   teacher: true, isDemo: ref.read(isDemoSchoolProvider));
             } catch (e) {
