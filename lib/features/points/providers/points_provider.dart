@@ -180,3 +180,24 @@ final pointAmountsProvider = FutureProvider<PointAmounts>((ref) async {
     return const PointAmounts();
   }
 });
+
+/// 강화물별 1인 교환 횟수 — 이번 기간에 내가 쓴 횟수 (075).
+/// item_id → (한도, 사용). 075 전 서버면 빈 지도.
+final myExchangeLimitsProvider =
+    FutureProvider<Map<String, ({int limit, int used})>>((ref) async {
+  ref.watch(profileProvider);
+  try {
+    final res = await SupabaseService.client.rpc('my_exchange_limits');
+    final out = <String, ({int limit, int used})>{};
+    for (final e in (res as List? ?? const [])) {
+      final m = Map<String, dynamic>.from(e as Map);
+      out[m['item_id'] as String] = (
+        limit: (m['limit'] as num?)?.toInt() ?? 0,
+        used: (m['used'] as num?)?.toInt() ?? 0,
+      );
+    }
+    return out;
+  } catch (_) {
+    return const {};
+  }
+});

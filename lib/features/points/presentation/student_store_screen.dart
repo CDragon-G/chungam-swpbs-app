@@ -26,10 +26,13 @@ class StudentStoreScreen extends ConsumerWidget {
     // 관리자가 '포인트 설정' 에서 정한 금액 (화면에 숫자를 박지 않는다)
     final amounts =
         ref.watch(pointAmountsProvider).value ?? const PointAmounts();
+    // 강화물별 1인 교환 횟수 — 이번 기간에 쓴 횟수 (075)
+    final limits = ref.watch(myExchangeLimitsProvider).value ?? const {};
 
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(pointAmountsProvider);
+        ref.invalidate(myExchangeLimitsProvider);
         ref.invalidate(myPointsProvider);
         ref.invalidate(activeStoreItemsProvider);
         ref.invalidate(myExchangesProvider);
@@ -114,6 +117,7 @@ class StudentStoreScreen extends ConsumerWidget {
                         .map((it) => _ItemCard(
                               item: it,
                               balance: balance.value ?? 0,
+                              used: limits[it.id]?.used ?? 0,
                               onExchange: () =>
                                   _confirmExchange(context, ref, it),
                             ))
@@ -228,6 +232,7 @@ class StudentStoreScreen extends ConsumerWidget {
       ref.invalidate(myPointsProvider);
       ref.invalidate(myExchangesProvider);
       ref.invalidate(activeStoreItemsProvider);
+      ref.invalidate(myExchangeLimitsProvider);
       // 수확 뱃지(첫 수확·수확왕) 평가
       await evaluateAndAwardBadges(ref);
       if (context.mounted) {
@@ -622,17 +627,22 @@ class _ItemCard extends StatelessWidget {
     required this.item,
     required this.balance,
     required this.onExchange,
+    this.used = 0,
   });
 
   final PointStoreItem item;
   final int balance;
   final VoidCallback onExchange;
 
+  /// 이번 기간에 이 강화물을 교환한 횟수 (1인 제한이 있을 때)
+  final int used;
+
   @override
   Widget build(BuildContext context) {
     final canAfford = balance >= item.costPoints;
     final soldOut = item.isSoldOut;
-    final disabled = !canAfford || soldOut;
+    final limitReached = item.hasLimit && used >= (item.limitPerStudent ?? 0);
+    final disabled = !canAfford || soldOut || limitReached;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.sm),
@@ -697,9 +707,27 @@ class _ItemCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           '재고 ${item.stock}',
+                          maxLines: 1,
                           style: GoogleFonts.notoSansKr(
                             fontSize: 11,
                             color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                      if (item.hasLimit) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '${item.limitLabel} · $used/${item.limitPerStudent}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.notoSansKr(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: limitReached
+                                  ? AppColors.textTertiary
+                                  : AppColors.warning,
+                            ),
                           ),
                         ),
                       ],
@@ -725,9 +753,16 @@ class _ItemCard extends StatelessWidget {
                 child: Text(
                   soldOut
                       ? '품절'
-                      : !canAfford
-                          ? '포인트 부족'
-                          : '교환',
+                      : limitReached
+                          ? switch (item.limitPeriod) {
+                              'day' => '내일 다시',
+                              'week' => '다음 주에',
+                              'month' => '다음 달에',
+                              _ => '교환 완료',
+                            }
+                          : !canAfford
+                              ? '포인트 부족'
+                              : '교환',
                   style: GoogleFonts.notoSansKr(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,

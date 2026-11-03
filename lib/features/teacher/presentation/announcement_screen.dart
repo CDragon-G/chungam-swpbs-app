@@ -33,6 +33,7 @@ class _State extends ConsumerState<AnnouncementScreen> {
 
   // ── 이벤트 옵션 ──
   bool _isEvent = false;
+  bool _push = true; // 휴대폰 알림 보내기 (076)
   EventTheme _theme = EventTheme.warm;
   DateTime? _start;
   DateTime? _end;
@@ -165,6 +166,7 @@ class _State extends ConsumerState<AnnouncementScreen> {
         title: title,
         body: body,
         event: event,
+        sendPush: _push,
       );
       _title.clear();
       _body.clear();
@@ -335,7 +337,23 @@ class _State extends ConsumerState<AnnouncementScreen> {
               ],
             ),
           ),
-          const SizedBox(height: AppSizes.md),
+          const SizedBox(height: AppSizes.sm),
+          // 화면이 꺼져 있어도 학생 · 선생님 휴대폰에 알림
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _push,
+            onChanged: (v) => setState(() => _push = v),
+            title: Text('🔔 휴대폰 알림 보내기',
+                maxLines: 1,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 14, fontWeight: FontWeight.w800)),
+            subtitle: Text('학생 · 선생님 휴대폰에 바로 알림이 가요',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 11.5, color: AppColors.textSecondary)),
+          ),
+          const SizedBox(height: AppSizes.sm),
           PbsPrimaryButton(
             label: _isEvent ? '이벤트 올리기' : '공지 등록',
             color: _isEvent ? const Color(0xFFE8452C) : AppColors.teacherNavy,
@@ -557,6 +575,8 @@ class _NoticeRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ev = SchoolEvent.fromNotice(row);
     final created = DateTime.tryParse('${row['created_at']}')?.toLocal();
+    // 076 전 서버에는 is_active 칸이 없다 → 게시 중으로 본다
+    final posted = row['is_active'] != false;
     final status = ev == null
         ? null
         : ev.isActive
@@ -569,115 +589,178 @@ class _NoticeRow extends ConsumerWidget {
         onTap: ev == null
             ? null
             : () => showEventSheet(context, ev, isTeacher: true),
-        child: PbsCard(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (ev != null)
-                Container(
-                  width: 52,
-                  height: 52,
-                  margin: const EdgeInsets.only(right: 10),
-                  decoration: BoxDecoration(
-                    gradient: ev.theme.gradient,
-                    borderRadius: BorderRadius.circular(12),
+        child: Opacity(
+          opacity: posted ? 1 : 0.55,
+          child: PbsCard(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (ev != null)
+                  Container(
+                    width: 52,
+                    height: 52,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      gradient: ev.theme.gradient,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    alignment: Alignment.center,
+                    child: ev.imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: ev.imageUrl!,
+                            width: 52,
+                            height: 52,
+                            fit: BoxFit.cover,
+                          )
+                        : Text(ev.emoji, style: const TextStyle(fontSize: 24)),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  alignment: Alignment.center,
-                  child: ev.imageUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: ev.imageUrl!,
-                          width: 52,
-                          height: 52,
-                          fit: BoxFit.cover,
-                        )
-                      : Text(ev.emoji, style: const TextStyle(fontSize: 24)),
-                ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (ev != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 3),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 1),
-                              decoration: BoxDecoration(
-                                gradient:
-                                    ev.isActive ? ev.theme.gradient : null,
-                                color: ev.isActive ? null : AppColors.border,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text('이벤트 · $status',
-                                  maxLines: 1,
-                                  style: GoogleFonts.notoSansKr(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w900,
-                                      color: ev.isActive
-                                          ? Colors.white
-                                          : AppColors.textSecondary)),
-                            ),
-                            if (ev.periodText != null) ...[
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(ev.periodText!,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (ev != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 1),
+                                decoration: BoxDecoration(
+                                  gradient:
+                                      ev.isActive ? ev.theme.gradient : null,
+                                  color: ev.isActive ? null : AppColors.border,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text('이벤트 · $status',
                                     maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.notoSansKr(
-                                        fontSize: 11,
-                                        color: AppColors.textTertiary)),
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: ev.isActive
+                                            ? Colors.white
+                                            : AppColors.textSecondary)),
                               ),
+                              if (ev.periodText != null) ...[
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(ev.periodText!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.notoSansKr(
+                                          fontSize: 11,
+                                          color: AppColors.textTertiary)),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                    Text(
-                      row['title'] as String,
-                      style:
-                          GoogleFonts.notoSansKr(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      row['body'] as String,
-                      maxLines: ev == null ? null : 2,
-                      overflow: ev == null ? null : TextOverflow.ellipsis,
-                      style: GoogleFonts.notoSansKr(
-                        fontSize: 13,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (created != null)
                       Text(
-                        DateFormat('yyyy.MM.dd HH:mm').format(created),
+                        row['title'] as String,
+                        style:
+                            GoogleFonts.notoSansKr(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        row['body'] as String,
+                        maxLines: ev == null ? null : 2,
+                        overflow: ev == null ? null : TextOverflow.ellipsis,
                         style: GoogleFonts.notoSansKr(
-                          fontSize: 11,
-                          color: AppColors.textTertiary,
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                  ],
+                      const SizedBox(height: 4),
+                      if (created != null)
+                        Text(
+                          DateFormat('yyyy.MM.dd HH:mm').format(created),
+                          style: GoogleFonts.notoSansKr(
+                            fontSize: 11,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              if (canDelete)
-                IconButton(
-                  tooltip: '삭제',
-                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                  color: AppColors.danger,
-                  onPressed: () async {
-                    await ref.read(schoolRepositoryProvider).deleteAnnouncement(
-                          row['id'] as String,
-                          imageUrl: ev?.imageUrl,
-                        );
-                    ref.invalidate(announcementsProvider);
-                  },
-                ),
-            ],
+                if (canDelete)
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 게시 켜고 끄기 — 끄면 학생에게 보이지 않는다 (지우지 않고 내리기)
+                      Switch.adaptive(
+                        value: posted,
+                        onChanged: (v) async {
+                          try {
+                            await ref
+                                .read(schoolRepositoryProvider)
+                                .setAnnouncementActive(row['id'] as String, v);
+                            ref.invalidate(announcementsProvider);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(translateError(e))));
+                            }
+                          }
+                        },
+                      ),
+                      Text(posted ? '게시 중' : '내림',
+                          maxLines: 1,
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: posted
+                                  ? AppColors.studentGreen
+                                  : AppColors.textTertiary)),
+                      IconButton(
+                        tooltip: '삭제',
+                        visualDensity: VisualDensity.compact,
+                        icon:
+                            const Icon(Icons.delete_outline_rounded, size: 20),
+                        color: AppColors.danger,
+                        onPressed: () => _confirmDelete(context, ref, ev),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  /// 지우기 전에 한 번 묻는다. 내리기만 하려면 '게시' 스위치를 끄면 된다.
+  Future<void> _confirmDelete(
+      BuildContext context, WidgetRef ref, SchoolEvent? ev) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('공지를 지울까요?',
+            style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
+        content: Text(
+          '지우면 되돌릴 수 없어요.\n학생 화면에서 내리기만 하려면 \'게시\' 스위치를 꺼 주세요.',
+          style: GoogleFonts.notoSansKr(fontSize: 13.5, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('취소', style: GoogleFonts.notoSansKr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('지우기',
+                style: GoogleFonts.notoSansKr(
+                    fontWeight: FontWeight.w800, color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(schoolRepositoryProvider).deleteAnnouncement(
+          row['id'] as String,
+          imageUrl: ev?.imageUrl,
+        );
+    ref.invalidate(announcementsProvider);
   }
 }

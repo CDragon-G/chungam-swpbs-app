@@ -18,6 +18,8 @@ class PointStoreItem {
     this.maxPerStudent,
     this.achievedAt,
     this.closedAt,
+    this.limitPerStudent,
+    this.limitPeriod = 'total',
   });
 
   final String id;
@@ -46,6 +48,26 @@ class PointStoreItem {
 
   /// 지급 완료 또는 취소된 시각
   final DateTime? closedAt;
+
+  /// 학생 1명이 [limitPeriod] 동안 교환할 수 있는 횟수 (null = 제한 없음, 075)
+  final int? limitPerStudent;
+
+  /// 'total' 전체 · 'day' 하루 · 'week' 이번 주 · 'month' 이번 달
+  final String limitPeriod;
+
+  bool get hasLimit => limitPerStudent != null;
+
+  /// '하루 1번' · '1인 2번'
+  String get limitLabel {
+    final n = limitPerStudent;
+    if (n == null) return '';
+    return switch (limitPeriod) {
+      'day' => '하루 $n번',
+      'week' => '한 주 $n번',
+      'month' => '한 달 $n번',
+      _ => '1인 $n번',
+    };
+  }
 
   bool get isGroup => itemType == 'group';
   bool get isAchieved => achievedAt != null;
@@ -77,9 +99,10 @@ class PointStoreItem {
         grade: (map['grade'] as num?)?.toInt(),
         classNum: (map['class_num'] as num?)?.toInt(),
         createdBy: map['created_by'] as String?,
-        createdByName: (map['created_by_name'] as String?)?.trim().isNotEmpty == true
-            ? (map['created_by_name'] as String).trim()
-            : null,
+        createdByName:
+            (map['created_by_name'] as String?)?.trim().isNotEmpty == true
+                ? (map['created_by_name'] as String).trim()
+                : null,
         createdAt: DateTime.parse(map['created_at'] as String),
         itemType: (map['item_type'] as String?) ?? 'individual',
         maxPerStudent: (map['max_per_student'] as num?)?.toInt(),
@@ -89,9 +112,10 @@ class PointStoreItem {
         closedAt: map['closed_at'] == null
             ? null
             : DateTime.parse(map['closed_at'] as String),
+        limitPerStudent: (map['limit_per_student'] as num?)?.toInt(),
+        limitPeriod: (map['limit_period'] as String?) ?? 'total',
       );
 }
-
 
 /// 함께 키우기 현황 — group_item_status RPC 결과.
 class GroupItemStatus {
@@ -108,8 +132,8 @@ class GroupItemStatus {
 
   final int goal;
   final int raised;
-  final int people;      // 보탠 사람 수
-  final int myAmount;    // 내가 보탠 합계
+  final int people; // 보탠 사람 수
+  final int myAmount; // 내가 보탠 합계
   final bool achieved;
   final bool closed;
   final int? maxPerStudent;
@@ -139,8 +163,8 @@ class GroupItemStatus {
         closed: (m['closed'] as bool?) ?? false,
         maxPerStudent: (m['max_per_student'] as num?)?.toInt(),
         top: ((m['top'] as List?) ?? const [])
-            .map((e) => GroupContributor.fromMap(
-                Map<String, dynamic>.from(e as Map)))
+            .map((e) =>
+                GroupContributor.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList(),
       );
 }

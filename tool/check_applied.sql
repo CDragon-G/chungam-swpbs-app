@@ -315,7 +315,8 @@ select file as "파일", kind as "종류", name as "이름"
   ('073_live_home.sql', 'function', 'school_growth', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'school_growth')),
   ('073_live_home.sql', 'function', 'homeroom_overview', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'homeroom_overview')),
   ('073_live_home.sql', 'function', 'school_live_feed', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'school_live_feed')),
-  ('073_live_home.sql', 'function', 'growth_apply_floor', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'growth_apply_floor'))
+  ('073_live_home.sql', 'function', 'growth_apply_floor', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'growth_apply_floor')),
+  ('074_point_amounts_for_all.sql', 'function', 'point_amounts', exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'point_amounts'))
   ) as t(file, kind, name, ok)
  where not ok
  order by file, kind, name;

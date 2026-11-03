@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase/supabase_client.dart';
@@ -87,6 +89,9 @@ class PointsRepository {
     String? createdByName,
     String itemType = 'individual',
     int? maxPerStudent,
+    int? limitPerStudent,
+    String limitPeriod = 'total',
+    bool sendPush = true,
   }) async {
     final uid = _c.auth.currentUser?.id;
     final row = await _c
@@ -106,10 +111,26 @@ class PointsRepository {
           'created_by_name': createdByName,
           'item_type': itemType,
           'max_per_student': maxPerStudent,
+          // 075 전 서버에는 이 칸이 없으니, 제한을 둘 때만 보낸다
+          if (limitPerStudent != null) ...{
+            'limit_per_student': limitPerStudent,
+            'limit_period': limitPeriod,
+          },
         })
         .select()
         .single();
-    return PointStoreItem.fromMap(row);
+    final item = PointStoreItem.fromMap(row);
+    // 화면이 꺼져 있어도 학생 휴대폰에 알림 (076). 기다리지 않는다.
+    if (sendPush && item.isActive) {
+      unawaited(
+        _c.functions
+            .invoke('send-school-push',
+                body: {'kind': 'store_item', 'id': item.id})
+            .then((_) {})
+            .catchError((_) {}),
+      );
+    }
+    return item;
   }
 
   Future<PointStoreItem> updateItem(
@@ -129,11 +150,22 @@ class PointsRepository {
     await _c.from('point_store_items').delete().eq('id', id);
   }
 
+  /// 강화물 순서 저장 — 한 번에 (076). 권한 없는 강화물은 서버가 건너뛴다.
+  /// 076 전 서버면 한 줄씩 저장한다.
   Future<void> reorderItems(List<PointStoreItem> items) async {
-    for (var i = 0; i < items.length; i++) {
-      await _c
-          .from('point_store_items')
-          .update({'order_index': i}).eq('id', items[i].id);
+    try {
+      final res = await _c.rpc('reorder_store_items',
+          params: {'p_ids': items.map((e) => e.id).toList()});
+      final m = Map<String, dynamic>.from(res as Map);
+      if (m['ok'] != true) {
+        throw StateError(m['error'] as String? ?? '순서를 바꾸지 못했어요');
+      }
+    } on PostgrestException {
+      for (var i = 0; i < items.length; i++) {
+        await _c
+            .from('point_store_items')
+            .update({'order_index': i}).eq('id', items[i].id);
+      }
     }
   }
 

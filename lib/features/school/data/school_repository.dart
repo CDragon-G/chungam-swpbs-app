@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -61,16 +62,16 @@ class SchoolRepository {
 
   /// 학생 가입용: school_code로 학교 조회 (RPC — teacher_code 미노출).
   Future<School?> findByCode(String code) async {
-    final res = await _c
-        .rpc('find_school_by_student_code', params: {'p_code': code});
+    final res =
+        await _c.rpc('find_school_by_student_code', params: {'p_code': code});
     final list = List<Map<String, dynamic>>.from(res as List);
     return list.isEmpty ? null : School.fromMap(list.first);
   }
 
   /// 교사 가입용: teacher_code로 학교 조회 (RPC).
   Future<School?> findByTeacherCode(String code) async {
-    final res = await _c
-        .rpc('find_school_by_teacher_code', params: {'p_code': code});
+    final res =
+        await _c.rpc('find_school_by_teacher_code', params: {'p_code': code});
     final list = List<Map<String, dynamic>>.from(res as List);
     return list.isEmpty ? null : School.fromMap(list.first);
   }
@@ -87,7 +88,9 @@ class SchoolRepository {
         .eq('school_id', schoolId)
         .eq('is_active', true)
         .order('order_index');
-    return rows.map((m) => SchoolRule.fromMap(m as Map<String, dynamic>)).toList();
+    return rows
+        .map((m) => SchoolRule.fromMap(m as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<SchoolRule>> fetchAllRules(String schoolId) async {
@@ -96,7 +99,9 @@ class SchoolRepository {
         .select()
         .eq('school_id', schoolId)
         .order('order_index');
-    return rows.map((m) => SchoolRule.fromMap(m as Map<String, dynamic>)).toList();
+    return rows
+        .map((m) => SchoolRule.fromMap(m as Map<String, dynamic>))
+        .toList();
   }
 
   Future<SchoolRule> addRule({
@@ -139,8 +144,7 @@ class SchoolRepository {
     for (var i = 0; i < rules.length; i++) {
       await _c
           .from('school_rules')
-          .update({'order_index': i})
-          .eq('id', rules[i].id);
+          .update({'order_index': i}).eq('id', rules[i].id);
     }
   }
 
@@ -161,6 +165,7 @@ class SchoolRepository {
     required String title,
     required String body,
     NoticeEventOptions? event,
+    bool sendPush = true,
   }) async {
     final user = _c.auth.currentUser;
     if (user == null) throw StateError('로그인 상태가 아닙니다.');
@@ -175,7 +180,24 @@ class SchoolRepository {
         })
         .select()
         .single();
+    if (sendPush) sendSchoolPush('notice', inserted['id'] as String);
     return inserted;
+  }
+
+  /// 새 공지 · 새 강화물을 휴대폰 알림으로 (send-school-push, 076).
+  /// 기다리지 않는다 — 함수가 아직 없거나 실패해도 등록은 끝난 것이다.
+  void sendSchoolPush(String kind, String id) {
+    unawaited(
+      _c.functions
+          .invoke('send-school-push', body: {'kind': kind, 'id': id})
+          .then((_) {})
+          .catchError((_) {}),
+    );
+  }
+
+  /// 공지 게시 켜고 끄기 — 끄면 학생에게 보이지 않는다 (076).
+  Future<void> setAnnouncementActive(String id, bool active) async {
+    await _c.from('announcements').update({'is_active': active}).eq('id', id);
   }
 
   static const _noticeBucket = 'notice-images';

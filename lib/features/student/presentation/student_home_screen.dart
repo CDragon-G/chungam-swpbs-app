@@ -124,7 +124,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
     final announcements = ref.watch(announcementsProvider).value;
     // 이벤트 공지는 따로 배너로 뜨므로, 공지 배너에는 일반 공지만
     final latestNotice = announcements
-        ?.where((a) => a['kind'] != 'event')
+        ?.where((a) => a['kind'] != 'event' && a['is_active'] != false)
         .map((a) => a['title'] as String)
         .firstOrNull;
     final events = ref.watch(activeEventsProvider);

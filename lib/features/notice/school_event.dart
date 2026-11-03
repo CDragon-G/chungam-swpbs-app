@@ -146,6 +146,8 @@ class EventTheme {
 final activeEventsProvider = Provider<List<SchoolEvent>>((ref) {
   final rows = ref.watch(announcementsProvider).value ?? const [];
   return rows
+      // 선생님이 '게시' 를 끈 공지는 빼고 (학생은 서버가 이미 뺀다, 076)
+      .where((r) => r['is_active'] != false)
       .map(SchoolEvent.fromNotice)
       .whereType<SchoolEvent>()
       .where((e) => e.isActive)

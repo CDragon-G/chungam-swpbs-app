@@ -236,12 +236,63 @@ final groupProgressProvider =
   }
 });
 
-class _ItemsTab extends ConsumerWidget {
+class _ItemsTab extends ConsumerStatefulWidget {
   const _ItemsTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ItemsTab> createState() => _ItemsTabState();
+}
+
+/// 강화물 목록 — 손잡이를 끌어 순서를 바꾸고, 가격순으로 한 번에 정렬한다 (076).
+/// 학생 교환소도 이 순서대로 보인다.
+class _ItemsTabState extends ConsumerState<_ItemsTab> {
+  /// 저장하는 동안 화면에 먼저 보여줄 순서 (서버 응답을 기다리지 않게)
+  List<PointStoreItem>? _local;
+  bool _saving = false;
+
+  Future<void> _save(List<PointStoreItem> ordered, {String? done}) async {
+    setState(() {
+      _local = ordered;
+      _saving = true;
+    });
+    try {
+      await ref.read(pointsRepositoryProvider).reorderItems(ordered);
+      ref.invalidate(allStoreItemsProvider);
+      ref.invalidate(activeStoreItemsProvider);
+      if (done != null && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(done)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(translateError(e))));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _local = null;
+        });
+      }
+    }
+  }
+
+  void _sortByPrice(List<PointStoreItem> items, {required bool high}) {
+    final sorted = [...items]..sort((a, b) => high
+        ? b.costPoints.compareTo(a.costPoints)
+        : a.costPoints.compareTo(b.costPoints));
+    _save(sorted, done: high ? '가격 높은 순으로 정렬했어요' : '가격 낮은 순으로 정렬했어요');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final itemsAsync = ref.watch(allStoreItemsProvider);
+    final profile = ref.watch(profileProvider).value;
+    final isAdmin = profile?.isAdminTeacher ?? false;
+    bool canMove(PointStoreItem it) =>
+        isAdmin || (it.createdBy != null && it.createdBy == profile?.userId);
+
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(allStoreItemsProvider);
@@ -250,7 +301,8 @@ class _ItemsTab extends ConsumerWidget {
       child: itemsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(translateError(e))),
-        data: (items) {
+        data: (fetched) {
+          final items = _local ?? fetched;
           if (items.isEmpty) {
             return ListView(
               padding: const EdgeInsets.all(AppSizes.lg),
@@ -269,19 +321,113 @@ class _ItemsTab extends ConsumerWidget {
               ],
             );
           }
-          return ListView.builder(
+          return ReorderableListView.builder(
             padding: const EdgeInsets.all(AppSizes.lg),
-            itemCount: items.length + 1,
+            buildDefaultDragHandles: false,
+            header: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _EconomyPanel(),
+                _SortBar(
+                  saving: _saving,
+                  showSort: isAdmin,
+                  onHigh: () => _sortByPrice(items, high: true),
+                  onLow: () => _sortByPrice(items, high: false),
+                ),
+              ],
+            ),
+            itemCount: items.length,
+            onReorder: (from, to) {
+              if (_saving) return;
+              final list = [...items];
+              if (to > from) to -= 1;
+              list.insert(to, list.removeAt(from));
+              _save(list);
+            },
             itemBuilder: (context, i) {
-              if (i == 0) return const _EconomyPanel();
+              final it = items[i];
               return Padding(
+                key: ValueKey(it.id),
                 padding: const EdgeInsets.only(bottom: AppSizes.sm),
-                child: _ItemRow(item: items[i - 1]),
+                child: Row(
+                  children: [
+                    Expanded(child: _ItemRow(item: it)),
+                    // 손잡이를 끌어 순서 바꾸기 — 관리할 수 있는 강화물만
+                    if (canMove(it))
+                      ReorderableDragStartListener(
+                        index: i,
+                        child: const Padding(
+                          padding: EdgeInsets.only(left: 4),
+                          child: Icon(Icons.drag_indicator_rounded,
+                              color: AppColors.textTertiary),
+                        ),
+                      )
+                    else
+                      const SizedBox(width: 28),
+                  ],
+                ),
               );
             },
           );
         },
       ),
+    );
+  }
+}
+
+/// 정렬 막대 — 가격 높은 순 · 낮은 순, 끌어서 옮기기 안내.
+class _SortBar extends StatelessWidget {
+  const _SortBar({
+    required this.saving,
+    required this.showSort,
+    required this.onHigh,
+    required this.onLow,
+  });
+  final bool saving;
+  final bool showSort; // 가격순 정렬은 관리자만 (전체 순서를 바꾸므로)
+  final VoidCallback onHigh;
+  final VoidCallback onLow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSizes.sm, bottom: AppSizes.sm),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              saving ? '순서를 저장하는 중…' : '⠿ 손잡이를 끌어 순서를 바꿔요',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.notoSansKr(
+                  fontSize: 12, color: AppColors.textTertiary),
+            ),
+          ),
+          if (showSort) ...[
+            _SortChip(label: '가격 높은 순', onTap: saving ? null : onHigh),
+            const SizedBox(width: 6),
+            _SortChip(label: '가격 낮은 순', onTap: saving ? null : onLow),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SortChip extends StatelessWidget {
+  const _SortChip({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      onPressed: onTap,
+      visualDensity: VisualDensity.compact,
+      label: Text(label,
+          maxLines: 1,
+          style: GoogleFonts.notoSansKr(
+              fontSize: 12, fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -332,7 +478,8 @@ class _ItemRow extends ConsumerWidget {
                 Text(
                   item.isGroup
                       ? '함께 키우기 · 목표 ${item.costPoints}P'
-                      : '${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}',
+                      : '${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}'
+                          '${item.hasLimit ? ' · ${item.limitLabel}' : ''}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.notoSansKr(
@@ -679,6 +826,11 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
   bool _schoolWide = true; // 전교 공통 vs 특정 학급
   int _grade = 1;
   int _classNum = 1;
+  // 1인 교환 횟수 제한 (개별 강화물만, 075)
+  bool _limitOn = false;
+  late final TextEditingController _limitCount;
+  String _limitPeriod = 'day';
+  bool _push = true; // 새로 등록할 때 학생 휴대폰에 알림 (076)
 
   @override
   void initState() {
@@ -693,6 +845,10 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     _capPerStudent = e == null ? true : e.maxPerStudent != null;
     _unlimited = e?.stock == null;
     _emoji = e?.emoji ?? '🎁';
+    _limitOn = e?.hasLimit ?? false;
+    _limitCount =
+        TextEditingController(text: (e?.limitPerStudent ?? 1).toString());
+    if (e?.hasLimit == true) _limitPeriod = e!.limitPeriod;
     if (e != null) {
       _schoolWide = !e.isClassItem;
       _grade = e.grade ?? 1;
@@ -707,6 +863,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     _cost.dispose();
     _stock.dispose();
     _maxPer.dispose();
+    _limitCount.dispose();
     super.dispose();
   }
 
@@ -727,6 +884,17 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
         const SnackBar(content: Text('재고는 0 이상의 숫자여야 해요.')),
       );
       return;
+    }
+
+    int? limitPer;
+    if (!_isGroup && _limitOn) {
+      limitPer = int.tryParse(_limitCount.text);
+      if (limitPer == null || limitPer < 1 || limitPer > 100) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('교환 횟수는 1~100 사이로 정해주세요.')),
+        );
+        return;
+      }
     }
 
     int? maxPer;
@@ -773,6 +941,9 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
           createdByName: profile.nickname,
           itemType: _isGroup ? 'group' : 'individual',
           maxPerStudent: maxPer,
+          limitPerStudent: limitPer,
+          limitPeriod: _limitPeriod,
+          sendPush: _push,
         );
       } else {
         await repo.updateItem(widget.existing!.id, {
@@ -785,6 +956,11 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
           'class_num': schoolWide ? null : _classNum,
           'item_type': _isGroup ? 'group' : 'individual',
           'max_per_student': maxPer,
+          // 075 전 서버에는 이 칸이 없으니, 제한을 두거나 풀 때만 보낸다
+          if (limitPer != null || widget.existing!.hasLimit) ...{
+            'limit_per_student': limitPer,
+            'limit_period': limitPer == null ? 'total' : _limitPeriod,
+          },
         });
       }
       ref.invalidate(allStoreItemsProvider);
@@ -1083,6 +1259,88 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                 hint: '예: 30',
               ),
             ],
+            // ── 1인 교환 횟수 제한 ──
+            const SizedBox(height: AppSizes.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '1인 교환 횟수 제한',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _limitOn,
+                  onChanged: (v) => setState(() => _limitOn = v),
+                ),
+              ],
+            ),
+            if (_limitOn) ...[
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final (key, label) in const [
+                    ('day', '하루'),
+                    ('week', '한 주'),
+                    ('month', '한 달'),
+                    ('total', '전체 기간'),
+                  ])
+                    ChoiceChip(
+                      label: Text(label,
+                          maxLines: 1,
+                          style: GoogleFonts.notoSansKr(
+                              fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      selected: _limitPeriod == key,
+                      onSelected: (_) => setState(() => _limitPeriod = key),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSizes.sm),
+              PbsTextField(
+                controller: _limitCount,
+                label: '한 학생이 교환할 수 있는 횟수',
+                keyboardType: TextInputType.number,
+                hint: '예: 1',
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  switch (_limitPeriod) {
+                    'day' => '하루가 지나면(자정) 다시 교환할 수 있어요. 예: 따뜻한 어묵 하루 1개',
+                    'week' => '월요일이 되면 다시 교환할 수 있어요.',
+                    'month' => '다음 달 1일이 되면 다시 교환할 수 있어요.',
+                    _ => '이 강화물이 있는 동안 한 학생이 이 횟수까지만 교환해요.',
+                  },
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11.5,
+                    height: 1.5,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+          if (widget.existing == null) ...[
+            const SizedBox(height: AppSizes.sm),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _push,
+              onChanged: (v) => setState(() => _push = v),
+              title: Text('🔔 학생 휴대폰에 알림 보내기',
+                  maxLines: 1,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 13.5, fontWeight: FontWeight.w800)),
+              subtitle: Text('여러 개를 한꺼번에 올릴 때는 꺼 두세요',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.notoSansKr(
+                      fontSize: 11.5, color: AppColors.textSecondary)),
+            ),
           ],
           const SizedBox(height: AppSizes.lg),
           PbsPrimaryButton(
