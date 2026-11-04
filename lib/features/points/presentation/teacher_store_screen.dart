@@ -113,6 +113,10 @@ class GroupProgress {
     required this.achieved,
     required this.closed,
     required this.top,
+    this.playerSlots,
+    this.players = 0,
+    this.supporters = 0,
+    this.supporterRaised = 0,
   });
 
   final int goal;
@@ -120,6 +124,13 @@ class GroupProgress {
   final int people;
   final bool achieved;
   final bool closed;
+
+  // 스포츠 경기 (077)
+  final int? playerSlots;
+  final int players;
+  final int supporters;
+  final int supporterRaised;
+  bool get isSports => playerSlots != null;
 
   /// 많이 보탠 학생 3명 (이름, 포인트)
   final List<({String name, int amount})> top;
@@ -134,6 +145,10 @@ class GroupProgress {
         people: (m['people'] as num?)?.toInt() ?? 0,
         achieved: m['achieved'] == true,
         closed: m['closed'] == true,
+        playerSlots: (m['player_slots'] as num?)?.toInt(),
+        players: (m['players'] as num?)?.toInt() ?? 0,
+        supporters: (m['supporters'] as num?)?.toInt() ?? 0,
+        supporterRaised: (m['supporter_raised'] as num?)?.toInt() ?? 0,
         top: [
           for (final e in (m['top'] as List?) ?? const [])
             (
@@ -154,6 +169,7 @@ class GroupContributor {
     required this.amount,
     required this.times,
     required this.lastAt,
+    this.role = 'player',
   });
 
   final String name;
@@ -163,6 +179,10 @@ class GroupContributor {
   final int amount;
   final int times;
   final DateTime? lastAt;
+
+  /// 'player' 선수 · 'supporter' 응원 (스포츠 경기, 077)
+  final String role;
+  bool get isPlayer => role != 'supporter';
 
   String get classLabel => (grade == null || classNum == null)
       ? ''
@@ -176,6 +196,7 @@ class GroupContributor {
         amount: (m['amount'] as num?)?.toInt() ?? 0,
         times: (m['times'] as num?)?.toInt() ?? 0,
         lastAt: DateTime.tryParse(m['last_at'] as String? ?? '')?.toLocal(),
+        role: (m['role'] as String?) ?? 'player',
       );
 }
 
@@ -186,6 +207,7 @@ class GroupContributors {
     required this.goal,
     required this.raised,
     required this.items,
+    this.playerSlots,
   });
 
   final String name;
@@ -193,6 +215,7 @@ class GroupContributors {
   final int goal;
   final int raised;
   final List<GroupContributor> items;
+  final int? playerSlots; // 스포츠 경기면 선수 인원
 
   factory GroupContributors.fromMap(Map<String, dynamic> m) =>
       GroupContributors(
@@ -200,6 +223,7 @@ class GroupContributors {
         emoji: (m['emoji'] as String?) ?? '🎁',
         goal: (m['goal'] as num?)?.toInt() ?? 0,
         raised: (m['raised'] as num?)?.toInt() ?? 0,
+        playerSlots: (m['player_slots'] as num?)?.toInt(),
         items: ((m['items'] as List?) ?? const [])
             .map((e) =>
                 GroupContributor.fromMap(Map<String, dynamic>.from(e as Map)))
@@ -476,10 +500,12 @@ class _ItemRow extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  item.isGroup
-                      ? '함께 키우기 · 목표 ${item.costPoints}P'
-                      : '${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}'
-                          '${item.hasLimit ? ' · ${item.limitLabel}' : ''}',
+                  item.isSports
+                      ? '⚽ 스포츠 경기 · 선수 ${item.playerSlots}명 · 목표 ${item.costPoints}P'
+                      : item.isGroup
+                          ? '함께 키우기 · 목표 ${item.costPoints}P'
+                          : '${item.costPoints}P · 재고 ${item.isUnlimited ? "무제한" : item.stock}'
+                              '${item.hasLimit ? ' · ${item.limitLabel}' : ''}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.notoSansKr(
@@ -831,6 +857,9 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
   late final TextEditingController _limitCount;
   String _limitPeriod = 'day';
   bool _push = true; // 새로 등록할 때 학생 휴대폰에 알림 (076)
+  // 스포츠 경기: 보탤 때 선수 / 응원을 고른다 (함께 키우기만, 077)
+  bool _sports = false;
+  late final TextEditingController _slots;
 
   @override
   void initState() {
@@ -849,6 +878,8 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     _limitCount =
         TextEditingController(text: (e?.limitPerStudent ?? 1).toString());
     if (e?.hasLimit == true) _limitPeriod = e!.limitPeriod;
+    _sports = e?.isSports ?? false;
+    _slots = TextEditingController(text: (e?.playerSlots ?? 12).toString());
     if (e != null) {
       _schoolWide = !e.isClassItem;
       _grade = e.grade ?? 1;
@@ -864,6 +895,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     _stock.dispose();
     _maxPer.dispose();
     _limitCount.dispose();
+    _slots.dispose();
     super.dispose();
   }
 
@@ -916,6 +948,17 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
       }
     }
 
+    int? slots;
+    if (_isGroup && _sports) {
+      slots = int.tryParse(_slots.text);
+      if (slots == null || slots < 1 || slots > 60) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('선수 인원은 1~60명 사이로 정해주세요.')),
+        );
+        return;
+      }
+    }
+
     setState(() => _saving = true);
     try {
       final repo = ref.read(pointsRepositoryProvider);
@@ -943,6 +986,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
           maxPerStudent: maxPer,
           limitPerStudent: limitPer,
           limitPeriod: _limitPeriod,
+          playerSlots: slots,
           sendPush: _push,
         );
       } else {
@@ -961,6 +1005,9 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
             'limit_per_student': limitPer,
             'limit_period': limitPer == null ? 'total' : _limitPeriod,
           },
+          // 077 전 서버에는 이 칸이 없으니, 스포츠 경기로 하거나 풀 때만 보낸다
+          if (slots != null || widget.existing!.playerSlots != null)
+            'player_slots': slots,
         });
       }
       ref.invalidate(allStoreItemsProvider);
@@ -1224,6 +1271,48 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                   '한 학생이 목표를 혼자 채우지 않도록 막아줍니다.',
                   style: GoogleFonts.notoSansKr(
                     fontSize: 11.5,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+            ],
+            // ── 스포츠 경기 ──
+            const SizedBox(height: AppSizes.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '⚽ 스포츠 경기로 열기',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _sports,
+                  onChanged: (v) => setState(() => _sports = v),
+                ),
+              ],
+            ),
+            if (_sports) ...[
+              const SizedBox(height: AppSizes.sm),
+              PbsTextField(
+                controller: _slots,
+                label: '선수 인원',
+                keyboardType: TextInputType.number,
+                hint: '예: 12',
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '학생이 보탤 때 선수로 뛸지, 응원만 할지 고릅니다. '
+                  '선수 자리가 다 차면 응원만 할 수 있어요. '
+                  '응원 포인트는 목표의 30%까지만 받아서, 나머지는 선수들이 직접 모읍니다.',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 11.5,
+                    height: 1.5,
                     color: AppColors.textTertiary,
                   ),
                 ),
@@ -1841,6 +1930,17 @@ class _GroupProgressBar extends ConsumerWidget {
               style: GoogleFonts.notoSansKr(
                   fontSize: 11, fontWeight: FontWeight.w700, color: color),
             ),
+            if (p.isSports)
+              Text(
+                '⚽ 선수 ${p.players}/${p.playerSlots}명 · 📣 응원 ${p.supporters}명'
+                '${p.supporterRaised > 0 ? ' (${p.supporterRaised}P)' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.notoSansKr(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary),
+              ),
             Row(
               children: [
                 Expanded(
@@ -1933,8 +2033,33 @@ void showGroupContributors(BuildContext context, String itemId) {
                         style: GoogleFonts.notoSansKr(
                             color: AppColors.textSecondary)),
                   ),
-                for (var i = 0; i < d.items.length; i++)
-                  _ContributorRow(rank: i + 1, c: d.items[i]),
+                if (d.playerSlots == null)
+                  for (var i = 0; i < d.items.length; i++)
+                    _ContributorRow(rank: i + 1, c: d.items[i])
+                else ...[
+                  for (final (title, list) in [
+                    (
+                      '⚽ 선수 ${d.items.where((c) => c.isPlayer).length}/${d.playerSlots}명',
+                      d.items.where((c) => c.isPlayer).toList(),
+                    ),
+                    (
+                      '📣 응원 ${d.items.where((c) => !c.isPlayer).length}명',
+                      d.items.where((c) => !c.isPlayer).toList(),
+                    ),
+                  ])
+                    if (list.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, bottom: 6),
+                        child: Text(title,
+                            style: GoogleFonts.notoSansKr(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.teacherNavy)),
+                      ),
+                      for (var i = 0; i < list.length; i++)
+                        _ContributorRow(rank: i + 1, c: list[i]),
+                    ],
+                ],
                 const SizedBox(height: AppSizes.xl),
               ],
             ),

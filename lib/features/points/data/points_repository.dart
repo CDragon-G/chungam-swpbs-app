@@ -91,6 +91,7 @@ class PointsRepository {
     int? maxPerStudent,
     int? limitPerStudent,
     String limitPeriod = 'total',
+    int? playerSlots,
     bool sendPush = true,
   }) async {
     final uid = _c.auth.currentUser?.id;
@@ -116,6 +117,8 @@ class PointsRepository {
             'limit_per_student': limitPerStudent,
             'limit_period': limitPeriod,
           },
+          // 077 전 서버에는 이 칸이 없으니, 스포츠 경기일 때만 보낸다
+          if (playerSlots != null) 'player_slots': playerSlots,
         })
         .select()
         .single();
@@ -171,12 +174,17 @@ class PointsRepository {
 
   // ── 함께 키우기 (단체 강화물) ──────────────────────────────
   /// 포인트를 보탠다. 남은 금액을 넘기면 남은 만큼만 차감된다.
+  /// 스포츠 경기는 [role] 로 'player' 선수 · 'supporter' 응원을 고른다 (077).
   Future<GroupItemStatus> contribute({
     required String itemId,
     required int amount,
+    String? role,
   }) async {
-    final res = await _c.rpc('contribute_to_group_item',
-        params: {'p_item_id': itemId, 'p_amount': amount});
+    final res = await _c.rpc('contribute_to_group_item', params: {
+      'p_item_id': itemId,
+      'p_amount': amount,
+      if (role != null) 'p_role': role,
+    });
     final m = Map<String, dynamic>.from(res as Map);
     if (m['ok'] != true) {
       throw StateError(m['error'] as String? ?? '포인트를 보태지 못했어요');

@@ -106,15 +106,20 @@ Deno.serve(async (req) => {
     } else {
       const { data: it } = await admin
         .from("point_store_items")
-        .select("school_id, name, emoji, cost_points, grade, class_num, is_active, created_by, item_type, created_at")
+        .select("*") // player_slots(077) 가 없는 서버에서도 되게 전부 받는다
         .eq("id", id)
         .maybeSingle();
       if (!it || it.school_id !== me.school_id) return json({ error: "not found" }, 404);
       if (!isAdmin && it.created_by !== uid) return json({ error: "forbidden" }, 403);
       if (it.is_active === false) return json({ sent: 0, reason: "inactive" });
       const isClass = it.grade != null && it.class_num != null;
-      title = isClass ? "🎁 우리 반 새 강화물이 들어왔어요" : "🎁 교환소에 새 강화물이 들어왔어요";
-      body = it.item_type === "group"
+      const sports = it.item_type === "group" && it.player_slots != null;
+      title = sports
+        ? (isClass ? "⚽ 우리 반 스포츠 경기 선수를 모아요" : "⚽ 스포츠 경기 선수를 모아요")
+        : isClass ? "🎁 우리 반 새 강화물이 들어왔어요" : "🎁 교환소에 새 강화물이 들어왔어요";
+      body = sports
+        ? `${it.emoji ?? "⚽"} ${it.name} · 선수 ${it.player_slots}명 · 응원도 할 수 있어요`
+        : it.item_type === "group"
         ? `${it.emoji ?? "🌱"} ${it.name} · 함께 키우기 목표 ${it.cost_points}P`
         : `${it.emoji ?? "🎁"} ${it.name} · ${it.cost_points}P`;
       createdAt = it.created_at;

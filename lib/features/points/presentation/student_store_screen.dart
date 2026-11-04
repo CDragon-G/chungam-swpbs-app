@@ -108,7 +108,9 @@ class StudentStoreScreen extends ConsumerWidget {
                   ],
                 );
               }
-              final groupItems = items.where((it) => it.isGroup).toList();
+              final groupItems =
+                  items.where((it) => it.isGroup && !it.isSports).toList();
+              final sportsItems = items.where((it) => it.isSports).toList();
               final solo = items.where((it) => !it.isGroup).toList();
               final classItems = solo.where((it) => it.isClassItem).toList();
               final schoolItems = solo.where((it) => !it.isClassItem).toList();
@@ -140,6 +142,23 @@ class StudentStoreScreen extends ConsumerWidget {
                       ),
                     ),
                     ...groupItems.map((it) => _GroupCard(item: it)),
+                  ],
+                  if (sportsItems.isNotEmpty) ...[
+                    const SectionHeader(title: '⚽ 스포츠 경기'),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        '선수로 뛰어도, 응원만 해도 좋아요!',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.notoSansKr(
+                          fontSize: 12,
+                          color: AppColors.studentGreen,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    ...sportsItems.map((it) => _GroupCard(item: it)),
                   ],
                   if (classItems.isNotEmpty) ...[
                     const SectionHeader(title: '🧑‍🏫 우리 반 교환소'),
@@ -292,6 +311,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final st = _st;
     final balance = ref.watch(myPointsProvider).value ?? 0;
     final done = st?.achieved ?? false;
+    final sports = it.isSports;
 
     return PbsCard(
       color: done ? AppColors.studentGreenLight : null,
@@ -317,8 +337,12 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                     ),
                     Text(
                       done
-                          ? '목표 달성! 곧 받을 수 있어요'
-                          : '${it.scopeLabel} · 함께 키우는 중',
+                          ? (sports
+                              ? '경기 성사! 선생님이 날짜를 알려주실 거예요'
+                              : '목표 달성! 곧 받을 수 있어요')
+                          : sports
+                              ? '${it.scopeLabel} · 선수 ${it.playerSlots}명 모집'
+                              : '${it.scopeLabel} · 함께 키우는 중',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.notoSansKr(
@@ -352,16 +376,19 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
           if (_loading)
             const LinearProgressIndicator(minHeight: 10)
           else if (st != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: st.progress,
-                minHeight: 12,
-                backgroundColor: AppColors.borderLight,
-                valueColor:
-                    const AlwaysStoppedAnimation(AppColors.studentGreen),
+            if (st.isSports)
+              _SportsBar(st: st)
+            else
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: st.progress,
+                  minHeight: 12,
+                  backgroundColor: AppColors.borderLight,
+                  valueColor:
+                      const AlwaysStoppedAnimation(AppColors.studentGreen),
+                ),
               ),
-            ),
             const SizedBox(height: 6),
             Row(
               children: [
@@ -383,15 +410,28 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  '${st.people}명 참여',
-                  style: GoogleFonts.notoSansKr(
-                    fontSize: 11.5,
-                    color: AppColors.textSecondary,
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      st.isSports
+                          ? '선수 ${st.players}/${st.playerSlots} · 응원 ${st.supporters}명'
+                          : '${st.people}명 참여',
+                      maxLines: 1,
+                      style: GoogleFonts.notoSansKr(
+                        fontSize: 11.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
+            if (st.isSports) ...[
+              const SizedBox(height: 4),
+              _SportsLegend(st: st),
+            ],
             if (st.top.isNotEmpty) ...[
               const SizedBox(height: 10),
               Container(
@@ -451,7 +491,28 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
               ),
             ],
             const SizedBox(height: 10),
-            if (st.myAmount > 0)
+            if (st.isSports && st.myAmount > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${st.isPlayer ? '⚽ 선수로 참여 중' : '📣 응원하는 중'}'
+                    ' · 내가 보탠 ${st.myAmount}P'
+                    '${st.maxPerStudent == null ? '' : ' · 최대 ${st.maxPerStudent}P'}',
+                    maxLines: 1,
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: st.isPlayer
+                          ? AppColors.studentGreen
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              )
+            else if (st.myAmount > 0)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
@@ -465,51 +526,78 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                   ),
                 ),
               ),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.studentGreen,
-                  disabledBackgroundColor: AppColors.borderLight,
-                ),
-                onPressed: (done || st.myMaxAddable(balance) <= 0)
-                    ? null
-                    : () => _contribute(st, balance),
-                child: Text(
-                  done
-                      ? '목표를 채웠어요 🎉'
-                      : st.myMaxAddable(balance) <= 0
-                          ? (balance <= 0 ? '포인트가 부족해요' : '더 보탤 수 없어요')
-                          : '포인트 보태기',
-                  style: GoogleFonts.notoSansKr(
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+            if (st.isSports && !done && balance > 0 && !st.isPlayer)
+              _SportsButtons(
+                st: st,
+                balance: balance,
+                onPick: (role) => _contribute(st, balance, role: role),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.studentGreen,
+                    disabledBackgroundColor: AppColors.borderLight,
+                    foregroundColor: Colors.white,
+                    // 꺼진 버튼의 글자도 읽히게 (흰 글자가 연한 회색에 묻혔다)
+                    disabledForegroundColor: AppColors.textTertiary,
+                  ),
+                  onPressed: (done || st.myMaxAddable(balance) <= 0)
+                      ? null
+                      : () => _contribute(st, balance,
+                          role: st.isSports ? 'player' : null),
+                  child: Text(
+                    done
+                        ? (st.isSports ? '경기 성사 🎉' : '목표를 채웠어요 🎉')
+                        : st.myMaxAddable(balance) <= 0
+                            ? (balance <= 0 ? '포인트가 부족해요' : '더 보탤 수 없어요')
+                            : '포인트 보태기',
+                    style: GoogleFonts.notoSansKr(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ],
       ),
     );
   }
 
-  Future<void> _contribute(GroupItemStatus st, int balance) async {
-    final maxAdd = st.myMaxAddable(balance);
+  Future<void> _contribute(GroupItemStatus st, int balance,
+      {String? role}) async {
+    final maxAdd = st.myMaxAddable(balance, role: role);
+    if (maxAdd <= 0) return;
     var amount = maxAdd >= 100 ? 100 : maxAdd;
+    final joining = st.isSports && role == 'player' && !st.isPlayer;
+    final cheering = st.isSports && role == 'supporter';
+    final slotsLeft = (st.playerSlots ?? 0) - st.players;
+    final guide = joining
+        ? (st.isSupporter
+            ? '선수 자리가 $slotsLeft개 남았어요.\n응원으로 보탠 ${st.myAmount}P도 선수 몫이 돼요.'
+            : '선수 자리가 $slotsLeft개 남았어요.\n목표까지 ${st.remain}P 남았어요.')
+        : cheering
+            ? '응원은 선수 자리를 차지하지 않아요.\n응원 몫은 ${st.supporterLeft}P 더 받을 수 있어요.'
+            : '목표까지 ${st.remain}P 남았어요.';
 
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (dialogCtx, setSt) => AlertDialog(
-          title: Text('포인트 보태기',
+          title: Text(
+              joining
+                  ? '⚽ 선수로 참여하기'
+                  : cheering
+                      ? '📣 응원하기'
+                      : '포인트 보태기',
               style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w900)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                '${widget.item.name}\n목표까지 ${st.remain}P 남았어요.',
+                '${widget.item.name}\n$guide',
                 style: GoogleFonts.notoSansKr(
                     fontSize: 13, color: AppColors.textSecondary),
               ),
@@ -550,7 +638,12 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                   backgroundColor: AppColors.studentGreen),
               onPressed:
                   amount <= 0 ? null : () => Navigator.pop(dialogCtx, true),
-              child: Text('보태기',
+              child: Text(
+                  joining
+                      ? '참여하기'
+                      : cheering
+                          ? '응원하기'
+                          : '보태기',
                   style: GoogleFonts.notoSansKr(fontWeight: FontWeight.w800)),
             ),
           ],
@@ -562,21 +655,169 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     try {
       final next = await ref
           .read(pointsRepositoryProvider)
-          .contribute(itemId: widget.item.id, amount: amount);
+          .contribute(itemId: widget.item.id, amount: amount, role: role);
       ref.invalidate(myPointsProvider);
       ref.invalidate(activeStoreItemsProvider);
       if (!mounted) return;
       setState(() => _st = next);
       celebrateGrowth(context, ref,
           headline: next.achieved
-              ? '목표 달성! 우리 반이 함께 해냈어요 🎉'
-              : '${amount}P를 보탰어요! 목표까지 ${next.remain}P 🌱');
+              ? (next.isSports ? '경기 성사! 함께 해냈어요 ⚽' : '목표 달성! 우리 반이 함께 해냈어요 🎉')
+              : joining
+                  ? '선수로 참여했어요! 목표까지 ${next.remain}P ⚽'
+                  : cheering
+                      ? '${amount}P로 응원했어요! 목표까지 ${next.remain}P 📣'
+                      : '${amount}P를 보탰어요! 목표까지 ${next.remain}P 🌱');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(translateError(e))),
       );
     }
+  }
+}
+
+/// ⚽ 스포츠 경기 막대 — 선수 몫(초록)과 응원 몫(주황)을 이어 붙인다.
+class _SportsBar extends StatelessWidget {
+  const _SportsBar({required this.st});
+  final GroupItemStatus st;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        height: 12,
+        color: AppColors.borderLight,
+        child: LayoutBuilder(
+          builder: (_, c) => Row(
+            children: [
+              Container(
+                width: c.maxWidth * st.playerProgress,
+                color: AppColors.studentGreen,
+              ),
+              Container(
+                width: c.maxWidth * st.supporterProgress,
+                color: kCheerColor,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 응원 몫 색 (주황)
+const kCheerColor = Color(0xFFF59E0B);
+
+/// 막대 아래 범례 — 선수 몫 · 응원 몫 (응원은 목표의 30% 까지).
+class _SportsLegend extends StatelessWidget {
+  const _SportsLegend({required this.st});
+  final GroupItemStatus st;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget dot(Color c) => Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(right: 4),
+          decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+        );
+    final style = GoogleFonts.notoSansKr(
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textSecondary,
+    );
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          dot(AppColors.studentGreen),
+          Text('선수 몫 ${st.playerRaised}P', style: style),
+          const SizedBox(width: 12),
+          dot(kCheerColor),
+          Text(
+            st.supporterLeft <= 0
+                ? '응원 몫 ${st.supporterRaised}P · 가득 찼어요'
+                : '응원 몫 ${st.supporterRaised}P / 최대 ${st.supporterCap}P',
+            style: style,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 아직 선수가 아닌 학생의 버튼 두 개 — 선수로 참여 · 응원.
+class _SportsButtons extends StatelessWidget {
+  const _SportsButtons({
+    required this.st,
+    required this.balance,
+    required this.onPick,
+  });
+  final GroupItemStatus st;
+  final int balance;
+  final void Function(String role) onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final canPlay =
+        st.canJoinAsPlayer && st.myMaxAddable(balance, role: 'player') > 0;
+    final canCheer = st.myMaxAddable(balance, role: 'supporter') > 0;
+    final label = GoogleFonts.notoSansKr(fontWeight: FontWeight.w800);
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.studentGreen,
+              disabledBackgroundColor: AppColors.borderLight,
+              foregroundColor: Colors.white,
+              disabledForegroundColor: AppColors.textTertiary,
+            ),
+            onPressed: canPlay ? () => onPick('player') : null,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                st.playersFull
+                    ? '선수 마감'
+                    : st.isSupporter
+                        ? '⚽ 선수로 바꾸기'
+                        : '⚽ 선수로 참여',
+                maxLines: 1,
+                style: label,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: kCheerColor,
+              side: BorderSide(
+                  color: canCheer ? kCheerColor : AppColors.borderLight),
+            ),
+            onPressed: canCheer ? () => onPick('supporter') : null,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                st.supporterLeft <= 0
+                    ? '응원 마감'
+                    : st.isSupporter
+                        ? '📣 더 응원하기'
+                        : '📣 응원만 하기',
+                maxLines: 1,
+                style: label,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

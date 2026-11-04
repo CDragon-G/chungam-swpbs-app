@@ -20,6 +20,7 @@ class PointStoreItem {
     this.closedAt,
     this.limitPerStudent,
     this.limitPeriod = 'total',
+    this.playerSlots,
   });
 
   final String id;
@@ -56,6 +57,12 @@ class PointStoreItem {
   final String limitPeriod;
 
   bool get hasLimit => limitPerStudent != null;
+
+  /// 스포츠 경기의 선수 인원 (함께 키우기에서만, null = 스포츠 경기 아님, 077)
+  final int? playerSlots;
+
+  /// 보탤 때 선수 / 응원을 고르는 함께 키우기
+  bool get isSports => isGroup && playerSlots != null;
 
   /// '하루 1번' · '1인 2번'
   String get limitLabel {
@@ -114,6 +121,7 @@ class PointStoreItem {
             : DateTime.parse(map['closed_at'] as String),
         limitPerStudent: (map['limit_per_student'] as num?)?.toInt(),
         limitPeriod: (map['limit_period'] as String?) ?? 'total',
+        playerSlots: (map['player_slots'] as num?)?.toInt(),
       );
 }
 
@@ -128,6 +136,12 @@ class GroupItemStatus {
     required this.closed,
     required this.top,
     this.maxPerStudent,
+    this.playerSlots,
+    this.players = 0,
+    this.supporters = 0,
+    this.supporterRaised = 0,
+    this.supporterCap = 0,
+    this.myRole,
   });
 
   final int goal;
@@ -139,16 +153,45 @@ class GroupItemStatus {
   final int? maxPerStudent;
   final List<GroupContributor> top; // 기여 TOP 3
 
+  // ── 스포츠 경기 (077) ──
+  final int? playerSlots; // 선수 인원 (null = 스포츠 경기 아님)
+  final int players; // 선수로 참여한 학생 수
+  final int supporters; // 응원한 학생 수
+  final int supporterRaised; // 응원 몫 합계
+  final int supporterCap; // 응원 몫 상한 (목표의 30%)
+  final String? myRole; // 'player' · 'supporter' · null (아직 안 보탬)
+
+  bool get isSports => playerSlots != null;
+  bool get isPlayer => myRole == 'player';
+  bool get isSupporter => myRole == 'supporter';
+  int get playerRaised => raised - supporterRaised;
+  bool get playersFull => playerSlots != null && players >= playerSlots!;
+  int get supporterLeft =>
+      supporterRaised >= supporterCap ? 0 : supporterCap - supporterRaised;
+
+  /// 선수로 새로 들어오거나 응원에서 선수로 바꿀 수 있는가
+  bool get canJoinAsPlayer => isSports && !isPlayer && !playersFull;
+
+  /// 막대에서 선수 몫 · 응원 몫이 차지하는 비율 (0~1)
+  double get playerProgress =>
+      goal <= 0 ? 0 : (playerRaised / goal).clamp(0.0, 1.0);
+  double get supporterProgress =>
+      goal <= 0 ? 0 : (supporterRaised / goal).clamp(0.0, 1.0 - playerProgress);
+
   int get remain => (goal - raised) < 0 ? 0 : goal - raised;
   double get progress => goal <= 0 ? 0 : (raised / goal).clamp(0.0, 1.0);
   int get percent => (progress * 100).round();
 
   /// 내가 지금 더 보탤 수 있는 최대 포인트 (한도와 남은 금액 중 작은 쪽).
-  int myMaxAddable(int balance) {
+  /// 스포츠 경기에서 응원으로 보탤 때는 남은 응원 몫도 넘지 않는다.
+  int myMaxAddable(int balance, {String? role}) {
     var cap = remain;
     if (maxPerStudent != null) {
       final left = maxPerStudent! - myAmount;
       if (left < cap) cap = left;
+    }
+    if (isSports && !isPlayer && (role ?? myRole) == 'supporter') {
+      if (supporterLeft < cap) cap = supporterLeft;
     }
     if (balance < cap) cap = balance;
     return cap < 0 ? 0 : cap;
@@ -166,6 +209,12 @@ class GroupItemStatus {
             .map((e) =>
                 GroupContributor.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList(),
+        playerSlots: (m['player_slots'] as num?)?.toInt(),
+        players: (m['players'] as num?)?.toInt() ?? 0,
+        supporters: (m['supporters'] as num?)?.toInt() ?? 0,
+        supporterRaised: (m['supporter_raised'] as num?)?.toInt() ?? 0,
+        supporterCap: (m['supporter_cap'] as num?)?.toInt() ?? 0,
+        myRole: m['my_role'] as String?,
       );
 }
 
