@@ -95,6 +95,24 @@ class AuthRepository {
 
   Future<void> signOut() => _c.auth.signOut();
 
+  /// 이메일 없이 들어온 체험 계정인가 (079 체험 입장).
+  bool get isAnonymous => _c.auth.currentUser?.isAnonymous ?? false;
+
+  /// 강의 · 연수 체험 입장: 체험 코드만으로 학생 계정을 만든다 (079).
+  /// 익명 로그인 → 서버가 '대구체험학생N' 처럼 번호와 반을 매기고 프로필을 만든다.
+  /// 들어온 이름을 돌려준다.
+  Future<String> joinDemoSchool(String code) async {
+    if (_c.auth.currentUser == null) {
+      await _c.auth.signInAnonymously();
+    }
+    final res = await _c.rpc('join_demo_school', params: {'p_code': code});
+    final m = Map<String, dynamic>.from(res as Map);
+    if (m['ok'] != true) {
+      throw StateError(m['error'] as String? ?? '체험을 시작하지 못했어요');
+    }
+    return m['name'] as String? ?? '';
+  }
+
   /// 계정 완전 삭제 (Apple Guideline 5.1.1 대응).
   /// Supabase RPC가 auth.users를 삭제하면 CASCADE로 모든 사용자 데이터가 제거됨.
   /// 삭제 후 로컬 세션도 정리.

@@ -91,7 +91,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 color: AppColors.studentGreen,
                 onPressed: () => context.go('/signup/student'),
               ),
-              const SizedBox(height: AppSizes.md),
+              const SizedBox(height: AppSizes.sm),
+              // 강의 · 연수 참여자용 체험 입장 (079)
+              TextButton.icon(
+                onPressed: () => context.go('/signup/demo'),
+                icon: const Icon(Icons.confirmation_number_outlined,
+                    size: 18, color: AppColors.studentGreen),
+                label: Text(
+                  '강의 · 연수 체험 코드가 있어요',
+                  maxLines: 1,
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.studentGreen,
+                  ),
+                ),
+              ),
               TextButton(
                 onPressed: () => context.go('/login'),
                 child: Text(

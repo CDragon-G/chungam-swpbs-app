@@ -84,6 +84,9 @@ String? _authMessageByCode(String? code) {
       return '이메일 인증이 필요해요. 받은 메일을 확인해주세요.';
     case 'signup_disabled':
       return '현재 회원가입이 잠시 중단되었어요.';
+    case 'anonymous_provider_disabled':
+      // 대시보드에서 익명 로그인을 켜지 않았을 때 (079 체험 입장)
+      return '체험 입장이 아직 열리지 않았어요. 강사님께 알려 주세요.';
     case 'over_email_send_rate_limit':
     case 'over_request_rate_limit':
       // 한 교실이 같은 와이파이(같은 IP)로 몰리면 걸린다.
@@ -122,6 +125,9 @@ String _authMessageByText(String message) {
   if (m.contains('email not confirmed') ||
       m.contains('email_not_confirmed')) {
     return '이메일 인증이 필요해요.';
+  }
+  if (m.contains('anonymous sign-ins are disabled')) {
+    return '체험 입장이 아직 열리지 않았어요. 강사님께 알려 주세요.';
   }
   if (m.contains('signup is disabled') ||
       m.contains('signups not allowed')) {

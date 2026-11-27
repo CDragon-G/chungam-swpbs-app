@@ -18,6 +18,7 @@ import '../../../shared/widgets/flame_streak.dart';
 import '../../../shared/providers/profile_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../calendar/providers/calendar_provider.dart';
+import '../../demo/demo_logout.dart';
 import '../../checkin/providers/checkin_provider.dart';
 import '../../cico/providers/cico_provider.dart';
 import '../../growth/models/growth_status.dart';
@@ -276,6 +277,8 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                     const SizedBox(width: 14),
                     GestureDetector(
                       onTap: () async {
+                        // 체험 계정은 한 번 묻는다 (실제 학교 계정은 그대로 바로 로그아웃)
+                        if (!await confirmDemoLogout(context, ref)) return;
                         await ref.read(authRepositoryProvider).signOut();
                         if (context.mounted) context.go('/welcome');
                       },

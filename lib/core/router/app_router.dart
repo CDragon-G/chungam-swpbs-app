@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../notifications/fcm_service.dart';
 import 'root_navigator.dart';
+import '../../features/auth/presentation/demo_join_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/cico/presentation/cico_home_screen.dart';
 import '../../features/cico/presentation/student_cico_screen.dart';
@@ -78,6 +79,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 2) 로그인됨 — 프로필 로딩 중이면 스플래시 유지
       final profileAsync = ref.read(profileProvider);
       if (profileAsync.isLoading) {
+        // 체험 입장은 익명 로그인 직후 프로필을 만든다. 그 사이 스플래시로 넘기면
+        // 입장 화면이 닫혀 버리므로 그대로 둔다 (079).
+        if (loc == '/signup/demo') return null;
         return loc == '/splash' ? null : '/splash';
       }
       final profile = profileAsync.value;
@@ -116,6 +120,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/signup/student',
           builder: (_, __) => const StudentSignupScreen()),
+      GoRoute(path: '/signup/demo', builder: (_, __) => const DemoJoinScreen()),
 
       // Student shell
       ShellRoute(
